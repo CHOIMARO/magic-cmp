@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">My App</string>
+    <string name="search_prompt">Search videos and images</string>
+    <string name="no_results_found">검색 결과가 없습니다.</string>
+</resources>
