@@ -10,7 +10,7 @@ plugins {
 
 kotlin {
 
-    androidLibrary {
+    android {
         namespace = "com.company.core.designsystem"
         compileSdk = 36
         minSdk = 24

@@ -21,7 +21,7 @@ val pixabayKey = localProperties.getProperty("PIXABAY_API_KEY") ?: ""
 val baseUrl = localProperties.getProperty("BASE_URL") ?: "https://default.url.com/"
 
 // 3. BuildConfig 파일 생성 태스크 정의
-val generateBuildConfig by tasks.registering(Sync::class) {
+val generateBuildConfig = tasks.register<Sync>("generateBuildConfig") {
     val packageName = "com.company.core.network"
 
     from(
@@ -55,7 +55,7 @@ kotlin {
     // Target declarations - add or remove as needed below. These define
     // which platforms this KMP module supports.
     // See: https://kotlinlang.org/docs/multiplatform-discover-project.html#targets
-    androidLibrary {
+    android {
         namespace = "com.company.core.network"
         compileSdk = 36
         minSdk = 24

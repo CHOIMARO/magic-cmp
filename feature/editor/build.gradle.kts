@@ -13,7 +13,7 @@ plugins {
 
 kotlin {
 
-    androidLibrary {
+    android {
         namespace = "com.company.feature.editor"
         compileSdk = 36
         minSdk = 24
