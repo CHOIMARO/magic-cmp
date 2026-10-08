@@ -3,7 +3,10 @@ package com.company.magiccmp.di
 import com.company.core.data.di.dataModule
 import com.company.core.domain.di.domainModule
 import com.company.core.network.di.networkModule
+import com.company.feature.capture.di.captureModule
+import com.company.feature.editor.di.editorModule
 import com.company.feature.home.di.homeModule
+import com.company.feature.main.di.mainModule
 import org.koin.core.context.startKoin
 import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.module
@@ -12,6 +15,9 @@ import org.koin.dsl.module
 val appModule = module {
     includes(
         homeModule,
+        mainModule,
+        captureModule,
+        editorModule,
     ) // feature 모듈
 
     includes(

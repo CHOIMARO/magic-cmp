@@ -70,6 +70,9 @@ kotlin {
 
                 // Paging
                 implementation(libs.androidx.paging.common)
+
+                // Coroutines (StateFlow)
+                implementation(libs.kotlinx.coroutines.core)
             }
         }
 
