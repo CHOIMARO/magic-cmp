@@ -48,6 +48,10 @@ kotlin {
         }
         commonMain.dependencies {
             implementation(projects.feature.home)
+            implementation(projects.feature.main)
+            implementation(projects.feature.capture)
+            implementation(projects.feature.editor)
+            implementation(projects.core.designsystem)
             implementation(projects.core.domain)
             implementation(projects.core.data)
             implementation(projects.core.network)

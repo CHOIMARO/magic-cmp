@@ -2,6 +2,10 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidKotlinMultiplatformLibrary)
     alias(libs.plugins.androidLint)
+
+    // Compose (편집기 공유 UI)
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
@@ -64,6 +68,14 @@ kotlin {
 
                 // String Resource 사용
                 implementation(libs.jetbrains.compose.components.resources)
+
+                implementation(projects.core.domain)
+                implementation(projects.core.designsystem)
+
+                implementation(libs.jetbrains.compose.runtime)
+                implementation(libs.jetbrains.compose.foundation)
+                implementation(libs.jetbrains.compose.material3)
+                implementation(libs.jetbrains.compose.ui)
             }
         }
 
