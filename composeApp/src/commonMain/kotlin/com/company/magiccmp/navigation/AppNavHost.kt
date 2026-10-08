@@ -23,7 +23,7 @@ import com.company.ui.editor.GalleryMode
  * 앱 전체 내비게이션.
  *
  * 기존 Pixabay 검색(feature:home)은 모듈과 DI를 유지하고 그래프에서만 뺐다.
- * 다시 연결하려면 homeGraph(navController)를 아래에 추가한다.
+ * 다시 연결하려면 homeScreen()을 아래에 추가한다.
  */
 @Composable
 fun AppNavHost(
