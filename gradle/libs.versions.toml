@@ -30,7 +30,7 @@ lifecycleRuntimeKtx = "2.10.0"
 composeBom = "2024.09.00"
 
 # Navigation
-navigationCompose = "2.8.0-alpha10"
+navigationCompose = "2.9.1"
 kotlinxSerializationJson = "1.7.3"
 
 # Ktor
