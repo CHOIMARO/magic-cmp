@@ -1,14 +1,21 @@
 package com.company.feature.main
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.company.core.designsystem.component.MagicBottomSheet
+import com.company.core.designsystem.component.MagicModalBottomSheet
 import com.company.core.designsystem.theme.MagicColors
 import com.company.feature.main.component.MainBottomBar
 import com.company.feature.main.sheet.AppInfoSheetContent
@@ -25,6 +32,7 @@ import com.company.feature.main.tab.TemplateTab
  * @param state Screen state.
  * @param onIntent Called with each user action.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
     Box(modifier = Modifier.fillMaxSize().background(MagicColors.Background)) {
@@ -66,24 +74,43 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
             )
         }
 
-        MagicBottomSheet(
-            value = state.sheet,
-            onDismiss = { onIntent(MainIntent.CloseSheet) },
-            spacing = 14.dp,
-        ) { sheet ->
-            when (sheet) {
-                MainSheet.Create -> CreateSheetContent(
-                    onPickVideos = { onIntent(MainIntent.PickVideosForMagic) },
-                    onOpenCamera = { onIntent(MainIntent.OpenCamera) },
-                    onStartFromTemplates = { onIntent(MainIntent.StartFromTemplates) },
-                    onEditManually = { onIntent(MainIntent.PickVideosManually) },
-                )
-                is MainSheet.Template -> TemplateSheetContent(
-                    template = sheet.template,
-                    onUseTemplate = { onIntent(MainIntent.UseSelectedTemplate) },
-                )
-                MainSheet.AppInfo -> AppInfoSheetContent()
+        // 시트를 닫고 이동하는 버튼은 닫힘 애니메이션이 끝난 뒤에 해당 Intent를 보낸다.
+        // 템플릿 사용(UseSelectedTemplate)은 열린 시트의 템플릿을 읽으므로 CloseSheet보다 먼저 보낸다.
+        var actionAfterClose by remember { mutableStateOf<MainIntent?>(null) }
+        MagicModalBottomSheet(
+            target = state.sheet,
+            onDismissRequest = {
+                val action = actionAfterClose
+                actionAfterClose = null
+                onIntent(action ?: MainIntent.CloseSheet)
+            },
+            showDragHandle = true,
+        ) { sheet, requestDismiss ->
+            val closeThen: (MainIntent) -> Unit = { intent ->
+                actionAfterClose = intent
+                requestDismiss()
+            }
+            Column(
+                modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = SHEET_SPACING, bottom = 22.dp),
+                verticalArrangement = Arrangement.spacedBy(SHEET_SPACING),
+            ) {
+                when (sheet) {
+                    MainSheet.Create -> CreateSheetContent(
+                        onPickVideos = { closeThen(MainIntent.PickVideosForMagic) },
+                        onOpenCamera = { closeThen(MainIntent.OpenCamera) },
+                        onStartFromTemplates = { closeThen(MainIntent.StartFromTemplates) },
+                        onEditManually = { closeThen(MainIntent.PickVideosManually) },
+                    )
+                    is MainSheet.Template -> TemplateSheetContent(
+                        template = sheet.template,
+                        onUseTemplate = { closeThen(MainIntent.UseSelectedTemplate) },
+                    )
+                    MainSheet.AppInfo -> AppInfoSheetContent()
+                }
             }
         }
     }
 }
+
+/** Space between the handle and the content, and between the content items, of a main sheet. */
+private val SHEET_SPACING = 14.dp

@@ -78,10 +78,15 @@ private val SpeedOptions = listOf(0.5, 1.0, 1.5, 2.0, 3.0)
  * @param sheet Sheet to show.
  * @param state Editor state.
  * @param onIntent Called with each user action.
+ * @param onClose Closes the sheet with the close animation.
  */
 @Composable
-internal fun ColumnScope.EditorSheetContent(sheet: EditorSheet, state: EditorState, onIntent: (EditorIntent) -> Unit) {
-    val close = { onIntent(EditorIntent.CloseSheet) }
+internal fun ColumnScope.EditorSheetContent(
+    sheet: EditorSheet,
+    state: EditorState,
+    onIntent: (EditorIntent) -> Unit,
+    onClose: () -> Unit,
+) {
     val intro = when (sheet) {
         EditorSheet.VIBE -> "필터·음악·글자·자막 스타일이 한 번에 바뀌어요"
         EditorSheet.LAYOUT -> "화면을 나누거나 액자처럼 꾸며요"
@@ -93,7 +98,7 @@ internal fun ColumnScope.EditorSheetContent(sheet: EditorSheet, state: EditorSta
         else -> null
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SheetHeader(title = sheet.title(state), onClose = close)
+        SheetHeader(title = sheet.title(state), onClose = onClose)
         if (intro != null) Text(text = intro, fontSize = 13.sp, color = MagicColors.OnSurface60)
     }
     when (sheet) {
@@ -246,7 +251,11 @@ private fun FilterSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
 
 @Composable
 private fun TextSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
-    val draft = state.textDraft ?: return
+    // 넣기·저장·삭제로 시트가 닫히면 ViewModel이 초안을 비운다. 닫힘 애니메이션 동안에는 마지막 초안을 그려서
+    // 시트 높이가 줄지 않게 한다. 높이가 줄면 시트가 키보드와 함께 내려가지 못하고 먼저 내려앉는다.
+    val lastDraft = remember { LastTextDraft() }
+    state.textDraft?.let { lastDraft.value = it }
+    val draft = lastDraft.value ?: return
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
@@ -468,4 +477,9 @@ private fun CaptionSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
             loading = progress?.let { MagicButtonLoading.Progress(label = "자막 만드는 중", fraction = it / 100f) },
         )
     }
+}
+
+/** Last text draft of the open text sheet. It is not a screen state, so it is not a snapshot state. */
+private class LastTextDraft {
+    var value: TextDraft? = null
 }

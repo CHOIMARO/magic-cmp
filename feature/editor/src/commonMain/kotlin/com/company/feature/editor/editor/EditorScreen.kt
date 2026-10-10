@@ -18,10 +18,12 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -29,7 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.company.core.designsystem.component.MagicBottomSheet
+import com.company.core.designsystem.component.MagicModalBottomSheet
 import com.company.core.designsystem.component.MagicButton
 import com.company.core.designsystem.component.MagicButtonStyle
 import com.company.core.designsystem.component.MagicIconButton
@@ -43,6 +45,7 @@ import com.company.ui.editor.formatTime
  * @param state Screen state.
  * @param onIntent Called with each user action.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun EditorScreen(state: EditorState, onIntent: (EditorIntent) -> Unit) {
     Box(modifier = Modifier.fillMaxSize().background(MagicColors.Background)) {
@@ -70,12 +73,19 @@ internal fun EditorScreen(state: EditorState, onIntent: (EditorIntent) -> Unit) 
             )
         }
 
-        MagicBottomSheet(
-            value = state.sheet,
-            onDismiss = { onIntent(EditorIntent.CloseSheet) },
-            scrimAlpha = 0.3f,
-        ) { sheet ->
-            EditorSheetContent(sheet = sheet, state = state, onIntent = onIntent)
+        // 미리보기가 보이도록 메인 시트보다 옅은 scrim을 쓴다.
+        MagicModalBottomSheet(
+            target = state.sheet,
+            onDismissRequest = { onIntent(EditorIntent.CloseSheet) },
+            showDragHandle = true,
+            scrimColor = Color.Black.copy(alpha = 0.3f),
+        ) { sheet, requestDismiss ->
+            Column(
+                modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 22.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                EditorSheetContent(sheet = sheet, state = state, onIntent = onIntent, onClose = requestDismiss)
+            }
         }
     }
 }
