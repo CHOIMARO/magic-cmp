@@ -38,12 +38,16 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.MagicTheme
+import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
+import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.core.domain.model.editor.FilterType
 import com.company.ui.editor.toColorFilter
 
@@ -152,5 +156,13 @@ private fun StepRow(label: String, done: Boolean, running: Boolean) {
             }
         }
         Text(text = label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Preview(name = "매직 처리 중", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun MagicScreenPreview() {
+    MagicPreview {
+        MagicScreen(state = MagicState(step = 2, firstHue = 35, secondHue = 200))
     }
 }

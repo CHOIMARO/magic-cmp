@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.FixedGrid
@@ -56,6 +57,10 @@ import com.company.core.designsystem.component.SegmentedControl
 import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.theme.MagicPreview
+import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
+import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
+import com.company.feature.editor.preview.EditorPreviewData
 import com.company.ui.editor.formatTime
 import com.company.ui.editor.toColorFilter
 
@@ -259,3 +264,30 @@ private fun ColumnScope.DoneContent(onIntent: (ExportIntent) -> Unit) {
         }
     }
 }
+
+@Composable
+private fun ExportScreenPreview(state: ExportState) {
+    MagicPreview {
+        ExportScreen(state = state, onIntent = {})
+    }
+}
+
+@Preview(name = "저장 - 준비", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun ExportSetupPreview() = ExportScreenPreview(ExportState(project = EditorPreviewData.project))
+
+@Preview(name = "저장 - 화질 선택", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun ExportOptionsPreview() = ExportScreenPreview(ExportState(project = EditorPreviewData.project, showOptions = true))
+
+@Preview(name = "저장 - 저장 중", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun ExportRunningPreview() = ExportScreenPreview(
+    ExportState(project = EditorPreviewData.project, phase = ExportPhase.RUNNING, progress = 45),
+)
+
+@Preview(name = "저장 - 완료", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun ExportDonePreview() = ExportScreenPreview(
+    ExportState(project = EditorPreviewData.project, phase = ExportPhase.DONE, progress = 100),
+)

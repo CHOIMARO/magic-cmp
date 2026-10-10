@@ -14,9 +14,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.company.core.designsystem.component.MagicModalBottomSheet
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.theme.MagicPreview
+import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
+import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
+import com.company.core.domain.model.editor.VideoSummary
 import com.company.feature.main.component.MainBottomBar
 import com.company.feature.main.sheet.AppInfoSheetContent
 import com.company.feature.main.sheet.CreateSheetContent
@@ -114,3 +119,41 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
 
 /** Space between the handle and the content, and between the content items, of a main sheet. */
 private val SHEET_SPACING = 14.dp
+
+private val PreviewDrafts = listOf(
+    VideoSummary(name = "바닷가 주말", duration = 18.0, thumbnailHue = 35),
+    VideoSummary(name = "작업실 투어", duration = 42.0, thumbnailHue = 200),
+    VideoSummary(name = "말차 레시피", duration = 27.0, thumbnailHue = 150),
+    VideoSummary(name = "러닝 크루", duration = 15.0, thumbnailHue = 20),
+)
+
+private val PreviewCompletedVideos = listOf(
+    VideoSummary(name = "벚꽃 산책", duration = 21.0, thumbnailHue = 330),
+    VideoSummary(name = "첫 출근 브이로그", duration = 34.0, thumbnailHue = 60),
+)
+
+@Composable
+private fun MainScreenPreview(tab: MainTab) {
+    MagicPreview {
+        MainScreen(
+            state = MainState(tab = tab, drafts = PreviewDrafts, completedVideos = PreviewCompletedVideos),
+            onIntent = {},
+        )
+    }
+}
+
+@Preview(name = "홈", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun MainHomePreview() = MainScreenPreview(MainTab.HOME)
+
+@Preview(name = "템플릿", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun MainTemplatesPreview() = MainScreenPreview(MainTab.TEMPLATES)
+
+@Preview(name = "내 영상", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun MainLibraryPreview() = MainScreenPreview(MainTab.LIBRARY)
+
+@Preview(name = "마이", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun MainMyPreview() = MainScreenPreview(MainTab.MY)

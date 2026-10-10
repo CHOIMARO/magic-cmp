@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -48,6 +49,9 @@ import com.company.core.designsystem.component.PRESSED_SCALE_ICON
 import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.theme.MagicPreview
+import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
+import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.ui.editor.formatTime
 
 private val ShutterEasing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
@@ -257,3 +261,26 @@ private fun OverlayPillButton(text: String, icon: ImageVector, onClick: () -> Un
         Text(text = text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
+
+@Composable
+private fun CameraScreenPreview(state: CameraState) {
+    MagicPreview {
+        CameraScreen(state = state, onIntent = {}, onClose = {})
+    }
+}
+
+@Preview(name = "촬영 - 대기", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun CameraIdlePreview() = CameraScreenPreview(CameraState())
+
+@Preview(name = "촬영 - 촬영 중", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun CameraRecordingPreview() = CameraScreenPreview(
+    CameraState(segments = listOf(RecordedSegment(duration = 3.2, hue = 35), RecordedSegment(duration = 1.4, hue = 200)), recording = true),
+)
+
+@Preview(name = "촬영 - 구간 있음", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun CameraSegmentsPreview() = CameraScreenPreview(
+    CameraState(segments = listOf(RecordedSegment(duration = 3.2, hue = 35), RecordedSegment(duration = 2.6, hue = 200))),
+)

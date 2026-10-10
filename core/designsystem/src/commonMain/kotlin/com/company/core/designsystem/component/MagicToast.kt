@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -22,9 +23,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.theme.MagicPreview
 import kotlinx.coroutines.delay
 
 /**
@@ -109,5 +112,15 @@ fun MagicToastHost(state: MagicToastState, modifier: Modifier = Modifier) {
                 maxLines = 1,
             )
         }
+    }
+}
+
+@Preview(name = "Toast", widthDp = 360)
+@Composable
+private fun MagicToastPreview() {
+    // 실행형 프리뷰에서도 바로 사라지지 않도록 표시 시간을 길게 둔다.
+    val state = remember { MagicToastState().apply { show("매직 완료 · 분위기는 ✦ 매직에서 바꿔요", durationMillis = 60_000L) } }
+    MagicPreview(modifier = Modifier.height(120.dp)) {
+        MagicToastHost(state = state)
     }
 }

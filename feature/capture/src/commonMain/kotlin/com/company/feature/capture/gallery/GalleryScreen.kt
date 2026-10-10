@@ -34,6 +34,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.FixedGrid
@@ -43,7 +44,12 @@ import com.company.core.designsystem.component.MagicIconButton
 import com.company.core.designsystem.component.MagicIconButtonStyle
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.theme.MagicPreview
+import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
+import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.core.domain.model.editor.EditorTemplate
+import com.company.core.domain.model.editor.LayoutType
+import com.company.core.domain.model.editor.MediaType
 import com.company.core.domain.model.editor.SourceMedia
 import com.company.ui.editor.GalleryMode
 import com.company.ui.editor.displayName
@@ -273,3 +279,30 @@ private fun GalleryBottomBar(state: GalleryState, onNext: () -> Unit, modifier: 
         )
     }
 }
+
+// 임베디드 시스템 피커는 OS가 그리므로 프리뷰에 나오지 않는다. 앱이 그리는 순서 확인 화면으로 보여 준다.
+private val PreviewMedia = listOf(
+    SourceMedia(uri = "preview://v1", type = MediaType.VIDEO, name = "VID_4021", duration = 4.2, thumbnailHue = 35),
+    SourceMedia(uri = "preview://v2", type = MediaType.VIDEO, name = "VID_4028", duration = 6.8, thumbnailHue = 200),
+    SourceMedia(uri = "preview://p1", type = MediaType.PHOTO, name = "IMG_0012", duration = null, thumbnailHue = 150),
+    SourceMedia(uri = "preview://v3", type = MediaType.VIDEO, name = "VID_4035", duration = 3.1, thumbnailHue = 300),
+)
+
+@Composable
+private fun GalleryScreenPreview(state: GalleryState) {
+    MagicPreview {
+        GalleryScreen(state = state, useEmbeddedPicker = false, onIntent = {}, onOpenSystemPicker = {}, onClose = {})
+    }
+}
+
+@Preview(name = "사진·영상 선택", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun GalleryPickedPreview() = GalleryScreenPreview(
+    GalleryState(media = PreviewMedia, pickedIds = listOf("preview://p1", "preview://v1")),
+)
+
+@Preview(name = "사진·영상 선택 - 템플릿", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun GalleryTemplatePreview() = GalleryScreenPreview(
+    GalleryState(template = EditorTemplate.Layout(LayoutType.SPLIT_VERTICAL), media = PreviewMedia),
+)

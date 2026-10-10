@@ -29,14 +29,19 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.company.core.designsystem.component.MagicModalBottomSheet
 import com.company.core.designsystem.component.MagicButton
 import com.company.core.designsystem.component.MagicButtonStyle
 import com.company.core.designsystem.component.MagicIconButton
+import com.company.core.designsystem.component.MagicModalBottomSheet
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.theme.MagicPreview
+import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
+import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.core.domain.model.editor.canChangeSpeed
+import com.company.feature.editor.preview.EditorPreviewData
 import com.company.ui.editor.formatTime
 
 /**
@@ -149,3 +154,22 @@ private fun PlaybackRow(state: EditorState, onIntent: (EditorIntent) -> Unit) {
         )
     }
 }
+
+@Composable
+private fun EditorScreenPreview(state: EditorState) {
+    MagicPreview {
+        EditorScreen(state = state, onIntent = {})
+    }
+}
+
+@Preview(name = "편집기", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun EditorDefaultPreview() = EditorScreenPreview(
+    EditorState(project = EditorPreviewData.project, canUndo = true, time = 1.0, musicTracks = EditorPreviewData.musicTracks),
+)
+
+@Preview(name = "편집기 - 사진 클립 선택", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun EditorPhotoSelectedPreview() = EditorScreenPreview(
+    EditorState(project = EditorPreviewData.project, time = 5.2, selectedClipId = "c3", musicTracks = EditorPreviewData.musicTracks),
+)

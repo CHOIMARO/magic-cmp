@@ -10,6 +10,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
@@ -32,11 +35,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.theme.MagicPreview
 import kotlin.math.roundToInt
 
 /** Press animation time of the Magic Buttons spec: the button reacts in 0.1 seconds. */
@@ -370,4 +375,53 @@ private fun ButtonText(text: String, color: Color, style: MagicButtonStyle) {
         // 진행률 숫자가 바뀌어도 글자 폭이 흔들리지 않게 고정폭 숫자를 쓴다.
         style = LocalTextStyle.current.copy(fontFeatureSettings = "tnum"),
     )
+}
+
+@Preview(name = "MagicButton", widthDp = 360)
+@Composable
+private fun MagicButtonPreview() {
+    MagicPreview {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            MagicButton(
+                text = "3개로 매직 시작",
+                onClick = {},
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = Icons.Rounded.AutoAwesome,
+            )
+            MagicButton(text = "완성", onClick = {}, style = MagicButtonStyle.PRIMARY_SMALL)
+            MagicButton(text = "더 편집하기", onClick = {}, modifier = Modifier.fillMaxWidth(), style = MagicButtonStyle.SECONDARY)
+            MagicButton(text = "프로필 수정", onClick = {}, style = MagicButtonStyle.OUTLINE)
+            MagicButton(text = "자막 지우기", onClick = {}, style = MagicButtonStyle.DANGER)
+            MagicButton(text = "전체 보기", onClick = {}, style = MagicButtonStyle.TEXT)
+            MagicButton(text = "사진·영상을 골라주세요", onClick = {}, modifier = Modifier.fillMaxWidth(), enabled = false)
+        }
+    }
+}
+
+@Preview(name = "MagicButton loading", widthDp = 360)
+@Composable
+private fun MagicButtonLoadingPreview() {
+    MagicPreview {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            MagicButton(
+                text = "저장하기",
+                onClick = {},
+                modifier = Modifier.fillMaxWidth(),
+                loading = MagicButtonLoading.Progress(label = "저장하는 중", fraction = 0.45f),
+            )
+            MagicButton(
+                text = "자막 만들기",
+                onClick = {},
+                modifier = Modifier.fillMaxWidth(),
+                style = MagicButtonStyle.SECONDARY,
+                loading = MagicButtonLoading.Spinner(label = "자막 만드는 중"),
+            )
+            MagicButton(
+                text = "매직 시작",
+                onClick = {},
+                modifier = Modifier.fillMaxWidth(),
+                loading = MagicButtonLoading.Magic(label = "magic 거는 중"),
+            )
+        }
+    }
 }

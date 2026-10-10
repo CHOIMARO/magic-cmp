@@ -38,6 +38,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.FixedGrid
@@ -52,7 +53,9 @@ import com.company.core.designsystem.component.bleedHorizontal
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.component.selectionRing
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.MagicTheme
+import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.core.domain.model.editor.CaptionStyleType
 import com.company.core.domain.model.editor.EditorTemplate
 import com.company.core.domain.model.editor.FilterType
@@ -60,6 +63,7 @@ import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.TextStyleType
 import com.company.core.domain.model.editor.Vibe
 import com.company.core.domain.model.editor.clipAt
+import com.company.feature.editor.preview.EditorPreviewData
 import com.company.ui.editor.CaptionText
 import com.company.ui.editor.LookText
 import com.company.ui.editor.TemplatePreview
@@ -483,3 +487,59 @@ private fun CaptionSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
 private class LastTextDraft {
     var value: TextDraft? = null
 }
+
+private val PreviewSheetState = EditorState(project = EditorPreviewData.project, musicTracks = EditorPreviewData.musicTracks)
+
+// 시트는 별도 창(MagicModalBottomSheet)으로 열려 정적 프리뷰에 그려지지 않는다. 시트 표면과 콘텐츠만 보여 준다.
+@Composable
+private fun EditorSheetPreview(sheet: EditorSheet, state: EditorState = PreviewSheetState) {
+    MagicPreview {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .background(MagicColors.Surface)
+                .padding(start = SheetPadding, end = SheetPadding, top = 24.dp, bottom = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            EditorSheetContent(sheet = sheet, state = state, onIntent = {}, onClose = {})
+        }
+    }
+}
+
+@Preview(name = "시트 - 분위기", widthDp = PHONE_PREVIEW_WIDTH)
+@Composable
+private fun VibeSheetPreview() = EditorSheetPreview(EditorSheet.VIBE)
+
+@Preview(name = "시트 - 레이아웃", widthDp = PHONE_PREVIEW_WIDTH)
+@Composable
+private fun LayoutSheetPreview() = EditorSheetPreview(EditorSheet.LAYOUT)
+
+@Preview(name = "시트 - 글자", widthDp = PHONE_PREVIEW_WIDTH)
+@Composable
+private fun TextSheetPreview() = EditorSheetPreview(
+    EditorSheet.TEXT,
+    PreviewSheetState.copy(textDraft = TextDraft(id = null, text = "오늘의 기록", style = TextStyleType.BOLD)),
+)
+
+@Preview(name = "시트 - 음악", widthDp = PHONE_PREVIEW_WIDTH)
+@Composable
+private fun MusicSheetPreview() = EditorSheetPreview(EditorSheet.MUSIC)
+
+@Preview(name = "시트 - 필터", widthDp = PHONE_PREVIEW_WIDTH)
+@Composable
+private fun FilterSheetPreview() = EditorSheetPreview(EditorSheet.FILTER)
+
+@Preview(name = "시트 - 속도", widthDp = PHONE_PREVIEW_WIDTH)
+@Composable
+private fun SpeedSheetPreview() = EditorSheetPreview(EditorSheet.SPEED, PreviewSheetState.copy(selectedClipId = "c2"))
+
+@Preview(name = "시트 - 자막", widthDp = PHONE_PREVIEW_WIDTH)
+@Composable
+private fun CaptionSheetPreview() = EditorSheetPreview(EditorSheet.CAPTIONS)
+
+@Preview(name = "시트 - 자막 만드는 중", widthDp = PHONE_PREVIEW_WIDTH)
+@Composable
+private fun CaptionSheetProgressPreview() = EditorSheetPreview(
+    EditorSheet.CAPTIONS,
+    PreviewSheetState.copy(project = EditorPreviewData.project.copy(captions = emptyList()), captionProgress = 40),
+)

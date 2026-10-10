@@ -8,13 +8,21 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,10 +34,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.theme.MagicPreview
 
 /**
  * Background color for the default, pressed, and disabled states, with the press animation.
@@ -285,5 +295,32 @@ fun MagicChip(
         contentAlignment = Alignment.Center,
     ) {
         Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = content, maxLines = 1)
+    }
+}
+
+@Preview(name = "Icon buttons", widthDp = 360)
+@Composable
+private fun MagicIconButtonsPreview() {
+    MagicPreview {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                MagicIconButton(icon = Icons.Rounded.Close, contentDescription = "닫기", onClick = {}, style = MagicIconButtonStyle.SURFACE)
+                MagicIconButton(icon = Icons.AutoMirrored.Rounded.Undo, contentDescription = "되돌리기", onClick = {})
+                MagicIconButton(icon = Icons.AutoMirrored.Rounded.Undo, contentDescription = "되돌리기", onClick = {}, enabled = false)
+                MagicCreateButton(onClick = {})
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MagicToolButton(icon = Icons.Rounded.AutoAwesome, label = "매직", onClick = {}, style = MagicToolStyle.MAGIC)
+                MagicToolButton(icon = Icons.Outlined.Palette, label = "필터", onClick = {})
+                MagicToolButton(icon = Icons.Outlined.ContentCut, label = "나누기", onClick = {})
+                MagicToolButton(icon = Icons.Outlined.Delete, label = "삭제", onClick = {}, style = MagicToolStyle.DANGER)
+                MagicToolButton(icon = Icons.Rounded.Check, label = "완료", onClick = {}, style = MagicToolStyle.CONFIRM)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MagicChip(label = "전체", selected = true, onClick = {})
+                MagicChip(label = "레이아웃", selected = false, onClick = {})
+                MagicChip(label = "15초", selected = false, onClick = {}, enabled = false)
+            }
+        }
     }
 }

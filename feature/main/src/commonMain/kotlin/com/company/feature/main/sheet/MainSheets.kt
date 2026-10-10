@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -40,8 +41,11 @@ import com.company.core.designsystem.component.MagicButton
 import com.company.core.designsystem.component.MagicButtonStyle
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.MagicTheme
+import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.core.domain.model.editor.EditorTemplate
+import com.company.core.domain.model.editor.LayoutType
 import com.company.ui.editor.TemplatePreview
 import com.company.ui.editor.description
 import com.company.ui.editor.displayName
@@ -234,4 +238,37 @@ internal fun ColumnScope.AppInfoSheetContent() {
         fontSize = 11.5.sp,
         color = MagicColors.OnSurface40,
     )
+}
+
+// 시트는 별도 창(MagicModalBottomSheet)으로 열려 정적 프리뷰에 그려지지 않는다. 시트 표면과 콘텐츠만 보여 준다.
+@Composable
+private fun MainSheetPreviewFrame(content: @Composable ColumnScope.() -> Unit) {
+    MagicPreview {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .background(MagicColors.Surface)
+                .padding(start = 18.dp, end = 18.dp, top = 24.dp, bottom = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            content = content,
+        )
+    }
+}
+
+@Preview(name = "만들기 시트", widthDp = PHONE_PREVIEW_WIDTH)
+@Composable
+private fun CreateSheetPreview() = MainSheetPreviewFrame {
+    CreateSheetContent(onPickVideos = {}, onOpenCamera = {}, onStartFromTemplates = {}, onEditManually = {})
+}
+
+@Preview(name = "템플릿 상세 시트", widthDp = PHONE_PREVIEW_WIDTH)
+@Composable
+private fun TemplateSheetPreview() = MainSheetPreviewFrame {
+    TemplateSheetContent(template = EditorTemplate.Layout(LayoutType.BEFORE_AFTER), onUseTemplate = {})
+}
+
+@Preview(name = "앱 정보 시트", widthDp = PHONE_PREVIEW_WIDTH)
+@Composable
+private fun AppInfoSheetPreview() = MainSheetPreviewFrame {
+    AppInfoSheetContent()
 }

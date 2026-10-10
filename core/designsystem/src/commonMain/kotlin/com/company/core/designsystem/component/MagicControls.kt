@@ -26,11 +26,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.theme.MagicPreview
 
 /**
  * On/off switch of the settings rows.
@@ -200,4 +202,29 @@ fun DurationBadge(text: String, modifier: Modifier = Modifier, fontSize: TextUni
         fontWeight = FontWeight.SemiBold,
         maxLines = 1,
     )
+}
+
+@Preview(name = "Controls", widthDp = 360)
+@Composable
+private fun MagicControlsPreview() {
+    MagicPreview {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                MagicSwitch(checked = true)
+                MagicSwitch(checked = false)
+                MagicSwitch(checked = true, enabled = false)
+            }
+            SegmentedControl(
+                options = listOf(SegmentOption("작업 중"), SegmentOption("완성")),
+                selectedIndex = 0,
+                onSelect = {},
+            )
+            SegmentedControl(
+                options = listOf(SegmentOption("720p", "가볍게"), SegmentOption("1080p", "추천"), SegmentOption("4K", "최고 화질")),
+                selectedIndex = 1,
+                onSelect = {},
+            )
+            DurationBadge(text = "0:18")
+        }
+    }
 }
