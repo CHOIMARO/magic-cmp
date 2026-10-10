@@ -74,6 +74,14 @@ kotlin {
                 implementation(libs.kotlin.test)
             }
         }
+
+        androidMain {
+            dependencies {
+                // 편집 미리보기: CompositionPlayer(Transformer와 같은 Composition 모델)와 색 보정 효과
+                implementation(libs.androidx.media3.transformer)
+                implementation(libs.androidx.media3.effect)
+            }
+        }
     }
 }
 
