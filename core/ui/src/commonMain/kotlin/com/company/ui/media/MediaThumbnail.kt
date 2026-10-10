@@ -4,22 +4,27 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import com.company.core.designsystem.component.StripeBox
 import com.company.core.domain.model.editor.MediaType
+import kotlin.math.roundToInt
 
 /**
  * Loads a small image of a photo, or one frame of a video, for a thumbnail.
  *
+ * When only [time] changes, the function keeps the last image until the new frame loads.
+ *
  * @param uri Location of the file.
  * @param type Photo or video.
+ * @param time Position of the video frame in seconds. A photo ignores it.
  * @return The image, or null while it loads or when the app cannot read the file.
  */
 @Composable
-expect fun rememberMediaThumbnail(uri: String, type: MediaType): ImageBitmap?
+expect fun rememberMediaThumbnail(uri: String, type: MediaType, time: Double = 0.0): ImageBitmap?
 
 /**
  * Thumbnail of a photo or video. It shows the striped placeholder until the image loads.
@@ -28,7 +33,9 @@ expect fun rememberMediaThumbnail(uri: String, type: MediaType): ImageBitmap?
  * @param type Photo or video.
  * @param hue Hue of the placeholder.
  * @param modifier Modifier for the thumbnail.
+ * @param time Position of the video frame in seconds. A photo ignores it.
  * @param shape Shape of the thumbnail.
+ * @param colorFilter Optional color filter for the image and the placeholder.
  * @param content Content on top of the thumbnail, for example a badge.
  */
 @Composable
@@ -37,17 +44,39 @@ fun MediaThumbnail(
     type: MediaType,
     hue: Int,
     modifier: Modifier = Modifier,
+    time: Double = 0.0,
     shape: Shape = RectangleShape,
+    colorFilter: ColorFilter? = null,
     content: @Composable BoxScope.() -> Unit = {},
 ) {
-    StripeBox(hue = hue.toFloat(), modifier = modifier, shape = shape) {
-        val image = uri?.let { rememberMediaThumbnail(it, type) }
+    StripeBox(hue = hue.toFloat(), modifier = modifier, shape = shape, colorFilter = colorFilter) {
+        val image = uri?.let { rememberMediaThumbnail(it, type, time) }
         if (image != null) {
-            Image(bitmap = image, contentDescription = null, modifier = Modifier.matchParentSize(), contentScale = ContentScale.Crop)
+            Image(
+                bitmap = image,
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+                colorFilter = colorFilter,
+            )
         }
         content()
     }
 }
+
+/** Time step of video thumbnails, in seconds. Near times share one frame, so a trim drag loads fewer frames. */
+private const val THUMBNAIL_TIME_STEP = 0.5
+
+/**
+ * Rounds the frame time to [THUMBNAIL_TIME_STEP].
+ *
+ * @return The frame time in seconds. It is always 0 for a photo.
+ */
+internal fun thumbnailFrameTime(type: MediaType, time: Double): Double =
+    if (type == MediaType.PHOTO) 0.0 else (time / THUMBNAIL_TIME_STEP).roundToInt() * THUMBNAIL_TIME_STEP
+
+/** Cache key of one thumbnail. */
+internal fun thumbnailKey(uri: String, frameTime: Double): String = "$uri#$frameTime"
 
 /** Keeps recent thumbnails in memory. Use it only on the main thread. */
 internal object MediaThumbnailCache {

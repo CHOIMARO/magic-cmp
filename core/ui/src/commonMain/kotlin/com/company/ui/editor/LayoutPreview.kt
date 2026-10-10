@@ -3,6 +3,7 @@ package com.company.ui.editor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -15,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.layout
@@ -108,6 +110,7 @@ val LayoutType.spec: LayoutSpec
  * @param labelFontSize Font size of the labels in sp.
  * @param labelPadding Horizontal and vertical padding of the labels.
  * @param labelRadius Corner radius of the labels.
+ * @param cellContent Content of each cell index, for example a video. Null draws the placeholder stripes.
  */
 @Composable
 fun LayoutCells(
@@ -120,22 +123,28 @@ fun LayoutCells(
     labelFontSize: Float = 13f,
     labelPadding: Pair<Dp, Dp> = 4.dp to 1.dp,
     labelRadius: Dp = 3.dp,
+    cellContent: (@Composable BoxScope.(index: Int) -> Unit)? = null,
 ) {
     BoxWithConstraints(modifier = modifier.background(spec.background ?: defaultBackground)) {
         val stageWidth = maxWidth
         val stageHeight = maxHeight
         spec.cells.forEachIndexed { index, cell ->
             val shape = RoundedCornerShape(cell.cornerRadius.dp)
-            StripeBox(
-                hue = cellHue(index).toFloat(),
-                modifier = Modifier
-                    .offset(x = stageWidth * (cell.left / 100f), y = stageHeight * (cell.top / 100f))
-                    .size(width = stageWidth * (cell.width / 100f), height = stageHeight * (cell.height / 100f))
-                    .then(if (cell.ring) Modifier.border(2.dp, Color.White, shape) else Modifier),
-                shape = shape,
-                colorFilter = colorFilter,
-                stripeOffset = stripeOffset(index),
-            )
+            val cellModifier = Modifier
+                .offset(x = stageWidth * (cell.left / 100f), y = stageHeight * (cell.top / 100f))
+                .size(width = stageWidth * (cell.width / 100f), height = stageHeight * (cell.height / 100f))
+                .then(if (cell.ring) Modifier.border(2.dp, Color.White, shape) else Modifier)
+            if (cellContent != null) {
+                Box(modifier = cellModifier.clip(shape)) { cellContent(index) }
+            } else {
+                StripeBox(
+                    hue = cellHue(index).toFloat(),
+                    modifier = cellModifier,
+                    shape = shape,
+                    colorFilter = colorFilter,
+                    stripeOffset = stripeOffset(index),
+                )
+            }
         }
         spec.labels.forEach { label ->
             Text(

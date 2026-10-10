@@ -12,7 +12,17 @@ import kotlin.math.sin
  *
  * @return The filter, or null for [FilterType.NONE].
  */
-fun FilterType.toColorFilter(): ColorFilter? {
+fun FilterType.toColorFilter(): ColorFilter? = colorMatrix()?.let { ColorFilter.colorMatrix(ColorMatrix(it)) }
+
+/**
+ * 4x5 color matrix of the filter, in the row order of Compose [ColorMatrix].
+ *
+ * The matrix applies to gamma-encoded sRGB values. Offsets use the 0..255 range.
+ * The video players use the same matrix, so the video and the thumbnails get the same colors.
+ *
+ * @return The matrix, or null for [FilterType.NONE].
+ */
+fun FilterType.colorMatrix(): FloatArray? {
     val steps: List<FloatArray> = when (this) {
         FilterType.NONE -> return null
         FilterType.WARM -> listOf(sepia(0.35f), saturate(1.4f), hueRotate(-8f))
@@ -23,8 +33,7 @@ fun FilterType.toColorFilter(): ColorFilter? {
         FilterType.MONO -> listOf(grayscale(1f), contrast(1.15f))
     }
     // CSS는 왼쪽 함수부터 차례로 적용한다. 행렬은 나중 단계를 왼쪽에 곱한다.
-    val combined = steps.reduce { applied, next -> multiply(next, applied) }
-    return ColorFilter.colorMatrix(ColorMatrix(combined))
+    return steps.reduce { applied, next -> multiply(next, applied) }
 }
 
 // =====================================================================
