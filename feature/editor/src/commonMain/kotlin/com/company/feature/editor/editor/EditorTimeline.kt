@@ -51,10 +51,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.company.core.designsystem.component.DurationBadge
 import com.company.core.designsystem.component.PRESSED_SCALE_ICON
-import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.domain.model.editor.Clip
+import com.company.ui.media.MediaThumbnail
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -213,8 +213,11 @@ private fun ClipTrack(state: EditorState, onIntent: (EditorIntent) -> Unit, pixe
 @Composable
 private fun ClipBlock(clip: Clip, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(10.dp)
-    StripeBox(
-        hue = clip.thumbnailHue.toFloat(),
+    MediaThumbnail(
+        uri = clip.sourceUri,
+        type = clip.type,
+        hue = clip.thumbnailHue,
+        time = clip.inPoint,
         shape = shape,
         modifier = modifier
             .height(62.dp)

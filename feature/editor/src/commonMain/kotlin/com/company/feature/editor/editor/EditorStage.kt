@@ -55,17 +55,27 @@ import com.company.ui.editor.formatTime
 import com.company.ui.editor.look
 import com.company.ui.editor.spec
 import com.company.ui.editor.toColorFilter
+import com.company.ui.media.MediaThumbnail
 import kotlin.math.ceil
 
 /**
  * 9:16 preview of the project at the playhead.
  *
+ * With [video], the first layout cell shows the video of the clip at the playhead. The other cells
+ * show a thumbnail of the next clips. Without [video], all cells show placeholder stripes.
+ *
  * @param state Editor state.
  * @param onIntent Called with each user action.
  * @param modifier Modifier for the stage. Give it a size.
+ * @param video Video surface of the preview player, or null to show placeholders.
  */
 @Composable
-internal fun EditorStage(state: EditorState, onIntent: (EditorIntent) -> Unit, modifier: Modifier = Modifier) {
+internal fun EditorStage(
+    state: EditorState,
+    onIntent: (EditorIntent) -> Unit,
+    modifier: Modifier = Modifier,
+    video: (@Composable (Modifier) -> Unit)? = null,
+) {
     val project = state.project
     val current = project.clipAt(state.time)
     val filter = remember(project.filter) { project.filter.toColorFilter() }
@@ -83,7 +93,33 @@ internal fun EditorStage(state: EditorState, onIntent: (EditorIntent) -> Unit, m
         val stageWidth = constraints.maxWidth.toFloat()
         val stageHeight = constraints.maxHeight.toFloat()
 
-        if (current != null) {
+        if (current != null && video != null) {
+            LayoutCells(
+                spec = project.layout.spec,
+                cellHue = { index -> project.clips[(current.index + index) % project.clips.size].thumbnailHue },
+                modifier = Modifier.fillMaxSize(),
+                defaultBackground = Color(0xFF111111),
+                labelFontSize = 13f,
+                labelPadding = 8.dp to 3.dp,
+                labelRadius = 6.dp,
+                cellContent = { index ->
+                    if (index == 0) {
+                        video(Modifier.matchParentSize())
+                    } else {
+                        // 2단계에서 칸마다 영상을 합성하기 전까지, 다음 클립은 시작 화면으로 보여 준다.
+                        val clip = project.clips[(current.index + index) % project.clips.size]
+                        MediaThumbnail(
+                            uri = clip.sourceUri,
+                            type = clip.type,
+                            hue = clip.thumbnailHue,
+                            modifier = Modifier.matchParentSize(),
+                            time = clip.inPoint,
+                            colorFilter = filter,
+                        )
+                    }
+                },
+            )
+        } else if (current != null) {
             LayoutCells(
                 spec = project.layout.spec,
                 cellHue = { index -> project.clips[(current.index + index) % project.clips.size].thumbnailHue },

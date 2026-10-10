@@ -30,9 +30,7 @@ import com.company.core.domain.repository.MediaLibraryRepository
 import com.company.core.domain.usecase.editor.GenerateCaptionsUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.time.TimeSource
 
 /** Bottom sheet of the editor. */
 enum class EditorSheet {
@@ -123,6 +121,12 @@ sealed class EditorIntent : Intent() {
 
     /** Scrub(time) : Moves the playhead. Ignored while the preview plays. */
     data class Scrub(val time: Double) : EditorIntent()
+
+    /** PlaybackProgress(time) : Moves the playhead to the position of the playing preview. Ignored when the preview does not play. */
+    data class PlaybackProgress(val time: Double) : EditorIntent()
+
+    /** PlaybackEnded : Stops the preview at the end of the project. */
+    data object PlaybackEnded : EditorIntent()
 
     // ----- Clips -----
 
@@ -237,6 +241,9 @@ sealed class EditorSideEffect : SideEffect() {
  *
  * The project and the undo history live in [EditorProjectRepository], so the picker
  * and the export screen see the same project. This ViewModel keeps only the screen state.
+ *
+ * The preview player of the screen moves the playhead. It sends [EditorIntent.PlaybackProgress]
+ * while it plays and [EditorIntent.PlaybackEnded] at the end.
  */
 class EditorViewModel(
     private val projectRepository: EditorProjectRepository,
@@ -250,7 +257,6 @@ class EditorViewModel(
         musicTracks = mediaLibraryRepository.getMusicTracks(),
     )
 ) {
-    private var playJob: Job? = null
     private var captionJob: Job? = null
 
     /** Clip range when the current trim drag started. */
@@ -282,6 +288,10 @@ class EditorViewModel(
             is EditorIntent.Scrub -> if (!currentState.playing) {
                 reduce { copy(time = intent.time.coerceIn(0.0, totalDuration)) }
             }
+            is EditorIntent.PlaybackProgress -> if (currentState.playing) {
+                reduce { copy(time = intent.time.coerceIn(0.0, totalDuration)) }
+            }
+            EditorIntent.PlaybackEnded -> reduce { copy(time = totalDuration, playing = false) }
 
             is EditorIntent.SelectClip -> {
                 pause()
@@ -356,32 +366,15 @@ class EditorViewModel(
     // Playback
     // =====================================================================
 
+    /** Starts the preview. At the end of the project, the preview starts again from the start. */
     private fun play() {
         val total = currentState.totalDuration
         if (total <= 0.0) return
-        val start = if (currentState.time >= total - 0.05) 0.0 else currentState.time
+        val start = if (currentState.time >= total - END_MARGIN) 0.0 else currentState.time
         reduce { copy(playing = true, selectedClipId = null, time = start) }
-
-        playJob?.cancel()
-        playJob = viewModelScope.launch {
-            var mark = TimeSource.Monotonic.markNow()
-            while (isActive) {
-                delay(FRAME_MILLIS)
-                val elapsed = mark.elapsedNow().inWholeMicroseconds / 1_000_000.0
-                mark = TimeSource.Monotonic.markNow()
-                val next = currentState.time + elapsed
-                if (next >= currentState.totalDuration) {
-                    reduce { copy(time = totalDuration, playing = false) }
-                    break
-                }
-                reduce { copy(time = next) }
-            }
-        }
     }
 
     private fun pause() {
-        playJob?.cancel()
-        playJob = null
         if (currentState.playing) reduce { copy(playing = false) }
     }
 
@@ -507,8 +500,8 @@ class EditorViewModel(
     }
 
     private companion object {
-        /** Update interval of the preview playback. */
-        const val FRAME_MILLIS = 16L
+        /** A playhead this close to the end, in seconds, counts as the end. */
+        const val END_MARGIN = 0.05
 
         /** Update interval of the caption progress. */
         const val CAPTION_TICK_MILLIS = 45L

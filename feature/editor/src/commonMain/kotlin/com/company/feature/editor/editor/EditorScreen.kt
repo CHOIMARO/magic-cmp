@@ -49,10 +49,15 @@ import com.company.ui.editor.formatTime
  *
  * @param state Screen state.
  * @param onIntent Called with each user action.
+ * @param video Video surface of the preview player, or null to show placeholders on the stage.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun EditorScreen(state: EditorState, onIntent: (EditorIntent) -> Unit) {
+internal fun EditorScreen(
+    state: EditorState,
+    onIntent: (EditorIntent) -> Unit,
+    video: (@Composable (Modifier) -> Unit)? = null,
+) {
     Box(modifier = Modifier.fillMaxSize().background(MagicColors.Background)) {
         Column(modifier = Modifier.fillMaxSize().navigationBarsPadding()) {
             EditorTopBar(state = state, onIntent = onIntent)
@@ -67,6 +72,7 @@ internal fun EditorScreen(state: EditorState, onIntent: (EditorIntent) -> Unit) 
                         .fillMaxHeight()
                         .heightIn(max = 470.dp)
                         .aspectRatio(9f / 16f, matchHeightConstraintsFirst = true),
+                    video = video,
                 )
             }
             PlaybackRow(state = state, onIntent = onIntent)

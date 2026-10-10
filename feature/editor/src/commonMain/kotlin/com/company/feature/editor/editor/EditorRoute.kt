@@ -3,12 +3,15 @@ package com.company.feature.editor.editor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.company.core.designsystem.component.LocalMagicToast
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * Connects [EditorViewModel] to [EditorScreen] and sends navigation events out.
+ * It also owns the preview player, because the player is a platform resource of the screen.
  *
  * @param onBack Leaves the editor.
  * @param onAddClips Opens the video picker in append mode.
@@ -36,5 +39,10 @@ internal fun EditorRoute(
         }
     }
 
-    EditorScreen(state = state, onIntent = { viewModel.postIntent(it) })
+    val onIntent: (EditorIntent) -> Unit = remember(viewModel) { { viewModel.postIntent(it) } }
+    val player = rememberEditorPlayback(state = state, onIntent = onIntent)
+    val video: (@Composable (Modifier) -> Unit)? = remember(player) {
+        player?.let { { modifier -> it.VideoSurface(modifier) } }
+    }
+    EditorScreen(state = state, onIntent = onIntent, video = video)
 }
