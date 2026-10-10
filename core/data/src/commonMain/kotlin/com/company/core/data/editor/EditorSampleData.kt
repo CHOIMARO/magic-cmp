@@ -1,27 +1,30 @@
 package com.company.core.data.editor
 
 import com.company.core.domain.model.editor.MusicTrack
-import com.company.core.domain.model.editor.SourceVideo
 import com.company.core.domain.model.editor.VideoSummary
 
 /**
  * Sample content of the prototype.
  *
- * The app has no real gallery, music service, or speech recognition yet.
+ * The app has no real music service or speech recognition yet.
  * The fake repositories use this data instead.
  */
 internal object EditorSampleData {
     private val Hues = listOf(35, 80, 150, 200, 250, 300, 20, 120, 180, 270, 330, 60, 220, 100, 0, 160, 45, 240)
     private val Durations = listOf(4.2, 6.8, 3.1, 8.4, 5.0, 2.6, 7.2, 4.8, 3.6, 9.1, 5.5, 3.9, 6.1, 4.4, 2.9, 5.7, 4.0, 6.4)
 
-    /** Videos in the fake gallery. */
-    val SourceVideos: List<SourceVideo> = Hues.mapIndexed { index, hue ->
-        SourceVideo(
-            id = "v$index",
-            name = "VID_${4021 + index * 7}",
-            duration = Durations[index],
-            thumbnailHue = hue,
-        )
+    /**
+     * Video of the sample draft project. It has no real file.
+     *
+     * @property name File name of the video.
+     * @property duration Length of the video in seconds.
+     * @property hue Hue of the placeholder thumbnail.
+     */
+    data class SampleVideo(val name: String, val duration: Double, val hue: Int)
+
+    /** Videos that the sample draft project uses. */
+    val SampleVideos: List<SampleVideo> = Hues.mapIndexed { index, hue ->
+        SampleVideo(name = "VID_${4021 + index * 7}", duration = Durations[index], hue = hue)
     }
 
     /** Background music tracks. */
@@ -56,6 +59,6 @@ internal object EditorSampleData {
     /** Title text of the sample draft project. */
     const val SampleTitle = "바닷가 주말"
 
-    /** Indexes in [SourceVideos] that make the sample draft project. */
+    /** Indexes in [SampleVideos] that make the sample draft project. */
     val SampleClipIndexes = listOf(0, 3, 6, 2)
 }

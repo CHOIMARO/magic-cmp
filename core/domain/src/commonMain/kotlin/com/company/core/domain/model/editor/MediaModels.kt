@@ -1,17 +1,29 @@
 package com.company.core.domain.model.editor
 
+/** Kind of a media file that the user can add to a project. */
+enum class MediaType {
+    /** VIDEO : Video file. It has its own length and sound. */
+    VIDEO,
+
+    /** PHOTO : Still photo. It shows for a length that the user sets, and it has no sound. */
+    PHOTO,
+}
+
 /**
- * Video in the device gallery that the user can add to a project.
+ * Photo or video that the user picked in the system picker.
  *
- * @property id Unique ID of the video.
- * @property name File name of the video.
- * @property duration Length of the video in seconds.
- * @property thumbnailHue Hue of the placeholder thumbnail.
+ * @property uri Location of the file. It is also the unique ID of the item.
+ *   Android uses a content URI. iOS uses a file URL.
+ * @property type Photo or video.
+ * @property name File name without the extension.
+ * @property duration Length of the video in seconds. Null for a photo.
+ * @property thumbnailHue Hue of the placeholder thumbnail. Screens without real frames use it.
  */
-data class SourceVideo(
-    val id: String,
+data class SourceMedia(
+    val uri: String,
+    val type: MediaType,
     val name: String,
-    val duration: Double,
+    val duration: Double?,
     val thumbnailHue: Int,
 )
 

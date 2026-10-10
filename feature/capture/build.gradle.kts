@@ -73,5 +73,13 @@ kotlin {
                 implementation(libs.kotlin.test)
             }
         }
+
+        androidMain {
+            dependencies {
+                // 시스템 피커: 임베디드 피커(Android 14 + SDK Extensions 15)와 기본 피커 실행
+                implementation(libs.androidx.photopicker.compose)
+                implementation(libs.androidx.activity.compose)
+            }
+        }
     }
 }

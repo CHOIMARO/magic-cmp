@@ -8,7 +8,7 @@ import com.company.core.domain.repository.CaptionRepository
 /**
  * Applies a template to a project.
  *
- * A caption template needs captions. If the project has none, this use case makes them first.
+ * A caption template needs captions. If the project has none, this use case makes them first from the video clips.
  */
 class ApplyTemplateUseCase(
     private val captionRepository: CaptionRepository,
@@ -25,7 +25,7 @@ class ApplyTemplateUseCase(
     ): EditorProject {
         if (template == null) return project
         val needsCaptions = template is EditorTemplate.Caption && project.captions.isEmpty()
-        val captions = if (needsCaptions) captionRepository.generateCaptions(project.totalDuration) else emptyList()
+        val captions = if (needsCaptions) captionRepository.generateSpeechCaptions(project.clips) else emptyList()
         return project.applyTemplate(template, defaultText, captions)
     }
 }

@@ -35,7 +35,7 @@ class InMemoryMyVideoRepository(
 
     override suspend fun loadDraftProject(name: String): EditorProject {
         val clips = EditorSampleData.SampleClipIndexes.map { index ->
-            val source = EditorSampleData.SourceVideos[index]
+            val source = EditorSampleData.SampleVideos[index]
             val long = source.duration > 4
             Clip(
                 id = newEditorId(),
@@ -43,7 +43,7 @@ class InMemoryMyVideoRepository(
                 sourceDuration = source.duration,
                 inPoint = if (long) 0.4 else 0.0,
                 outPoint = if (long) minOf(source.duration, 3.8) else source.duration,
-                thumbnailHue = source.thumbnailHue,
+                thumbnailHue = source.hue,
             )
         }
         val project = EditorProject(

@@ -5,22 +5,22 @@ import com.company.core.base.BaseViewModel
 import com.company.core.base.Intent
 import com.company.core.base.SideEffect
 import com.company.core.base.State
-import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.EditorTemplate
-import com.company.core.domain.model.editor.SourceVideo
+import com.company.core.domain.model.editor.SourceMedia
 import com.company.core.domain.model.editor.addClips
-import com.company.core.domain.model.editor.newEditorId
+import com.company.core.domain.model.editor.toClip
 import com.company.core.domain.repository.EditorProjectRepository
 import com.company.core.domain.repository.EditorSettingsRepository
 import com.company.core.domain.repository.MediaLibraryRepository
 import com.company.core.domain.usecase.editor.ApplyTemplateUseCase
 import com.company.ui.editor.DEFAULT_TITLE_TEXT
 import com.company.ui.editor.GalleryMode
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
- * Arguments of the video picker.
+ * Arguments of the photo and video picker.
  *
  * @property mode Purpose of the picker.
  * @property template Template to apply to the new project, or null.
@@ -28,36 +28,47 @@ import kotlinx.coroutines.launch
 data class GalleryArgs(val mode: GalleryMode, val template: EditorTemplate?)
 
 /**
- * State of the video picker.
+ * State of the photo and video picker.
  *
  * @property mode Purpose of the picker.
  * @property template Template to apply to the new project, or null.
- * @property videos Videos in the gallery.
- * @property pickedIds IDs of the picked videos in pick order.
+ * @property media Photos and videos that the app read from the system picker.
+ *   With the full-screen picker, the screen shows these items so that the user can set the order.
+ * @property pickedIds URIs of the picked items in pick order.
  * @property autoMagic True when automatic decoration is on.
  */
 data class GalleryState(
     val mode: GalleryMode = GalleryMode.MAGIC,
     val template: EditorTemplate? = null,
-    val videos: List<SourceVideo> = emptyList(),
+    val media: List<SourceMedia> = emptyList(),
     val pickedIds: List<String> = emptyList(),
     val autoMagic: Boolean = true,
 ) : State() {
-    /** True when the picked videos go to the magic screen. */
+    /** True when the picked items go to the magic screen. */
     val isMagicMode: Boolean
         get() = mode == GalleryMode.MAGIC && autoMagic
+
+    /** Picked photos and videos in pick order. */
+    val pickedMedia: List<SourceMedia>
+        get() = pickedIds.mapNotNull { uri -> media.find { it.uri == uri } }
 }
 
-/** User actions on the video picker. */
+/** User actions on the photo and video picker. */
 sealed class GalleryIntent : Intent() {
-    /** TogglePick(videoId) : Picks the video, or removes it from the picked list. */
-    data class TogglePick(val videoId: String) : GalleryIntent()
+    /** SelectionChanged(uris) : The embedded system picker changed the selection. [uris] are in pick order. */
+    data class SelectionChanged(val uris: List<String>) : GalleryIntent()
 
-    /** Next : Continues with the picked videos. */
+    /** MediaAdded(uris) : The full-screen system picker returned [uris]. An empty list means the user closed it. */
+    data class MediaAdded(val uris: List<String>) : GalleryIntent()
+
+    /** TogglePick(uri) : Picks the item on the order screen, or removes it from the picked list. */
+    data class TogglePick(val uri: String) : GalleryIntent()
+
+    /** Next : Continues with the picked items. */
     data object Next : GalleryIntent()
 }
 
-/** One-time events of the video picker. */
+/** One-time events of the photo and video picker. */
 sealed class GallerySideEffect : SideEffect() {
     /** OpenMagic(template) : Navigates to the magic screen. */
     data class OpenMagic(val template: EditorTemplate?) : GallerySideEffect()
@@ -67,16 +78,20 @@ sealed class GallerySideEffect : SideEffect() {
 
     /** ReturnToEditor(message) : Goes back to the editor and shows the message. */
     data class ReturnToEditor(val message: String) : GallerySideEffect()
+
+    /** Close : Leaves the picker because the user picked nothing in the first full-screen picker. */
+    data object Close : GallerySideEffect()
 }
 
 /**
- * ViewModel of the video picker.
+ * ViewModel of the photo and video picker.
  *
- * It keeps the pick order and starts a new project or adds clips to the current project.
+ * It reads the photos and videos that the system picker gave, keeps the pick order,
+ * and starts a new project or adds clips to the current project.
  */
 class GalleryViewModel(
     args: GalleryArgs,
-    mediaLibraryRepository: MediaLibraryRepository,
+    private val mediaLibraryRepository: MediaLibraryRepository,
     settingsRepository: EditorSettingsRepository,
     private val projectRepository: EditorProjectRepository,
     private val applyTemplate: ApplyTemplateUseCase,
@@ -84,10 +99,10 @@ class GalleryViewModel(
     initialState = GalleryState(
         mode = args.mode,
         template = args.template,
-        videos = mediaLibraryRepository.getSourceVideos(),
         autoMagic = settingsRepository.settings.value.autoMagic,
     )
 ) {
+    private var selectionJob: Job? = null
 
     // =====================================================================
     // Intent
@@ -100,11 +115,46 @@ class GalleryViewModel(
      */
     override fun handleIntent(intent: GalleryIntent) {
         when (intent) {
+            is GalleryIntent.SelectionChanged -> changeSelection(intent.uris)
+            is GalleryIntent.MediaAdded -> addMedia(intent.uris)
             is GalleryIntent.TogglePick -> reduce {
-                copy(pickedIds = if (intent.videoId in pickedIds) pickedIds - intent.videoId else pickedIds + intent.videoId)
+                copy(pickedIds = if (intent.uri in pickedIds) pickedIds - intent.uri else pickedIds + intent.uri)
             }
             GalleryIntent.Next -> next()
         }
+    }
+
+    // =====================================================================
+    // Picked items
+    // =====================================================================
+
+    /**
+     * Reads the new items and then replaces the picked list.
+     *
+     * A new selection cancels the previous read. Thus an old read cannot overwrite a newer selection.
+     */
+    private fun changeSelection(uris: List<String>) {
+        selectionJob?.cancel()
+        selectionJob = viewModelScope.launch {
+            loadMissingMedia(uris)
+            reduce { copy(pickedIds = uris.filter { uri -> media.any { it.uri == uri } }) }
+        }
+    }
+
+    /** Adds the items from the full-screen picker. An empty result closes the screen if no item was added before. */
+    private fun addMedia(uris: List<String>) {
+        if (uris.isEmpty()) {
+            if (currentState.media.isEmpty()) postSideEffect { GallerySideEffect.Close }
+            return
+        }
+        viewModelScope.launch { loadMissingMedia(uris) }
+    }
+
+    private suspend fun loadMissingMedia(uris: List<String>) {
+        val missing = uris.filter { uri -> currentState.media.none { it.uri == uri } }
+        if (missing.isEmpty()) return
+        val loaded = mediaLibraryRepository.loadSourceMedia(missing)
+        reduce { copy(media = media + loaded.filter { item -> media.none { it.uri == item.uri } }) }
     }
 
     // =====================================================================
@@ -113,7 +163,7 @@ class GalleryViewModel(
 
     private fun next() {
         val state = currentState
-        val clips = state.pickedIds.mapNotNull { id -> state.videos.find { it.id == id }?.toClip() }
+        val clips = state.pickedMedia.map { it.toClip() }
         if (clips.isEmpty()) return
 
         when {
@@ -133,17 +183,8 @@ class GalleryViewModel(
         }
     }
 
-    private fun SourceVideo.toClip() = Clip(
-        id = newEditorId(),
-        name = name,
-        sourceDuration = duration,
-        inPoint = 0.0,
-        outPoint = duration,
-        thumbnailHue = thumbnailHue,
-    )
-
     private companion object {
-        /** Name of a project that starts from picked videos. */
+        /** Name of a project that starts from picked items. */
         const val NEW_PROJECT_NAME = "새 영상"
     }
 }

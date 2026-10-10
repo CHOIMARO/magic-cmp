@@ -490,7 +490,7 @@ class EditorViewModel(
                 reduce { copy(captionProgress = (captionProgress ?: 0) + CAPTION_STEP) }
             }
             delay(CAPTION_TICK_MILLIS)
-            val captions = generateCaptions(currentState.totalDuration)
+            val captions = generateCaptions(currentState.project.clips)
             projectRepository.commit { it.copy(captions = captions) }
             reduce { copy(captionProgress = null, sheet = null) }
             toast("자막을 넣었어요")

@@ -1,6 +1,6 @@
 package com.company.core.domain.model.editor
 
-/** Shortest clip length after a trim, in seconds of the source video. */
+/** Shortest video clip length after a trim, in seconds of the source video. A photo clip uses [PHOTO_CLIP_MIN_LENGTH]. */
 const val MIN_CLIP_SOURCE_LENGTH = 0.5
 
 /** A split must be at least this far from the clip edges, in seconds. */
@@ -61,7 +61,7 @@ fun EditorProject.splitAt(time: Double): EditorProject? {
  * @param inPoint New start. The function keeps it inside the valid range.
  */
 fun EditorProject.trimClipStart(clipId: String, inPoint: Double): EditorProject = mapClip(clipId) {
-    it.copy(inPoint = inPoint.coerceIn(0.0, it.outPoint - MIN_CLIP_SOURCE_LENGTH))
+    it.copy(inPoint = inPoint.coerceIn(0.0, it.outPoint - it.minSourceLength))
 }
 
 /**
@@ -71,7 +71,7 @@ fun EditorProject.trimClipStart(clipId: String, inPoint: Double): EditorProject 
  * @param outPoint New end. The function keeps it inside the valid range.
  */
 fun EditorProject.trimClipEnd(clipId: String, outPoint: Double): EditorProject = mapClip(clipId) {
-    it.copy(outPoint = outPoint.coerceIn(it.inPoint + MIN_CLIP_SOURCE_LENGTH, it.sourceDuration))
+    it.copy(outPoint = outPoint.coerceIn(it.inPoint + it.minSourceLength, it.sourceDuration))
 }
 
 /**
@@ -95,12 +95,14 @@ fun EditorProject.duplicateClip(clipId: String): Pair<EditorProject, String>? {
 fun EditorProject.removeClip(clipId: String): EditorProject = copy(clips = clips.filterNot { it.id == clipId })
 
 /**
- * Changes the play speed of a clip.
+ * Changes the play speed of a clip. A photo clip keeps its speed.
  *
  * @param clipId ID of the clip.
  * @param speed New play speed.
  */
-fun EditorProject.setClipSpeed(clipId: String, speed: Double): EditorProject = mapClip(clipId) { it.copy(speed = speed) }
+fun EditorProject.setClipSpeed(clipId: String, speed: Double): EditorProject = mapClip(clipId) {
+    if (it.canChangeSpeed) it.copy(speed = speed) else it
+}
 
 /**
  * Adds clips at the end of the timeline.

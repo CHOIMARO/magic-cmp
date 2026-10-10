@@ -34,15 +34,20 @@ data class EditorProject(
 }
 
 /**
- * One part of a source video on the timeline.
+ * One part of a source video, or one photo, on the timeline.
+ *
+ * A photo clip uses the same fields as a video clip. Its source is [PHOTO_CLIP_MAX_LENGTH] long,
+ * so [inPoint] and [outPoint] set how long the photo shows.
  *
  * @property id Unique ID in the project.
- * @property name Name of the source video.
- * @property sourceDuration Length of the source video.
- * @property inPoint Start position in the source video.
- * @property outPoint End position in the source video.
- * @property speed Play speed. 2.0 plays two times faster.
+ * @property name Name of the source file.
+ * @property sourceDuration Length of the source video. For a photo, it is [PHOTO_CLIP_MAX_LENGTH].
+ * @property inPoint Start position in the source.
+ * @property outPoint End position in the source.
+ * @property speed Play speed. 2.0 plays two times faster. A photo clip always uses 1.0.
  * @property thumbnailHue Hue of the placeholder thumbnail. The prototype has no real frames.
+ * @property sourceUri Location of the source file. Null for a sample clip that has no real file.
+ * @property type Photo or video.
  */
 data class Clip(
     val id: String,
@@ -52,6 +57,8 @@ data class Clip(
     val outPoint: Double,
     val speed: Double = 1.0,
     val thumbnailHue: Int,
+    val sourceUri: String? = null,
+    val type: MediaType = MediaType.VIDEO,
 ) {
     /** Length of the clip on the timeline. */
     val duration: Double

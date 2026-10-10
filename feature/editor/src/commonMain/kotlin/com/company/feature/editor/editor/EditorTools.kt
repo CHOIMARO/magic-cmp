@@ -36,15 +36,18 @@ import com.company.core.designsystem.theme.MagicColors
  * Without a selection it shows the six editing tools. With a selected clip it shows the clip actions.
  *
  * @param hasSelection True when a clip is selected.
+ * @param canChangeSpeed True when the selected clip has a play speed. A photo clip has none.
  * @param onIntent Called with each user action.
  */
 @Composable
-internal fun EditorTools(hasSelection: Boolean, onIntent: (EditorIntent) -> Unit) {
+internal fun EditorTools(hasSelection: Boolean, canChangeSpeed: Boolean, onIntent: (EditorIntent) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(start = 6.dp, end = 6.dp, top = 2.dp, bottom = 12.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             if (hasSelection) {
                 Tool(Icons.Outlined.ContentCut, "나누기") { onIntent(EditorIntent.SplitClip) }
-                Tool(Icons.Outlined.Speed, "속도") { onIntent(EditorIntent.OpenSheet(EditorSheet.SPEED)) }
+                if (canChangeSpeed) {
+                    Tool(Icons.Outlined.Speed, "속도") { onIntent(EditorIntent.OpenSheet(EditorSheet.SPEED)) }
+                }
                 Tool(Icons.Outlined.ContentCopy, "복제") { onIntent(EditorIntent.DuplicateClip) }
                 Tool(Icons.Outlined.Delete, "삭제", MagicToolStyle.DANGER) { onIntent(EditorIntent.RemoveClip) }
                 MagicToolButton(

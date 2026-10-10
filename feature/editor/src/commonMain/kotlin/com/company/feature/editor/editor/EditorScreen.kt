@@ -34,6 +34,7 @@ import com.company.core.designsystem.component.MagicButton
 import com.company.core.designsystem.component.MagicButtonStyle
 import com.company.core.designsystem.component.MagicIconButton
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.domain.model.editor.canChangeSpeed
 import com.company.ui.editor.formatTime
 
 /**
@@ -62,7 +63,11 @@ internal fun EditorScreen(state: EditorState, onIntent: (EditorIntent) -> Unit) 
             }
             PlaybackRow(state = state, onIntent = onIntent)
             EditorTimeline(state = state, onIntent = onIntent)
-            EditorTools(hasSelection = state.selectedClip != null, onIntent = onIntent)
+            EditorTools(
+                hasSelection = state.selectedClip != null,
+                canChangeSpeed = state.selectedClip?.canChangeSpeed == true,
+                onIntent = onIntent,
+            )
         }
 
         MagicBottomSheet(

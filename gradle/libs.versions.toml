@@ -48,6 +48,9 @@ coil = "3.3.0"
 # BuildConfig
 buildKonfig = "0.17.1"
 
+# Photo Picker (임베디드 시스템 피커)
+photopicker = "1.0.0-alpha02"
+
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
@@ -118,6 +121,9 @@ androidx-paging-common = { group = "androidx.paging", name = "paging-common", ve
 # Coil
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
 coil-network-ktor = { group = "io.coil-kt.coil3", name = "coil-network-ktor3", version.ref = "coil" }
+
+# Photo Picker
+androidx-photopicker-compose = { group = "androidx.photopicker", name = "photopicker-compose", version.ref = "photopicker" }
 
 # Icons
 jetbrains-compose-material-icons-extended = { group = "org.jetbrains.compose.material", name = "material-icons-extended", version.ref = "composeIcons" }

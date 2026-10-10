@@ -5,6 +5,7 @@ import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.EditorTemplate
 import com.company.core.domain.model.editor.LayoutType
+import com.company.core.domain.model.editor.MediaType
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.TextStyleType
 import com.company.core.domain.model.editor.Vibe
@@ -14,8 +15,8 @@ import com.company.core.domain.repository.CaptionRepository
 /**
  * Decorates new clips automatically ("magic").
  *
- * The use case shortens long clips, picks a vibe, adds a title and captions,
- * and applies the template that the user picked.
+ * The use case shortens long video clips, picks a vibe, adds a title and captions,
+ * and applies the template that the user picked. Photo clips keep their length and get no captions.
  */
 class CreateMagicProjectUseCase(
     private val captionRepository: CaptionRepository,
@@ -34,7 +35,7 @@ class CreateMagicProjectUseCase(
         titleText: String,
     ): EditorProject {
         val trimmed = clips.map { clip ->
-            if (clip.sourceDuration > LONG_CLIP_SECONDS) {
+            if (clip.type == MediaType.VIDEO && clip.sourceDuration > LONG_CLIP_SECONDS) {
                 clip.copy(inPoint = MAGIC_IN_POINT, outPoint = minOf(clip.sourceDuration, MAGIC_OUT_POINT))
             } else {
                 clip
@@ -61,13 +62,13 @@ class CreateMagicProjectUseCase(
             musicId = vibe.musicId,
             filter = vibe.filter,
             vibe = vibe,
-            captions = captionRepository.generateCaptions(total),
+            captions = captionRepository.generateSpeechCaptions(trimmed),
         )
         return applyTemplate(project, template, titleText)
     }
 
     private companion object {
-        /** Clips longer than this get a shorter range. */
+        /** Video clips longer than this get a shorter range. */
         const val LONG_CLIP_SECONDS = 4.0
 
         /** Start of the shorter range. */
