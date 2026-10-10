@@ -12,8 +12,8 @@ kotlin {
 
     android {
         namespace = "com.company.core.designsystem"
-        compileSdk = 36
-        minSdk = 24
+        compileSdk = 37
+        minSdk = 29
 
         // 폰트 등 Compose Multiplatform 리소스를 Android에서 사용하기 위해 필요
         androidResources {

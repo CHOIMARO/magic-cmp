@@ -15,8 +15,8 @@ kotlin {
 
     android {
         namespace = "com.company.feature.editor"
-        compileSdk = 36
-        minSdk = 24
+        compileSdk = 37
+        minSdk = 29
 
         withHostTestBuilder {
         }

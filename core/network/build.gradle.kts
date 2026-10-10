@@ -57,8 +57,8 @@ kotlin {
     // See: https://kotlinlang.org/docs/multiplatform-discover-project.html#targets
     android {
         namespace = "com.company.core.network"
-        compileSdk = 36
-        minSdk = 24
+        compileSdk = 37
+        minSdk = 29
 
         withHostTestBuilder {
         }
