@@ -1,5 +1,7 @@
 package com.company.magiccmp.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
@@ -24,6 +26,11 @@ import com.company.ui.editor.GalleryMode
  *
  * 기존 Pixabay 검색(feature:home)은 모듈과 DI를 유지하고 그래프에서만 뺐다.
  * 다시 연결하려면 homeScreen()을 아래에 추가한다.
+ *
+ * 화면은 전환 효과 없이 바로 바뀐다(프로토타입과 같음). 기본 전환은 두 화면을 겹쳐 페이드하므로
+ * 이전 화면이 비쳐 보이고, Compose 위층에 그리는 시스템 피커는 페이드되지 않고 다음 화면 위에 남는다.
+ *
+ * 연타로 두 번 이동하지 않도록, 사용자 입력으로 이동하는 콜백은 각 화면 그래프에서 onlyWhenResumed로 감싼다.
  */
 @Composable
 fun AppNavHost(
@@ -34,6 +41,10 @@ fun AppNavHost(
             modifier = modifier,
             navController = navController,
             startDestination = MainRoute,
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None },
         ) {
             mainScreen(
                 onOpenGallery = { mode, template -> navController.navigateToGallery(mode, template) },

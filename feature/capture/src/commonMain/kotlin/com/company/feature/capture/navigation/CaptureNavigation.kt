@@ -9,6 +9,7 @@ import com.company.feature.capture.camera.CameraRoute
 import com.company.feature.capture.gallery.GalleryArgs
 import com.company.feature.capture.gallery.GalleryRoute
 import com.company.ui.editor.GalleryMode
+import com.company.ui.navigation.onlyWhenResumed
 import kotlinx.serialization.Serializable
 
 /**
@@ -60,10 +61,10 @@ fun NavGraphBuilder.galleryScreen(
                 mode = GalleryMode.entries.find { it.name == route.mode } ?: GalleryMode.MAGIC,
                 template = EditorTemplate.fromKey(route.templateKey),
             ),
-            onClose = onClose,
-            onOpenMagic = onOpenMagic,
-            onOpenEditor = onOpenEditor,
-            onReturnToEditor = onReturnToEditor,
+            onClose = backStackEntry.onlyWhenResumed(onClose),
+            onOpenMagic = backStackEntry.onlyWhenResumed(onOpenMagic),
+            onOpenEditor = backStackEntry.onlyWhenResumed(onOpenEditor),
+            onReturnToEditor = backStackEntry.onlyWhenResumed(onReturnToEditor),
         )
     }
 }
@@ -80,7 +81,11 @@ fun NavGraphBuilder.cameraScreen(
     onOpenMagic: () -> Unit,
     onOpenEditor: () -> Unit,
 ) {
-    composable<CameraRoute> {
-        CameraRoute(onClose = onClose, onOpenMagic = onOpenMagic, onOpenEditor = onOpenEditor)
+    composable<CameraRoute> { entry ->
+        CameraRoute(
+            onClose = entry.onlyWhenResumed(onClose),
+            onOpenMagic = entry.onlyWhenResumed(onOpenMagic),
+            onOpenEditor = entry.onlyWhenResumed(onOpenEditor),
+        )
     }
 }

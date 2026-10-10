@@ -5,6 +5,7 @@ import androidx.navigation.compose.composable
 import com.company.core.domain.model.editor.EditorTemplate
 import com.company.feature.main.MainRoute
 import com.company.ui.editor.GalleryMode
+import com.company.ui.navigation.onlyWhenResumed
 import kotlinx.serialization.Serializable
 
 /** Route of the main tab screen. */
@@ -23,11 +24,11 @@ fun NavGraphBuilder.mainScreen(
     onOpenCamera: () -> Unit,
     onOpenEditor: () -> Unit,
 ) {
-    composable<MainRoute> {
+    composable<MainRoute> { entry ->
         MainRoute(
-            onOpenGallery = onOpenGallery,
-            onOpenCamera = onOpenCamera,
-            onOpenEditor = onOpenEditor,
+            onOpenGallery = entry.onlyWhenResumed(onOpenGallery),
+            onOpenCamera = entry.onlyWhenResumed(onOpenCamera),
+            onOpenEditor = entry.onlyWhenResumed(onOpenEditor),
         )
     }
 }

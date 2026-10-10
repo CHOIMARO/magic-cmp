@@ -7,9 +7,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.company.core.designsystem.component.LocalMagicToast
 import com.company.core.domain.model.editor.EditorTemplate
+import kotlinx.coroutines.flow.first
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -35,6 +38,7 @@ internal fun GalleryRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val toast = LocalMagicToast.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     val useEmbeddedPicker = remember { isEmbeddedMediaPickerSupported() }
     val openSystemPicker = rememberMediaPickerLauncher { uris -> viewModel.postIntent(GalleryIntent.MediaAdded(uris)) }
 
@@ -58,7 +62,12 @@ internal fun GalleryRoute(
                     toast.show(effect.message)
                     onReturnToEditor()
                 }
-                GallerySideEffect.Close -> onClose()
+                GallerySideEffect.Close -> {
+                    // 시스템 피커 결과는 이 화면이 RESUMED가 되기 전에 올 수 있다.
+                    // onClose는 RESUMED일 때만 동작하므로, RESUMED가 된 뒤에 닫는다.
+                    lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
+                    onClose()
+                }
             }
         }
     }

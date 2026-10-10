@@ -70,6 +70,9 @@ kotlin {
                 implementation(libs.jetbrains.compose.foundation)
                 implementation(libs.jetbrains.compose.material3)
                 implementation(libs.jetbrains.compose.ui)
+
+                // 화면 이동 연타 방지(onlyWhenResumed)
+                implementation(libs.androidx.lifecycle.runtimeCompose)
             }
         }
 
