@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -30,33 +31,24 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicColors
-import com.company.core.designsystem.theme.MagicTheme
 import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.Vibe
 import com.company.core.domain.model.editor.clipAt
-import com.company.ui.editor.CaptionText
-import com.company.ui.editor.LayoutCells
 import com.company.ui.editor.OverlayText
 import com.company.ui.editor.centeredAt
 import com.company.ui.editor.displayName
 import com.company.ui.editor.formatTime
 import com.company.ui.editor.look
-import com.company.ui.editor.spec
 import com.company.ui.editor.toColorFilter
 import com.company.ui.media.MediaThumbnail
-import kotlin.math.ceil
 
 /**
  * 9:16 preview of the project at the playhead.
@@ -92,57 +84,54 @@ internal fun EditorStage(
     ) {
         val stageWidth = constraints.maxWidth.toFloat()
         val stageHeight = constraints.maxHeight.toFloat()
+        val screenDensity = LocalDensity.current
 
-        if (current != null && video != null) {
-            LayoutCells(
-                spec = project.layout.spec,
-                cellHue = { index -> project.clips[(current.index + index) % project.clips.size].thumbnailHue },
-                modifier = Modifier.fillMaxSize(),
-                defaultBackground = Color(0xFF111111),
-                labelFontSize = 13f,
-                labelPadding = 8.dp to 3.dp,
-                labelRadius = 6.dp,
-                cellContent = { index ->
-                    if (index == 0) {
-                        video(Modifier.matchParentSize())
-                    } else {
-                        // 2단계에서 칸마다 영상을 합성하기 전까지, 다음 클립은 시작 화면으로 보여 준다.
-                        val clip = project.clips[(current.index + index) % project.clips.size]
-                        MediaThumbnail(
-                            uri = clip.sourceUri,
-                            type = clip.type,
-                            hue = clip.thumbnailHue,
-                            modifier = Modifier.matchParentSize(),
-                            time = clip.inPoint,
-                            colorFilter = filter,
-                        )
+        // 레이아웃·글자·자막·워터마크는 기준 무대(StageCanvas) 위에 그린다. 저장할 때도 같은 코드로 그린다.
+        if (current != null) {
+            StageCanvas(modifier = Modifier.fillMaxSize()) {
+                if (video != null) {
+                    StageLayoutCells(project = project, clipIndex = current.index, modifier = Modifier.fillMaxSize()) { index, clip ->
+                        if (index == 0) {
+                            // iOS 영상 뷰는 LocalDensity로 화면 좌표를 계산하므로, 영상은 화면의 실제 배율로 그린다.
+                            CompositionLocalProvider(LocalDensity provides screenDensity) {
+                                video(Modifier.matchParentSize())
+                            }
+                        } else {
+                            // 칸마다 영상을 합성하기 전까지, 다음 클립은 시작 화면으로 보여 준다.
+                            MediaThumbnail(
+                                uri = clip.sourceUri,
+                                type = clip.type,
+                                hue = clip.thumbnailHue,
+                                modifier = Modifier.matchParentSize(),
+                                time = clip.inPoint,
+                                colorFilter = filter,
+                            )
+                        }
                     }
-                },
-            )
-        } else if (current != null) {
-            LayoutCells(
-                spec = project.layout.spec,
-                cellHue = { index -> project.clips[(current.index + index) % project.clips.size].thumbnailHue },
-                modifier = Modifier.fillMaxSize(),
-                defaultBackground = Color(0xFF111111),
-                colorFilter = filter,
-                stripeOffset = { index -> (state.time * 26 + index * 40).dp },
-                labelFontSize = 13f,
-                labelPadding = 8.dp to 3.dp,
-                labelRadius = 6.dp,
-            )
-            Text(
-                text = "${current.clip.name} · ${formatTime(current.localTime)}",
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color.Black.copy(alpha = 0.45f))
-                    .padding(horizontal = 9.dp, vertical = 5.dp),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White.copy(alpha = 0.85f),
-                maxLines = 1,
-            )
+                } else {
+                    StageLayoutCells(
+                        project = project,
+                        clipIndex = current.index,
+                        modifier = Modifier.fillMaxSize(),
+                        colorFilter = filter,
+                        stripeOffset = { index -> (state.time * 26 + index * 40).dp },
+                    )
+                }
+            }
+            if (video == null) {
+                Text(
+                    text = "${current.clip.name} · ${formatTime(current.localTime)}",
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.Black.copy(alpha = 0.45f))
+                        .padding(horizontal = 9.dp, vertical = 5.dp),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.85f),
+                    maxLines = 1,
+                )
+            }
         } else {
             Column(
                 modifier = Modifier.align(Alignment.Center),
@@ -170,31 +159,19 @@ internal fun EditorStage(
             }
         }
 
-        project.texts.filter { state.time >= it.start && state.time < it.start + it.length }.forEach { overlay ->
-            key(overlay.id) {
-                DraggableOverlay(
-                    overlay = overlay,
-                    stageWidth = stageWidth,
-                    stageHeight = stageHeight,
-                    onIntent = onIntent,
-                )
+        StageCanvas(modifier = Modifier.fillMaxSize()) {
+            project.texts.filter { it.isVisibleAt(state.time) }.forEach { overlay ->
+                key(overlay.id) {
+                    DraggableOverlay(
+                        overlay = overlay,
+                        stageWidth = stageWidth,
+                        stageHeight = stageHeight,
+                        onIntent = onIntent,
+                    )
+                }
             }
-        }
-
-        CaptionLayer(state = state, stageWidth = stageWidth, stageHeight = stageHeight)
-
-        if (state.watermark) {
-            Text(
-                text = "magic",
-                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 8.dp),
-                style = TextStyle(
-                    fontFamily = MagicTheme.fonts.serif,
-                    fontStyle = FontStyle.Italic,
-                    fontSize = 15.sp,
-                    color = Color.White.copy(alpha = 0.75f),
-                    shadow = Shadow(Color.Black.copy(alpha = 0.5f), Offset(0f, 2f), 8f),
-                ),
-            )
+            StageCaption(project = project, time = state.time)
+            if (state.watermark) StageWatermark()
         }
 
         if (!state.playing && current != null && state.sheet == null) {
@@ -248,26 +225,4 @@ private fun DraggableOverlay(
                 detectTapGestures(onTap = { onIntent(EditorIntent.OpenTextEditor(overlay.id)) })
             },
     )
-}
-
-/** Shows the caption at the playhead. The spoken words use the highlight color. */
-@Composable
-private fun CaptionLayer(state: EditorState, stageWidth: Float, stageHeight: Float) {
-    val project = state.project
-    val segment = project.captions.find { state.time >= it.start && state.time < it.start + it.length } ?: return
-    val words = segment.text.split(" ")
-    val spokenCount = maxOf(1, ceil((state.time - segment.start) / segment.length * words.size).toInt())
-    val look = project.captionStyle.look()
-    val density = LocalDensity.current
-    val sideMargin = with(density) { (stageWidth * 0.06f).toDp() }
-    val bottomMargin = with(density) { (stageHeight * look.bottomPercent / 100f).toDp() }
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-        CaptionText(
-            spoken = words.take(spokenCount).joinToString(" "),
-            upcoming = words.drop(spokenCount).joinToString(" "),
-            look = look,
-            maxLines = 2,
-            modifier = Modifier.padding(start = sideMargin, end = sideMargin, bottom = bottomMargin),
-        )
-    }
 }
