@@ -45,6 +45,7 @@ kotlin {
                 implementation(projects.core.domain)
                 implementation(projects.core.ui)
                 implementation(projects.core.designsystem)
+                implementation(projects.core.media)
 
                 // Koin
                 implementation(libs.koin.core)
@@ -72,14 +73,6 @@ kotlin {
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
-            }
-        }
-
-        androidMain {
-            dependencies {
-                // 편집 미리보기: CompositionPlayer(Transformer와 같은 Composition 모델)와 색 보정 효과
-                implementation(libs.androidx.media3.transformer)
-                implementation(libs.androidx.media3.effect)
             }
         }
     }
