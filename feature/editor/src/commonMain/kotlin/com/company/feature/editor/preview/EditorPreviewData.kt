@@ -11,7 +11,6 @@ import com.company.core.domain.model.editor.PHOTO_CLIP_DEFAULT_LENGTH
 import com.company.core.domain.model.editor.PHOTO_CLIP_MAX_LENGTH
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.TextStyleType
-import com.company.core.domain.model.editor.Vibe
 
 /** Sample data for the `@Preview` functions of the editor feature. */
 internal object EditorPreviewData {
@@ -38,7 +37,6 @@ internal object EditorPreviewData {
         ),
         musicId = "m5",
         filter = FilterType.WARM,
-        vibe = Vibe.WARM,
         captions = listOf(
             CaptionSegment(id = "k1", text = "자 오늘은", start = 0.0, length = 1.4),
             CaptionSegment(id = "k2", text = "바닷가로 떠나볼게요", start = 1.5, length = 1.6),

@@ -9,7 +9,6 @@ import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.newEditorId
 import com.company.core.domain.repository.EditorProjectRepository
-import com.company.core.domain.repository.EditorSettingsRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -62,9 +61,6 @@ sealed class CameraIntent : Intent() {
 
 /** One-time events of the camera screen. */
 sealed class CameraSideEffect : SideEffect() {
-    /** OpenMagic : Navigates to the magic screen with the new project. */
-    data object OpenMagic : CameraSideEffect()
-
     /** OpenEditor : Navigates to the editor with the new project. */
     data object OpenEditor : CameraSideEffect()
 }
@@ -75,7 +71,6 @@ sealed class CameraSideEffect : SideEffect() {
  * The prototype has no real camera. A timer simulates the recording.
  */
 class CameraViewModel(
-    private val settingsRepository: EditorSettingsRepository,
     private val projectRepository: EditorProjectRepository,
 ) : BaseViewModel<CameraState, CameraIntent, CameraSideEffect>(
     initialState = CameraState()
@@ -155,8 +150,7 @@ class CameraViewModel(
         }
         if (clips.isEmpty()) return
         projectRepository.start(EditorProject(name = NEW_RECORDING_NAME, clips = clips))
-        val autoMagic = settingsRepository.settings.value.autoMagic
-        postSideEffect { if (autoMagic) CameraSideEffect.OpenMagic else CameraSideEffect.OpenEditor }
+        postSideEffect { CameraSideEffect.OpenEditor }
     }
 
     private companion object {

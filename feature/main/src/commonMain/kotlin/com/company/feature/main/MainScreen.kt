@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -13,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -24,7 +24,6 @@ import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.core.domain.model.editor.VideoSummary
 import com.company.feature.main.component.MainBottomBar
 import com.company.feature.main.sheet.AppInfoSheetContent
-import com.company.feature.main.sheet.CreateSheetContent
 import com.company.feature.main.sheet.TemplateSheetContent
 import com.company.feature.main.tab.HomeTab
 import com.company.feature.main.tab.LibraryTab
@@ -34,6 +33,8 @@ import com.company.feature.main.tab.TemplateTab
 /**
  * Main tab screen. It only draws [state] and sends user actions to [onIntent].
  *
+ * The bottom tabs float on top of the tab content. Each tab leaves space at the bottom for them.
+ *
  * @param state Screen state.
  * @param onIntent Called with each user action.
  */
@@ -41,43 +42,40 @@ import com.company.feature.main.tab.TemplateTab
 @Composable
 internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
     Box(modifier = Modifier.fillMaxSize().background(MagicColors.Background)) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                when (state.tab) {
-                    MainTab.HOME -> HomeTab(
-                        drafts = state.drafts,
-                        onStartMagic = { onIntent(MainIntent.PickVideosForMagic) },
-                        onShowAllTemplates = { onIntent(MainIntent.ShowAllTemplates) },
-                        onOpenTemplate = { onIntent(MainIntent.OpenTemplate(it)) },
-                        onShowAllDrafts = { onIntent(MainIntent.ShowAllDrafts) },
-                        onOpenProject = { onIntent(MainIntent.OpenProject(it)) },
-                    )
-                    MainTab.TEMPLATES -> TemplateTab(
-                        filter = state.templateFilter,
-                        onSelectFilter = { onIntent(MainIntent.SelectTemplateFilter(it)) },
-                        onOpenTemplate = { onIntent(MainIntent.OpenTemplate(it)) },
-                    )
-                    MainTab.LIBRARY -> LibraryTab(
-                        segment = state.librarySegment,
-                        drafts = state.drafts,
-                        completedVideos = state.completedVideos,
-                        onSelectSegment = { onIntent(MainIntent.SelectLibrarySegment(it)) },
-                        onOpenProject = { onIntent(MainIntent.OpenProject(it)) },
-                    )
-                    MainTab.MY -> MyTab(
-                        settings = state.settings,
-                        completedCount = state.completedVideos.size,
-                        onToggleSetting = { onIntent(MainIntent.ToggleSetting(it)) },
-                        onOpenAppInfo = { onIntent(MainIntent.OpenAppInfo) },
-                    )
-                }
-            }
-            MainBottomBar(
-                selected = state.tab,
-                onSelect = { onIntent(MainIntent.SelectTab(it)) },
-                onCreate = { onIntent(MainIntent.OpenCreateSheet) },
+        when (state.tab) {
+            MainTab.HOME -> HomeTab(
+                drafts = state.drafts,
+                onNewVideo = { onIntent(MainIntent.StartNewVideo) },
+                onOpenCamera = { onIntent(MainIntent.OpenCamera) },
+                onShowAllTemplates = { onIntent(MainIntent.ShowAllTemplates) },
+                onOpenTemplate = { onIntent(MainIntent.OpenTemplate(it)) },
+                onShowAllDrafts = { onIntent(MainIntent.ShowAllDrafts) },
+                onOpenProject = { onIntent(MainIntent.OpenProject(it)) },
+            )
+            MainTab.TEMPLATES -> TemplateTab(
+                filter = state.templateFilter,
+                onSelectFilter = { onIntent(MainIntent.SelectTemplateFilter(it)) },
+                onOpenTemplate = { onIntent(MainIntent.OpenTemplate(it)) },
+            )
+            MainTab.LIBRARY -> LibraryTab(
+                segment = state.librarySegment,
+                drafts = state.drafts,
+                completedVideos = state.completedVideos,
+                onSelectSegment = { onIntent(MainIntent.SelectLibrarySegment(it)) },
+                onOpenProject = { onIntent(MainIntent.OpenProject(it)) },
+            )
+            MainTab.MY -> MyTab(
+                settings = state.settings,
+                completedCount = state.completedVideos.size,
+                onToggleSetting = { onIntent(MainIntent.ToggleSetting(it)) },
+                onOpenAppInfo = { onIntent(MainIntent.OpenAppInfo) },
             )
         }
+        MainBottomBar(
+            selected = state.tab,
+            onSelect = { onIntent(MainIntent.SelectTab(it)) },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
 
         // 시트를 닫고 이동하는 버튼은 닫힘 애니메이션이 끝난 뒤에 해당 Intent를 보낸다.
         // 템플릿 사용(UseSelectedTemplate)은 열린 시트의 템플릿을 읽으므로 CloseSheet보다 먼저 보낸다.
@@ -100,12 +98,6 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(SHEET_SPACING),
             ) {
                 when (sheet) {
-                    MainSheet.Create -> CreateSheetContent(
-                        onPickVideos = { closeThen(MainIntent.PickVideosForMagic) },
-                        onOpenCamera = { closeThen(MainIntent.OpenCamera) },
-                        onStartFromTemplates = { closeThen(MainIntent.StartFromTemplates) },
-                        onEditManually = { closeThen(MainIntent.PickVideosManually) },
-                    )
                     is MainSheet.Template -> TemplateSheetContent(
                         template = sheet.template,
                         onUseTemplate = { closeThen(MainIntent.UseSelectedTemplate) },

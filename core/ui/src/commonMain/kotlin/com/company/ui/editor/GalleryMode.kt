@@ -1,13 +1,10 @@
 package com.company.ui.editor
 
-/** Purpose of the video picker. */
+/** Purpose of the photo and video picker. */
 enum class GalleryMode {
-    /** Picked videos start a new project with automatic decoration. */
-    MAGIC,
+    /** Picked items start a new project. */
+    CREATE,
 
-    /** Picked videos start a new project without decoration. */
-    MANUAL,
-
-    /** Picked videos go to the end of the current project. */
+    /** Picked items go to the end of the current project. */
     APPEND,
 }

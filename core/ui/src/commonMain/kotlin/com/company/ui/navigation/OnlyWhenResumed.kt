@@ -10,7 +10,7 @@ import androidx.lifecycle.LifecycleOwner
  * 두 번째 이동은 무시된다. AndroidX Lifecycle의 dropUnlessResumed와 같은 규칙이지만,
  * Composable이 아니고 인자가 있는 콜백도 감쌀 수 있다.
  *
- * 사용자 입력 없이 앱이 시작하는 이동(예: 매직 처리 완료 후 편집기 열기)에는 쓰지 않는다.
+ * 사용자 입력 없이 앱이 시작하는 이동(예: 오래 걸리는 처리가 끝난 뒤 다음 화면 열기)에는 쓰지 않는다.
  * 전환 중에 도착하면 그 이동까지 버려지기 때문이다.
  */
 

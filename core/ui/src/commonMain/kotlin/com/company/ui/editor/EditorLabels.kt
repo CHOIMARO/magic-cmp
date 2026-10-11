@@ -6,7 +6,6 @@ import com.company.core.domain.model.editor.FilterType
 import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.TemplateKind
 import com.company.core.domain.model.editor.TextStyleType
-import com.company.core.domain.model.editor.Vibe
 
 /** Default text of a new title overlay. */
 const val DEFAULT_TITLE_TEXT = "오늘의 기록"
@@ -74,17 +73,6 @@ val FilterType.displayName: String
         FilterType.PUNCH -> "쨍하게"
         FilterType.CINE -> "영화처럼"
         FilterType.MONO -> "흑백"
-    }
-
-/** Display name of the vibe preset. */
-val Vibe.displayName: String
-    get() = when (this) {
-        Vibe.WARM -> "따뜻하게"
-        Vibe.DREAMY -> "감성"
-        Vibe.HYPE -> "신나게"
-        Vibe.CINEMATIC -> "시네마틱"
-        Vibe.FRESH -> "청량하게"
-        Vibe.NONE -> "원본"
     }
 
 /** Label of the template kind in the template sheet. */

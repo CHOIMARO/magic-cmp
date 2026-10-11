@@ -112,19 +112,6 @@ fun EditorProject.setClipSpeed(clipId: String, speed: Double): EditorProject = m
 fun EditorProject.addClips(newClips: List<Clip>): EditorProject = copy(clips = clips + newClips)
 
 /**
- * Applies a vibe preset.
- *
- * @param vibe Preset to apply.
- */
-fun EditorProject.applyVibe(vibe: Vibe): EditorProject = copy(
-    vibe = vibe,
-    filter = vibe.filter,
-    musicId = if (vibe == Vibe.NONE) musicId else vibe.musicId,
-    captionStyle = vibe.captionStyle ?: captionStyle,
-    texts = vibe.textStyle?.let { style -> texts.map { it.copy(style = style) } } ?: texts,
-)
-
-/**
  * Adds a text overlay at [time].
  *
  * @param text Text to show.

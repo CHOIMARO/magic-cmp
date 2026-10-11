@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -20,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.BrandingWatermark
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Hd
@@ -49,6 +49,7 @@ import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.domain.model.editor.EditorSettings
 import com.company.feature.main.SettingKey
+import com.company.feature.main.component.TabContentBottomPadding
 import com.company.feature.main.component.TabTitle
 
 /**
@@ -95,7 +96,6 @@ internal fun MyTab(
             SettingRow(Icons.Outlined.Campaign, "새 템플릿 소식", toggle = SettingKey.TEMPLATE_NEWS),
         ),
         "편집" to listOf(
-            SettingRow(Icons.Outlined.AutoAwesome, "자동 매직", subLabel = "영상을 고르면 바로 꾸며줘요", toggle = SettingKey.AUTO_MAGIC),
             SettingRow(Icons.AutoMirrored.Outlined.BrandingWatermark, "magic 워터마크", toggle = SettingKey.WATERMARK),
             SettingRow(Icons.Outlined.Hd, "기본 저장 화질", value = "1080p"),
         ),
@@ -110,9 +110,10 @@ internal fun MyTab(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(top = 8.dp, bottom = 28.dp),
+            .navigationBarsPadding()
+            .padding(top = 12.dp, bottom = TabContentBottomPadding),
     ) {
-        TabTitle(text = "마이", modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 18.dp))
+        TabTitle(text = "마이", modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 22.dp))
         ProfileRow(completedCount = completedCount)
         groups.forEach { (title, rows) ->
             Column(
@@ -216,6 +217,5 @@ private fun SettingRowItem(row: SettingRow, settings: EditorSettings, onToggleSe
 
 private fun EditorSettings.isOn(key: SettingKey): Boolean = when (key) {
     SettingKey.TEMPLATE_NEWS -> templateNews
-    SettingKey.AUTO_MAGIC -> autoMagic
     SettingKey.WATERMARK -> watermark
 }

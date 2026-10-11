@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -61,8 +62,11 @@ import kotlin.math.roundToInt
 /** Width of one second on the timeline. */
 private val PixelsPerSecond = 50.dp
 
-/** Extra space after the last clip for the add button. */
+/** Extra space after the last clip. */
 private val TrailingSpace = 60.dp
+
+/** Width of the fade at the right edge. The add button sits on it. */
+private val AddButtonFadeWidth = 92.dp
 
 /** Space before the clip track, so the left trim handle of the first clip stays inside the track. */
 private val HandleInset = 16.dp
@@ -71,6 +75,7 @@ private val HandleInset = 16.dp
  * Scrolling timeline with the text, clip, and music tracks. A fixed white line marks the playhead.
  *
  * Scrolling moves the playhead. While the preview plays, the timeline follows the playhead.
+ * The add button stays at the right edge on top of a fade.
  *
  * @param state Editor state.
  * @param onIntent Called with each user action.
@@ -138,6 +143,19 @@ internal fun EditorTimeline(state: EditorState, onIntent: (EditorIntent) -> Unit
                 .clip(RoundedCornerShape(2.dp))
                 .background(Color.White),
         )
+        // 가장자리를 어둡게 덮어 클립이 버튼 밑으로 사라지는 것처럼 보이게 한다. 터치는 아래 타임라인으로 간다.
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .width(AddButtonFadeWidth)
+                .fillMaxHeight()
+                .background(Brush.horizontalGradient(0f to MagicColors.Background.copy(alpha = 0f), 0.48f to MagicColors.Background)),
+        )
+        // 클립 트랙(위 여백 6 + 글자 트랙 22 + 간격 6)과 같은 높이에 둔다.
+        AddClipButton(
+            onClick = { onIntent(EditorIntent.AddClips) },
+            modifier = Modifier.align(Alignment.TopEnd).padding(top = 34.dp, end = 12.dp),
+        )
     }
 }
 
@@ -203,10 +221,6 @@ private fun ClipTrack(state: EditorState, onIntent: (EditorIntent) -> Unit, pixe
             }
             start += clip.duration
         }
-        AddClipButton(
-            onClick = { onIntent(EditorIntent.AddClips) },
-            modifier = Modifier.offset(x = HandleInset + PixelsPerSecond * state.totalDuration.toFloat() + 8.dp, y = 9.dp),
-        )
     }
 }
 
@@ -245,20 +259,22 @@ private fun ClipBlock(clip: Clip, selected: Boolean, modifier: Modifier, onClick
     }
 }
 
-/** Square "+" button after the last clip. It uses the icon button press behavior of the spec. */
+/** Light "+ 추가" button at the right edge of the timeline. It uses the icon button press behavior of the spec. */
 @Composable
 private fun AddClipButton(onClick: () -> Unit, modifier: Modifier) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    Box(
+    Column(
         modifier = modifier
-            .size(44.dp)
+            .size(width = 56.dp, height = 62.dp)
             .pressClickable(pressedScale = PRESSED_SCALE_ICON, interactionSource = interactionSource, onClick = onClick)
             .clip(RoundedCornerShape(12.dp))
-            .background(if (pressed) MagicColors.SurfaceHighest else MagicColors.SurfaceHigh),
-        contentAlignment = Alignment.Center,
+            .background(if (pressed) MagicColors.LightPressed else MagicColors.OnSurface),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(1.dp, Alignment.CenterVertically),
     ) {
-        Icon(Icons.Rounded.Add, contentDescription = "클립 추가", modifier = Modifier.size(24.dp))
+        Icon(Icons.Rounded.Add, contentDescription = null, tint = MagicColors.Background, modifier = Modifier.size(24.dp))
+        Text(text = "추가", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MagicColors.Background)
     }
 }
 

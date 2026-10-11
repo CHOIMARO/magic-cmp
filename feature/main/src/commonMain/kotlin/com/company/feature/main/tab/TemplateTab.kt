@@ -4,24 +4,29 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.FixedGrid
 import com.company.core.designsystem.component.MagicChip
-import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.component.bleedHorizontal
 import com.company.core.domain.model.editor.EditorTemplate
 import com.company.core.domain.model.editor.TemplateKind
 import com.company.feature.main.TemplateCatalog
+import com.company.feature.main.component.TabContentBottomPadding
 import com.company.feature.main.component.TabTitle
 import com.company.feature.main.component.TemplateCard
+
+/** Side padding of the template tab. */
+private val TemplatePadding = 16.dp
 
 private val FilterChips = listOf(
     null to "전체",
@@ -48,36 +53,26 @@ internal fun TemplateTab(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(top = 8.dp, bottom = 24.dp),
+            .navigationBarsPadding()
+            .padding(start = TemplatePadding, end = TemplatePadding, top = 12.dp, bottom = TabContentBottomPadding),
     ) {
-        TabTitle(text = "템플릿", modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 4.dp))
-        Text(
-            text = "고르면 내 영상에 바로 입혀져요",
-            modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 14.dp),
-            fontSize = 13.sp,
-            color = MagicColors.OnSurface55,
-        )
+        TabTitle(text = "템플릿", modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 22.dp, bottom = 18.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .bleedHorizontal(TemplatePadding)
                 .horizontalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                .padding(horizontal = TemplatePadding),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             FilterChips.forEach { (kind, label) ->
                 MagicChip(label = label, selected = kind == filter, onClick = { onSelectFilter(kind) })
             }
         }
-        FixedGrid(
-            items = templates,
-            columns = 3,
-            modifier = Modifier.padding(horizontal = 16.dp),
-            horizontalSpacing = 8.dp,
-            verticalSpacing = 16.dp,
-        ) { template ->
+        Spacer(modifier = Modifier.height(18.dp))
+        FixedGrid(items = templates, columns = 2, horizontalSpacing = 8.dp, verticalSpacing = 20.dp) { template ->
             TemplateCard(
                 template = template,
-                scale = 0.46f,
                 onClick = { onOpenTemplate(template) },
                 isNew = template in TemplateCatalog.New,
             )

@@ -11,7 +11,6 @@ import com.company.core.domain.model.editor.SourceMedia
 import com.company.core.domain.model.editor.addClips
 import com.company.core.domain.model.editor.toClip
 import com.company.core.domain.repository.EditorProjectRepository
-import com.company.core.domain.repository.EditorSettingsRepository
 import com.company.core.domain.repository.MediaLibraryRepository
 import com.company.core.domain.usecase.editor.ApplyTemplateUseCase
 import com.company.ui.editor.DEFAULT_TITLE_TEXT
@@ -35,19 +34,13 @@ data class GalleryArgs(val mode: GalleryMode, val template: EditorTemplate?)
  * @property media Photos and videos that the app read from the system picker.
  *   With the full-screen picker, the screen shows these items so that the user can set the order.
  * @property pickedIds URIs of the picked items in pick order.
- * @property autoMagic True when automatic decoration is on.
  */
 data class GalleryState(
-    val mode: GalleryMode = GalleryMode.MAGIC,
+    val mode: GalleryMode = GalleryMode.CREATE,
     val template: EditorTemplate? = null,
     val media: List<SourceMedia> = emptyList(),
     val pickedIds: List<String> = emptyList(),
-    val autoMagic: Boolean = true,
 ) : State() {
-    /** True when the picked items go to the magic screen. */
-    val isMagicMode: Boolean
-        get() = mode == GalleryMode.MAGIC && autoMagic
-
     /** Picked photos and videos in pick order. */
     val pickedMedia: List<SourceMedia>
         get() = pickedIds.mapNotNull { uri -> media.find { it.uri == uri } }
@@ -58,11 +51,17 @@ sealed class GalleryIntent : Intent() {
     /** SelectionChanged(uris) : The embedded system picker changed the selection. [uris] are in pick order. */
     data class SelectionChanged(val uris: List<String>) : GalleryIntent()
 
-    /** MediaAdded(uris) : The full-screen system picker returned [uris]. An empty list means the user closed it. */
+    /**
+     * MediaAdded(uris) : The full-screen system picker returned [uris]. New items go to the end of the picked list.
+     * An empty list means the user closed it.
+     */
     data class MediaAdded(val uris: List<String>) : GalleryIntent()
 
     /** TogglePick(uri) : Picks the item on the order screen, or removes it from the picked list. */
     data class TogglePick(val uri: String) : GalleryIntent()
+
+    /** RemovePick(uri) : Removes the item from the picked list. */
+    data class RemovePick(val uri: String) : GalleryIntent()
 
     /** Next : Continues with the picked items. */
     data object Next : GalleryIntent()
@@ -70,9 +69,6 @@ sealed class GalleryIntent : Intent() {
 
 /** One-time events of the photo and video picker. */
 sealed class GallerySideEffect : SideEffect() {
-    /** OpenMagic(template) : Navigates to the magic screen. */
-    data class OpenMagic(val template: EditorTemplate?) : GallerySideEffect()
-
     /** OpenEditor : Navigates to the editor with the new project. */
     data object OpenEditor : GallerySideEffect()
 
@@ -92,15 +88,10 @@ sealed class GallerySideEffect : SideEffect() {
 class GalleryViewModel(
     args: GalleryArgs,
     private val mediaLibraryRepository: MediaLibraryRepository,
-    settingsRepository: EditorSettingsRepository,
     private val projectRepository: EditorProjectRepository,
     private val applyTemplate: ApplyTemplateUseCase,
 ) : BaseViewModel<GalleryState, GalleryIntent, GallerySideEffect>(
-    initialState = GalleryState(
-        mode = args.mode,
-        template = args.template,
-        autoMagic = settingsRepository.settings.value.autoMagic,
-    )
+    initialState = GalleryState(mode = args.mode, template = args.template)
 ) {
     private var selectionJob: Job? = null
 
@@ -120,6 +111,7 @@ class GalleryViewModel(
             is GalleryIntent.TogglePick -> reduce {
                 copy(pickedIds = if (intent.uri in pickedIds) pickedIds - intent.uri else pickedIds + intent.uri)
             }
+            is GalleryIntent.RemovePick -> reduce { copy(pickedIds = pickedIds - intent.uri) }
             GalleryIntent.Next -> next()
         }
     }
@@ -141,13 +133,23 @@ class GalleryViewModel(
         }
     }
 
-    /** Adds the items from the full-screen picker. An empty result closes the screen if no item was added before. */
+    /**
+     * Adds the items from the full-screen picker and picks the new ones in the returned order.
+     * An empty result closes the screen if no item was added before.
+     */
     private fun addMedia(uris: List<String>) {
         if (uris.isEmpty()) {
             if (currentState.media.isEmpty()) postSideEffect { GallerySideEffect.Close }
             return
         }
-        viewModelScope.launch { loadMissingMedia(uris) }
+        val newUris = uris.filter { uri -> currentState.media.none { it.uri == uri } }
+        viewModelScope.launch {
+            loadMissingMedia(uris)
+            reduce {
+                val added = newUris.filter { uri -> uri !in pickedIds && media.any { it.uri == uri } }
+                copy(pickedIds = pickedIds + added)
+            }
+        }
     }
 
     private suspend fun loadMissingMedia(uris: List<String>) {
@@ -166,16 +168,12 @@ class GalleryViewModel(
         val clips = state.pickedMedia.map { it.toClip() }
         if (clips.isEmpty()) return
 
-        when {
-            state.mode == GalleryMode.APPEND -> {
+        when (state.mode) {
+            GalleryMode.APPEND -> {
                 projectRepository.commit { it.addClips(clips) }
-                postSideEffect { GallerySideEffect.ReturnToEditor("${clips.size}개 추가했어요") }
+                postSideEffect { GallerySideEffect.ReturnToEditor("${clips.size}개를 붙였어요") }
             }
-            state.isMagicMode -> {
-                projectRepository.start(EditorProject(name = NEW_PROJECT_NAME, clips = clips))
-                postSideEffect { GallerySideEffect.OpenMagic(state.template) }
-            }
-            else -> viewModelScope.launch {
+            GalleryMode.CREATE -> viewModelScope.launch {
                 val project = applyTemplate(EditorProject(name = NEW_PROJECT_NAME, clips = clips), state.template, DEFAULT_TITLE_TEXT)
                 projectRepository.start(project)
                 postSideEffect { GallerySideEffect.OpenEditor }

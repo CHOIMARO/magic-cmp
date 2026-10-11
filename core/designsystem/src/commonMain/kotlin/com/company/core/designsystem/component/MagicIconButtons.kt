@@ -13,14 +13,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
@@ -36,6 +34,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicColors
@@ -51,7 +50,7 @@ import com.company.core.designsystem.theme.MagicPreview
  * @param disabled Color in the disabled state.
  */
 @Composable
-private fun stateColor(enabled: Boolean, pressed: Boolean, default: Color, pressedColor: Color, disabled: Color): Color {
+internal fun stateColor(enabled: Boolean, pressed: Boolean, default: Color, pressedColor: Color, disabled: Color): Color {
     val color by animateColorAsState(
         targetValue = when {
             !enabled -> disabled
@@ -135,9 +134,6 @@ enum class MagicToolStyle {
     /** Normal tool on a dark circle. */
     DEFAULT,
 
-    /** Highlighted "매직" tool on an accent circle. */
-    MAGIC,
-
     /** Destructive tool, for example "삭제". */
     DANGER,
 
@@ -169,29 +165,19 @@ fun MagicToolButton(
     val circle = stateColor(
         enabled = enabled,
         pressed = pressed,
-        default = when (style) {
-            MagicToolStyle.MAGIC -> MagicColors.Accent
-            MagicToolStyle.CONFIRM -> MagicColors.OnSurface
-            else -> MagicColors.Surface
-        },
-        pressedColor = when (style) {
-            MagicToolStyle.MAGIC -> MagicColors.AccentPressed
-            MagicToolStyle.CONFIRM -> MagicColors.LightPressed
-            else -> MagicColors.SurfaceHighest
-        },
+        default = if (style == MagicToolStyle.CONFIRM) MagicColors.OnSurface else MagicColors.Surface,
+        pressedColor = if (style == MagicToolStyle.CONFIRM) MagicColors.LightPressed else MagicColors.SurfaceHighest,
         disabled = MagicColors.SurfaceDisabled,
     )
     val disabledColor = MagicColors.OnSurface.copy(alpha = 0.25f)
     val iconColor = when {
         !enabled -> disabledColor
-        style == MagicToolStyle.MAGIC -> MagicColors.OnAccent
         style == MagicToolStyle.CONFIRM -> MagicColors.Background
         style == MagicToolStyle.DANGER -> MagicColors.DangerIcon
         else -> MagicColors.OnSurface
     }
     val labelColor = when {
         !enabled -> disabledColor
-        style == MagicToolStyle.MAGIC -> MagicColors.AccentLabel
         style == MagicToolStyle.DANGER -> MagicColors.Danger
         else -> MagicColors.OnSurface80
     }
@@ -211,7 +197,7 @@ fun MagicToolButton(
         Text(
             text = label,
             fontSize = 12.sp,
-            fontWeight = if (style == MagicToolStyle.MAGIC && enabled) FontWeight.Bold else FontWeight.SemiBold,
+            fontWeight = FontWeight.SemiBold,
             color = labelColor,
             maxLines = 1,
         )
@@ -219,40 +205,7 @@ fun MagicToolButton(
 }
 
 // =====================================================================
-// Create button
-// =====================================================================
-
-/**
- * Create button ("+") in the center of the bottom navigation.
- *
- * @param onClick Action on click.
- * @param modifier Modifier for the button.
- * @param enabled Set to false for the disabled state.
- */
-@Composable
-fun MagicCreateButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val container = stateColor(enabled, pressed, MagicColors.Accent, MagicColors.AccentPressed, MagicColors.SurfaceHigh)
-    Box(
-        modifier = modifier
-            .size(width = 56.dp, height = 42.dp)
-            .pressClickable(enabled = enabled, pressedScale = PRESSED_SCALE_ICON, interactionSource = interactionSource, onClick = onClick)
-            .clip(RoundedCornerShape(15.dp))
-            .background(container),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.Add,
-            contentDescription = "만들기",
-            tint = if (enabled) MagicColors.OnAccent else MagicColors.OnSurface.copy(alpha = 0.3f),
-            modifier = Modifier.size(28.dp),
-        )
-    }
-}
-
-// =====================================================================
-// Chip
+// Chip and bottom tab
 // =====================================================================
 
 /**
@@ -272,6 +225,55 @@ fun MagicChip(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    SelectablePill(
+        label = label,
+        selected = selected,
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        height = 40.dp,
+        horizontalPadding = 18.dp,
+        fontSize = 14.sp,
+        pressedScale = PRESSED_SCALE,
+    )
+}
+
+/**
+ * Bottom tab of the Magic Buttons spec: a pill with a label and no icon. A tab is always enabled.
+ *
+ * @param label Label of the tab.
+ * @param selected True when the tab is open.
+ * @param onClick Action on click.
+ * @param modifier Modifier for the tab.
+ */
+@Composable
+fun MagicTabPill(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    SelectablePill(
+        label = label,
+        selected = selected,
+        onClick = onClick,
+        modifier = modifier,
+        enabled = true,
+        height = 48.dp,
+        horizontalPadding = 20.dp,
+        fontSize = 15.sp,
+        pressedScale = PRESSED_SCALE_TAB,
+    )
+}
+
+/** Light pill when selected, dark pill when not selected. The chip and the bottom tab share it. */
+@Composable
+private fun SelectablePill(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    enabled: Boolean,
+    height: Dp,
+    horizontalPadding: Dp,
+    fontSize: TextUnit,
+    pressedScale: Float,
+) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val container = if (selected) {
@@ -287,14 +289,14 @@ fun MagicChip(
     }
     Box(
         modifier = modifier
-            .height(38.dp)
-            .pressClickable(enabled = enabled, interactionSource = interactionSource, onClick = onClick)
+            .height(height)
+            .pressClickable(enabled = enabled, pressedScale = pressedScale, interactionSource = interactionSource, onClick = onClick)
             .clip(CircleShape)
             .background(container)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = horizontalPadding),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = content, maxLines = 1)
+        Text(text = label, fontSize = fontSize, fontWeight = FontWeight.Bold, color = content, maxLines = 1, softWrap = false)
     }
 }
 
@@ -307,10 +309,16 @@ private fun MagicIconButtonsPreview() {
                 MagicIconButton(icon = Icons.Rounded.Close, contentDescription = "닫기", onClick = {}, style = MagicIconButtonStyle.SURFACE)
                 MagicIconButton(icon = Icons.AutoMirrored.Rounded.Undo, contentDescription = "되돌리기", onClick = {})
                 MagicIconButton(icon = Icons.AutoMirrored.Rounded.Undo, contentDescription = "되돌리기", onClick = {}, enabled = false)
-                MagicCreateButton(onClick = {})
+                MagicIconButton(
+                    icon = Icons.AutoMirrored.Rounded.ArrowForward,
+                    contentDescription = "더 보기",
+                    onClick = {},
+                    style = MagicIconButtonStyle.SURFACE,
+                    size = 40.dp,
+                    iconSize = 20.dp,
+                )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MagicToolButton(icon = Icons.Rounded.AutoAwesome, label = "매직", onClick = {}, style = MagicToolStyle.MAGIC)
                 MagicToolButton(icon = Icons.Outlined.Palette, label = "필터", onClick = {})
                 MagicToolButton(icon = Icons.Outlined.ContentCut, label = "나누기", onClick = {})
                 MagicToolButton(icon = Icons.Outlined.Delete, label = "삭제", onClick = {}, style = MagicToolStyle.DANGER)
@@ -320,6 +328,10 @@ private fun MagicIconButtonsPreview() {
                 MagicChip(label = "전체", selected = true, onClick = {})
                 MagicChip(label = "레이아웃", selected = false, onClick = {})
                 MagicChip(label = "15초", selected = false, onClick = {}, enabled = false)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                MagicTabPill(label = "홈", selected = true, onClick = {})
+                MagicTabPill(label = "템플릿", selected = false, onClick = {})
             }
         }
     }

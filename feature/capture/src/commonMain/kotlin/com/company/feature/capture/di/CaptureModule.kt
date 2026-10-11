@@ -7,6 +7,6 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 val captureModule = module {
-    viewModel { params -> GalleryViewModel(params.get(), get(), get(), get(), get()) }
+    viewModel { params -> GalleryViewModel(params.get(), get(), get(), get()) }
     viewModelOf(::CameraViewModel)
 }

@@ -24,9 +24,6 @@ object MagicColors {
     /** Buttons and option circles on [Surface]. */
     val SurfaceHighest = Color(0xFF2B2932)
 
-    /** Bottom navigation bar. */
-    val NavigationBar = Color(0xFF15141A)
-
     /** Track of a switch in the off state. */
     val SwitchTrackOff = Color(0xFF3A3842)
 
@@ -46,13 +43,10 @@ object MagicColors {
     /** Main accent. oklch(0.82 0.13 300). */
     val Accent = Color(0xFFD1B0FF)
 
-    /** Sparkle next to the logo. oklch(0.8 0.13 300). */
-    val AccentLogo = Color(0xFFCBAAFF)
-
     /** Kind label in the template sheet. oklch(0.86 0.1 300). */
     val AccentSoft = Color(0xFFDBC2FF)
 
-    /** Sparkle on the magic screen. oklch(0.86 0.12 300). */
+    /** Sparkle next to the logo. oklch(0.86 0.12 300). */
     val AccentSparkle = Color(0xFFDDBFFF)
 
     /** Label of a selected accent item. oklch(0.88 0.1 300). */
@@ -61,12 +55,21 @@ object MagicColors {
     /** Text on a translucent accent background. oklch(0.9 0.07 300). */
     val AccentPale = Color(0xFFE5D4FF)
 
+    /** Secondary action card, for example "촬영". oklch(0.9 0.16 125). */
+    val Lime = Color(0xFFC6F073)
+
+    /** Text and icons on [Lime]. */
+    val OnLime = Color(0xFF141A06)
+
     // ===========================================================
     // Button states (Magic Buttons spec)
     // ===========================================================
 
     /** Pressed primary button. oklch(0.74 0.13 300). */
     val AccentPressed = Color(0xFFB897F0)
+
+    /** Pressed [Lime] action card. oklch(0.82 0.16 125). */
+    val LimePressed = Color(0xFFADD658)
 
     /** Pressed light button, for example a selected chip. */
     val LightPressed = Color(0xFFD6D2DC)
@@ -104,9 +107,6 @@ object MagicColors {
 
     /** Music track background. oklch(0.8 0.12 160 / .18). */
     val MusicContainer = Color(0xFF71D6A3).copy(alpha = 0.18f)
-
-    /** Small yellow sparkle on the magic screen. oklch(0.88 0.12 85). */
-    val Sparkle = Color(0xFFFCD176)
 
     // ===========================================================
     // Text alpha helpers

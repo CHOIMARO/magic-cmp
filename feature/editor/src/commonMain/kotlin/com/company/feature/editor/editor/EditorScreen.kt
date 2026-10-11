@@ -80,6 +80,7 @@ internal fun EditorScreen(
             EditorTools(
                 hasSelection = state.selectedClip != null,
                 canChangeSpeed = state.selectedClip?.canChangeSpeed == true,
+                clipCount = state.project.clips.size,
                 onIntent = onIntent,
             )
         }

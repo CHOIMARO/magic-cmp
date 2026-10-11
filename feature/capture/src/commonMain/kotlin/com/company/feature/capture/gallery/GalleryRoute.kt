@@ -11,7 +11,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.company.core.designsystem.component.LocalMagicToast
-import com.company.core.domain.model.editor.EditorTemplate
 import kotlinx.coroutines.flow.first
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -23,7 +22,6 @@ import org.koin.core.parameter.parametersOf
  *
  * @param args Arguments of the picker.
  * @param onClose Goes back to the previous screen.
- * @param onOpenMagic Opens the magic screen with the template.
  * @param onOpenEditor Opens the editor with the new project.
  * @param onReturnToEditor Goes back to the editor after clips were added.
  */
@@ -31,7 +29,6 @@ import org.koin.core.parameter.parametersOf
 internal fun GalleryRoute(
     args: GalleryArgs,
     onClose: () -> Unit,
-    onOpenMagic: (EditorTemplate?) -> Unit,
     onOpenEditor: () -> Unit,
     onReturnToEditor: () -> Unit,
     viewModel: GalleryViewModel = koinViewModel { parametersOf(args) },
@@ -56,7 +53,6 @@ internal fun GalleryRoute(
     LaunchedEffect(viewModel) {
         viewModel.sideEffect.collect { effect ->
             when (effect) {
-                is GallerySideEffect.OpenMagic -> onOpenMagic(effect.template)
                 GallerySideEffect.OpenEditor -> onOpenEditor()
                 is GallerySideEffect.ReturnToEditor -> {
                     toast.show(effect.message)

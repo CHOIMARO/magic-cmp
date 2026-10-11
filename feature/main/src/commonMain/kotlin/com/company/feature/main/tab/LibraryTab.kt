@@ -1,7 +1,11 @@
 package com.company.feature.main.tab
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -9,13 +13,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.company.core.designsystem.component.FixedGrid
-import com.company.core.designsystem.component.SegmentOption
-import com.company.core.designsystem.component.SegmentedControl
-import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.component.MagicChip
+import com.company.core.designsystem.component.MagicVideoCard
 import com.company.core.domain.model.editor.VideoSummary
 import com.company.feature.main.LibrarySegment
+import com.company.feature.main.component.TabContentBottomPadding
 import com.company.feature.main.component.TabTitle
-import com.company.feature.main.component.VideoCard
+import com.company.ui.editor.formatTime
+
+private val SegmentChips = listOf(
+    LibrarySegment.DRAFTS to "작업 중",
+    LibrarySegment.COMPLETED to "완성",
+)
 
 /**
  * Library tab ("내 영상"): drafts and completed videos.
@@ -34,29 +43,32 @@ internal fun LibraryTab(
     onSelectSegment: (LibrarySegment) -> Unit,
     onOpenProject: (String) -> Unit,
 ) {
-    val completed = segment == LibrarySegment.COMPLETED
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(top = 8.dp, bottom = 24.dp),
+            .navigationBarsPadding()
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = TabContentBottomPadding),
     ) {
-        TabTitle(text = "내 영상", modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 16.dp))
-        SegmentedControl(
-            options = listOf(SegmentOption("작업 중"), SegmentOption("완성")),
-            selectedIndex = segment.ordinal,
-            onSelect = { onSelectSegment(LibrarySegment.entries[it]) },
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            contentColor = MagicColors.OnSurface70,
-        )
+        TabTitle(text = "내 영상", modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 22.dp, bottom = 18.dp))
+        Row(modifier = Modifier.padding(bottom = 18.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            SegmentChips.forEach { (chipSegment, label) ->
+                MagicChip(label = label, selected = chipSegment == segment, onClick = { onSelectSegment(chipSegment) })
+            }
+        }
         FixedGrid(
-            items = if (completed) completedVideos else drafts,
-            columns = 3,
-            modifier = Modifier.padding(horizontal = 16.dp),
+            items = if (segment == LibrarySegment.COMPLETED) completedVideos else drafts,
+            columns = 2,
             horizontalSpacing = 8.dp,
-            verticalSpacing = 14.dp,
+            verticalSpacing = 8.dp,
         ) { video ->
-            VideoCard(video = video, onClick = { onOpenProject(video.name) }, saved = completed)
+            MagicVideoCard(
+                title = video.name,
+                duration = formatTime(video.duration),
+                hue = video.thumbnailHue.toFloat(),
+                onClick = { onOpenProject(video.name) },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

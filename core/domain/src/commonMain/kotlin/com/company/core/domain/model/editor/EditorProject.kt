@@ -14,7 +14,6 @@ import kotlin.random.Random
  * @property texts Text overlays.
  * @property musicId ID of the background music. Null means no music.
  * @property filter Color filter for all clips.
- * @property vibe Last vibe preset that the user applied. Null means no preset.
  * @property captions Automatic caption segments.
  */
 data class EditorProject(
@@ -25,7 +24,6 @@ data class EditorProject(
     val texts: List<TextOverlay> = emptyList(),
     val musicId: String? = null,
     val filter: FilterType = FilterType.NONE,
-    val vibe: Vibe? = null,
     val captions: List<CaptionSegment> = emptyList(),
 ) {
     /** Length of the project. It is the sum of all clip lengths. */

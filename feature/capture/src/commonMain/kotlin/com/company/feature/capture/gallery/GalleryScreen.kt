@@ -3,6 +3,8 @@ package com.company.feature.capture.gallery
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -21,18 +24,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Dashboard
-import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -56,6 +65,9 @@ import com.company.ui.editor.displayName
 import com.company.ui.editor.formatTime
 import com.company.ui.media.MediaThumbnail
 
+/** Text shadow on thumbnails, like CSS `text-shadow: 0 1px 3px rgba(0,0,0,.6)`. */
+private val ThumbnailTextShadow = Shadow(Color.Black.copy(alpha = 0.6f), Offset(0f, 2f), 6f)
+
 /**
  * Photo and video picker screen. It only draws [state] and sends user actions out.
  *
@@ -77,6 +89,8 @@ internal fun GalleryScreen(
     onOpenSystemPicker: () -> Unit,
     onClose: () -> Unit,
 ) {
+    val pickerController = remember { EmbeddedMediaPickerController() }
+    val append = state.mode == GalleryMode.APPEND
     Column(modifier = Modifier.fillMaxSize().background(MagicColors.Background)) {
         Row(
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 12.dp),
@@ -89,7 +103,7 @@ internal fun GalleryScreen(
                 onClick = onClose,
                 style = MagicIconButtonStyle.SURFACE,
             )
-            Text(text = "사진·영상 선택", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(text = if (append) "추가하기" else "영상 · 사진 선택", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.size(44.dp))
         }
 
@@ -106,26 +120,22 @@ internal fun GalleryScreen(
             ) {
                 Icon(Icons.Outlined.Dashboard, contentDescription = null, tint = MagicColors.AccentPale, modifier = Modifier.size(18.dp))
                 Text(
-                    text = "${template.displayName} 템플릿을 입혀드려요",
+                    text = "${template.displayName} 템플릿으로 시작해요",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MagicColors.AccentPale,
                 )
             }
         }
-        val layoutClipCount = (state.template as? EditorTemplate.Layout)?.layout?.clipCount ?: 1
         Text(
-            text = if (layoutClipCount > 1) {
-                "${layoutClipCount}개를 고르면 딱 맞아요 · 누른 순서대로 들어가요"
-            } else {
-                "보여주고 싶은 순서대로 눌러주세요"
-            },
+            text = galleryHint(state),
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
             fontSize = 13.sp,
             color = MagicColors.OnSurface60,
         )
         if (useEmbeddedPicker) {
             EmbeddedMediaPicker(
+                controller = pickerController,
                 onSelectionChange = { onIntent(GalleryIntent.SelectionChanged(it)) },
                 onSelectionComplete = { onIntent(GalleryIntent.Next) },
                 modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -140,12 +150,40 @@ internal fun GalleryScreen(
             )
         }
 
-        GalleryBottomBar(state = state, onNext = { onIntent(GalleryIntent.Next) })
+        GalleryBottomBar(
+            state = state,
+            onRemove = { uri ->
+                // 임베디드 피커는 선택 상태를 OS가 갖고 있으므로 피커에서 빼야 한다. 피커가 바뀐 목록을 다시 알려 준다.
+                if (useEmbeddedPicker) pickerController.deselect(uri) else onIntent(GalleryIntent.RemovePick(uri))
+            },
+            onNext = { onIntent(GalleryIntent.Next) },
+        )
     }
+}
+
+/** Guide text under the header. */
+private fun galleryHint(state: GalleryState): String {
+    val layout = (state.template as? EditorTemplate.Layout)?.layout
+    return when {
+        state.mode == GalleryMode.APPEND -> "고른 순서대로 타임라인 맨 뒤에 붙어요"
+        layout != null && layout.clipCount > 1 -> {
+            val name = layout.displayName
+            "$name${name.topicParticle()} ${layout.clipCount}개를 고르면 딱 맞아요 · 누른 순서대로 들어가요"
+        }
+        else -> "여러 개 고를 수 있어요 · 누른 순서대로 들어가요"
+    }
+}
+
+/** Korean topic particle for the word: "은" after a final consonant, "는" after a vowel. */
+private fun String.topicParticle(): String {
+    val last = lastOrNull() ?: return "은"
+    if (last !in '가'..'힣') return "은"
+    return if ((last - '가') % 28 == 0) "는" else "은"
 }
 
 /**
  * Photos and videos that the full-screen system picker returned. The user taps them in the order to use.
+ * The last cell opens the system picker again.
  *
  * @param media Photos and videos from the system picker.
  * @param pickedIds URIs of the picked items in pick order.
@@ -161,29 +199,31 @@ private fun PickedMediaOrderGrid(
     onAddMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        FixedGrid(items = media, columns = 3, horizontalSpacing = 3.dp, verticalSpacing = 3.dp) { item ->
+    // null은 마지막 "더 고르기" 칸이다.
+    FixedGrid(
+        items = media + null,
+        columns = 3,
+        modifier = modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        horizontalSpacing = 6.dp,
+        verticalSpacing = 6.dp,
+    ) { item ->
+        if (item == null) {
+            AddMoreCell(onClick = onAddMore)
+        } else {
             GalleryCell(item = item, order = pickedIds.indexOf(item.uri), onClick = { onToggle(item.uri) })
         }
-        MagicButton(
-            text = "사진·영상 더 고르기",
-            onClick = onAddMore,
-            modifier = Modifier.padding(vertical = 12.dp),
-            style = MagicButtonStyle.TEXT,
-        )
     }
 }
 
 @Composable
 private fun GalleryCell(item: SourceMedia, order: Int, onClick: () -> Unit) {
     val picked = order >= 0
+    val shape = RoundedCornerShape(12.dp)
     MediaThumbnail(
         uri = item.uri,
         type = item.type,
         hue = item.thumbnailHue,
+        shape = shape,
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(3f / 4f)
@@ -194,46 +234,80 @@ private fun GalleryCell(item: SourceMedia, order: Int, onClick: () -> Unit) {
                 modifier = Modifier
                     .matchParentSize()
                     .background(MagicColors.Accent.copy(alpha = 0.15f))
-                    .border(3.dp, MagicColors.Accent)
+                    .border(3.dp, MagicColors.Accent, shape)
             )
         }
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(8.dp)
-                .size(26.dp)
+                .padding(6.dp)
+                .size(22.dp)
                 .clip(CircleShape)
                 .background(if (picked) MagicColors.Accent else Color.Black.copy(alpha = 0.25f))
-                .border(2.dp, Color.White, CircleShape),
+                .border(1.5.dp, Color.White, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             if (picked) {
-                Text(text = "${order + 1}", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = MagicColors.OnAccent)
+                Text(text = "${order + 1}", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = MagicColors.OnAccent)
             }
         }
-        Text(
-            // 영상은 길이를, 사진은 "사진"을 표시한다.
-            text = item.duration?.let { formatTime(it) } ?: "사진",
-            modifier = Modifier.align(Alignment.BottomStart).padding(start = 7.dp, bottom = 6.dp),
-            style = LocalTextStyle.current.merge(
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                shadow = Shadow(Color.Black.copy(alpha = 0.6f), Offset(0f, 2f), 6f),
-            ),
-        )
+        // 영상만 길이를 표시한다.
+        item.duration?.let { duration ->
+            Text(
+                text = formatTime(duration),
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 7.dp, bottom = 6.dp),
+                style = LocalTextStyle.current.merge(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, shadow = ThumbnailTextShadow),
+            )
+        }
+    }
+}
+
+/** Dashed "더 고르기" cell at the end of the grid. */
+@Composable
+private fun AddMoreCell(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val borderColor = MagicColors.OnSurface.copy(alpha = 0.25f)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(3f / 4f)
+            .pressClickable(interactionSource = interactionSource, onClick = onClick)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (pressed) MagicColors.OnSurface.copy(alpha = 0.06f) else Color.Transparent)
+            .drawBehind {
+                val width = 1.5.dp.toPx()
+                val dash = 4.dp.toPx()
+                drawRoundRect(
+                    color = borderColor,
+                    topLeft = Offset(width / 2, width / 2),
+                    size = size.copy(width = size.width - width, height = size.height - width),
+                    cornerRadius = CornerRadius(12.dp.toPx() - width / 2),
+                    style = Stroke(width = width, pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash))),
+                )
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+    ) {
+        Icon(Icons.Rounded.Add, contentDescription = null, tint = MagicColors.OnSurface70, modifier = Modifier.size(24.dp))
+        Text(text = "더 고르기", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
     }
 }
 
 @Composable
-private fun GalleryBottomBar(state: GalleryState, onNext: () -> Unit, modifier: Modifier = Modifier) {
+private fun GalleryBottomBar(
+    state: GalleryState,
+    onRemove: (String) -> Unit,
+    onNext: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val pickedMedia = state.pickedMedia
     val count = pickedMedia.size
     val hasPicked = count > 0
     val label = when {
-        !hasPicked -> "사진·영상을 골라주세요"
-        state.mode == GalleryMode.APPEND -> "${count}개 추가"
-        state.isMagicMode -> "${count}개로 매직 시작"
-        else -> "${count}개 편집하기"
+        !hasPicked -> "영상이나 사진을 골라주세요"
+        state.mode == GalleryMode.APPEND -> "${count}개 붙이기"
+        else -> "${count}개로 편집 시작"
     }
     Column(
         modifier = modifier
@@ -243,40 +317,61 @@ private fun GalleryBottomBar(state: GalleryState, onNext: () -> Unit, modifier: 
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (hasPicked) {
+            // 삭제 버튼이 썸네일 위·오른쪽으로 5dp 튀어나오므로 스크롤 영역 안쪽에 그만큼 여백을 둔다.
             Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                modifier = Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp, end = 5.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 pickedMedia.forEachIndexed { index, item ->
-                    MediaThumbnail(
-                        uri = item.uri,
-                        type = item.type,
-                        hue = item.thumbnailHue,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.size(width = 40.dp, height = 52.dp),
-                    ) {
-                        Text(
-                            text = "${index + 1}",
-                            modifier = Modifier.padding(start = 4.dp, top = 2.dp),
-                            style = LocalTextStyle.current.merge(
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                shadow = Shadow(Color.Black.copy(alpha = 0.6f), Offset(0f, 1f), 4f),
-                            ),
-                        )
-                    }
+                    PickedThumbnail(item = item, order = index + 1, onRemove = { onRemove(item.uri) })
                 }
             }
         }
-        // 고른 항목이 없으면 비활성 상태로 두고, 이유는 버튼 문구("사진·영상을 골라주세요")로 알려준다.
+        // 고른 항목이 없으면 비활성 상태로 두고, 이유는 버튼 문구("영상이나 사진을 골라주세요")로 알려준다.
         MagicButton(
             text = label,
             onClick = onNext,
             modifier = Modifier.fillMaxWidth(),
             style = MagicButtonStyle.PRIMARY,
-            leadingIcon = if (state.isMagicMode) Icons.Rounded.AutoAwesome else null,
             enabled = hasPicked,
         )
+    }
+}
+
+/** Small picked item with its order, its length, and a remove button. */
+@Composable
+private fun PickedThumbnail(item: SourceMedia, order: Int, onRemove: () -> Unit) {
+    Box {
+        MediaThumbnail(
+            uri = item.uri,
+            type = item.type,
+            hue = item.thumbnailHue,
+            shape = RoundedCornerShape(9.dp),
+            modifier = Modifier.size(width = 44.dp, height = 58.dp),
+        ) {
+            Text(
+                text = "$order",
+                modifier = Modifier.padding(start = 5.dp, top = 3.dp),
+                style = LocalTextStyle.current.merge(fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, shadow = ThumbnailTextShadow),
+            )
+            Text(
+                text = item.duration?.let { formatTime(it) } ?: "사진",
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 5.dp, bottom = 3.dp),
+                style = LocalTextStyle.current.merge(fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, shadow = ThumbnailTextShadow),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = 5.dp, y = (-5).dp)
+                .size(20.dp)
+                .pressClickable(onClick = onRemove)
+                .clip(CircleShape)
+                .background(MagicColors.OnSurface),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Rounded.Close, contentDescription = "빼기", tint = MagicColors.Background, modifier = Modifier.size(14.dp))
+        }
     }
 }
 
@@ -304,5 +399,11 @@ private fun GalleryPickedPreview() = GalleryScreenPreview(
 @Preview(name = "사진·영상 선택 - 템플릿", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
 @Composable
 private fun GalleryTemplatePreview() = GalleryScreenPreview(
-    GalleryState(template = EditorTemplate.Layout(LayoutType.SPLIT_VERTICAL), media = PreviewMedia),
+    GalleryState(template = EditorTemplate.Layout(LayoutType.BEFORE_AFTER), media = PreviewMedia),
+)
+
+@Preview(name = "사진·영상 추가", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun GalleryAppendPreview() = GalleryScreenPreview(
+    GalleryState(mode = GalleryMode.APPEND, media = PreviewMedia, pickedIds = listOf("preview://v2")),
 )

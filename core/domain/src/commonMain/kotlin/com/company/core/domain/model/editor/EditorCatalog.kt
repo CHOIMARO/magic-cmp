@@ -40,39 +40,6 @@ enum class CaptionStyleType { BASIC, POP, BOX, MINIMAL, SERIF, BIG }
 /** Color filter for the video. */
 enum class FilterType { NONE, WARM, FADE, COOL, PUNCH, CINE, MONO }
 
-/**
- * Preset that changes the filter, the music, the text style, and the caption style together.
- *
- * @property filter Filter of the preset.
- * @property musicId Music of the preset. Null keeps the current music.
- * @property textStyle Text style of the preset. Null keeps the current styles.
- * @property captionStyle Caption style of the preset. Null keeps the current style.
- */
-enum class Vibe(
-    val filter: FilterType,
-    val musicId: String?,
-    val textStyle: TextStyleType?,
-    val captionStyle: CaptionStyleType?,
-) {
-    /** Warm colors with acoustic music. */
-    WARM(FilterType.WARM, "m5", TextStyleType.BOX, CaptionStyleType.POP),
-
-    /** Faded film look with lo-fi music. */
-    DREAMY(FilterType.FADE, "m4", TextStyleType.SERIF, CaptionStyleType.SERIF),
-
-    /** Strong colors with upbeat music. */
-    HYPE(FilterType.PUNCH, "m3", TextStyleType.BOLD, CaptionStyleType.BIG),
-
-    /** Movie look with dreamy music. */
-    CINEMATIC(FilterType.CINE, "m1", TextStyleType.OUTLINE, CaptionStyleType.MINIMAL),
-
-    /** Cool colors with wave sounds. */
-    FRESH(FilterType.COOL, "m2", TextStyleType.MARKER, CaptionStyleType.BOX),
-
-    /** Original video without effects. */
-    NONE(FilterType.NONE, null, null, null),
-}
-
 /** Kind of an [EditorTemplate]. */
 enum class TemplateKind { LAYOUT, TEXT, CAPTION }
 

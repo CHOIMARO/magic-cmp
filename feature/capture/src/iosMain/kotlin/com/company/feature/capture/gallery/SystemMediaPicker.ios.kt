@@ -1,6 +1,7 @@
 package com.company.feature.capture.gallery
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -46,6 +47,7 @@ internal actual fun isEmbeddedMediaPickerSupported(): Boolean = true
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal actual fun EmbeddedMediaPicker(
+    controller: EmbeddedMediaPickerController,
     onSelectionChange: (List<String>) -> Unit,
     onSelectionComplete: () -> Unit,
     modifier: Modifier,
@@ -54,10 +56,14 @@ internal actual fun EmbeddedMediaPicker(
     val scope = rememberCoroutineScope()
     // PHPickerViewController는 delegate를 약하게 참조하므로 컴포지션에서 강하게 붙잡아 둔다.
     val delegate = remember { MediaPickerDelegate(scope) { currentOnSelectionChange(it) } }
+    LaunchedEffect(delegate, controller) {
+        controller.deselectRequests.collect { delegate.deselect(it) }
+    }
     UIKitViewController(
         factory = {
             PHPickerViewController(configuration = pickerConfiguration()).apply {
                 this.delegate = delegate
+                delegate.picker = this
                 overrideUserInterfaceStyle = UIUserInterfaceStyle.UIUserInterfaceStyleDark
             }
         },
@@ -102,6 +108,21 @@ private class MediaPickerDelegate(
     private val copiedUris = mutableMapOf<String, String>()
     private val copying = mutableSetOf<String>()
     private var selection: List<String> = emptyList()
+
+    /** Picker that uses this delegate. [deselect] removes the check mark in it. */
+    var picker: PHPickerViewController? = null
+
+    /**
+     * Removes an item from the selection and from the picker.
+     *
+     * @param uri File URL of the copied item.
+     */
+    fun deselect(uri: String) {
+        val assetId = copiedUris.entries.find { it.value == uri }?.key ?: return
+        selection = selection - assetId
+        emitSelection()
+        picker?.deselectAssetsWithIdentifiers(listOf(assetId))
+    }
 
     override fun picker(picker: PHPickerViewController, didFinishPicking: List<*>) {
         val results = didFinishPicking.filterIsInstance<PHPickerResult>()

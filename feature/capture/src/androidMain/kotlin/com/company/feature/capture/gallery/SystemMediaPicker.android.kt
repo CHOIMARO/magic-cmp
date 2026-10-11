@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
@@ -32,6 +33,7 @@ internal actual fun isEmbeddedMediaPickerSupported(): Boolean =
 @OptIn(ExperimentalPhotoPickerComposeApi::class)
 @Composable
 internal actual fun EmbeddedMediaPicker(
+    controller: EmbeddedMediaPickerController,
     onSelectionChange: (List<String>) -> Unit,
     onSelectionComplete: () -> Unit,
     modifier: Modifier,
@@ -56,6 +58,18 @@ internal actual fun EmbeddedMediaPicker(
         },
         onSelectionComplete = { currentOnSelectionComplete() },
     )
+    LaunchedEffect(state, controller) {
+        controller.deselectRequests.collect { request ->
+            val uri = pickedUris.find { it.toString() == request } ?: return@collect
+            pickedUris.remove(uri)
+            currentOnSelectionChange(pickedUris.map(Uri::toString))
+            // 피커 세션이 아직 열리지 않았으면 예외가 난다. 그때는 앱 목록에서만 뺀다.
+            try {
+                state.deselectUris(listOf(uri))
+            } catch (_: IllegalStateException) {
+            }
+        }
+    }
     val featureInfo = remember {
         EmbeddedPhotoPickerFeatureInfo.Builder()
             .setMimeTypes(MEDIA_MIME_TYPES)

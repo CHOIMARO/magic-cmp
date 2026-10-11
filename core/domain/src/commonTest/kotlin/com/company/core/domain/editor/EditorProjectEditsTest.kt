@@ -5,14 +5,11 @@ import com.company.core.domain.model.editor.CaptionStyleType
 import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.EditorTemplate
-import com.company.core.domain.model.editor.FilterType
 import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.TextStyleType
-import com.company.core.domain.model.editor.Vibe
 import com.company.core.domain.model.editor.addText
 import com.company.core.domain.model.editor.applyTemplate
-import com.company.core.domain.model.editor.applyVibe
 import com.company.core.domain.model.editor.clipAt
 import com.company.core.domain.model.editor.duplicateClip
 import com.company.core.domain.model.editor.moveText
@@ -77,20 +74,6 @@ class EditorProjectEditsTest {
     fun duplicateClip_putsCopyAfterOriginal() {
         val (duplicated, copyId) = assertNotNull(project.duplicateClip("a"))
         assertEquals(listOf("a", copyId, "b"), duplicated.clips.map { it.id })
-    }
-
-    @Test
-    fun applyVibe_changesStylesAndKeepsMusicForNone() {
-        val withText = project.copy(musicId = "m9").addText("hi", TextStyleType.BOLD, time = 0.0)
-        val warm = withText.applyVibe(Vibe.WARM)
-        assertEquals(FilterType.WARM, warm.filter)
-        assertEquals("m5", warm.musicId)
-        assertEquals(TextStyleType.BOX, warm.texts.single().style)
-
-        val none = warm.applyVibe(Vibe.NONE)
-        assertEquals(FilterType.NONE, none.filter)
-        assertEquals("m5", none.musicId)
-        assertEquals(TextStyleType.BOX, none.texts.single().style)
     }
 
     @Test

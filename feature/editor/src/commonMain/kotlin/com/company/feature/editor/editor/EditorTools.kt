@@ -16,7 +16,6 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material.icons.outlined.Title
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,14 +32,15 @@ import com.company.core.designsystem.theme.MagicColors
 /**
  * Tool row under the timeline.
  *
- * Without a selection it shows the six editing tools. With a selected clip it shows the clip actions.
+ * Without a selection it shows the five editing tools. With a selected clip it shows the clip actions.
  *
  * @param hasSelection True when a clip is selected.
  * @param canChangeSpeed True when the selected clip has a play speed. A photo clip has none.
+ * @param clipCount Number of clips in the project. With one clip or less, the hint points to the add button.
  * @param onIntent Called with each user action.
  */
 @Composable
-internal fun EditorTools(hasSelection: Boolean, canChangeSpeed: Boolean, onIntent: (EditorIntent) -> Unit) {
+internal fun EditorTools(hasSelection: Boolean, canChangeSpeed: Boolean, clipCount: Int, onIntent: (EditorIntent) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(start = 6.dp, end = 6.dp, top = 2.dp, bottom = 12.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             if (hasSelection) {
@@ -58,7 +58,6 @@ internal fun EditorTools(hasSelection: Boolean, canChangeSpeed: Boolean, onInten
                     style = MagicToolStyle.CONFIRM,
                 )
             } else {
-                Tool(Icons.Rounded.AutoAwesome, "매직", MagicToolStyle.MAGIC) { onIntent(EditorIntent.OpenSheet(EditorSheet.VIBE)) }
                 Tool(Icons.Outlined.Dashboard, "레이아웃") { onIntent(EditorIntent.OpenSheet(EditorSheet.LAYOUT)) }
                 Tool(Icons.Outlined.Title, "글자") { onIntent(EditorIntent.OpenSheet(EditorSheet.TEXT)) }
                 Tool(Icons.Outlined.Subtitles, "자막") { onIntent(EditorIntent.OpenSheet(EditorSheet.CAPTIONS)) }
@@ -67,7 +66,11 @@ internal fun EditorTools(hasSelection: Boolean, canChangeSpeed: Boolean, onInten
             }
         }
         Text(
-            text = if (hasSelection) "보라색 손잡이를 끌어 길이를 조절해요" else "클립을 누르면 자르고 다듬을 수 있어요",
+            text = when {
+                hasSelection -> "보라색 손잡이를 끌어 길이를 조절해요"
+                clipCount <= 1 -> "오른쪽 + 를 눌러 영상·사진을 더 붙여요"
+                else -> "클립을 누르면 자르고 다듬을 수 있어요"
+            },
             modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
             textAlign = TextAlign.Center,
             fontSize = 11.5.sp,

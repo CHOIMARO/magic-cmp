@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -18,7 +17,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.VideoLibrary
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -38,14 +36,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicColors
-import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.TextOverlay
-import com.company.core.domain.model.editor.Vibe
 import com.company.core.domain.model.editor.clipAt
 import com.company.ui.editor.OverlayText
 import com.company.ui.editor.TextFrame
 import com.company.ui.editor.centeredAt
-import com.company.ui.editor.displayName
 import com.company.ui.editor.formatTime
 import com.company.ui.editor.look
 import com.company.ui.editor.toColorFilter
@@ -141,22 +136,6 @@ internal fun EditorStage(
             ) {
                 Icon(Icons.Outlined.VideoLibrary, contentDescription = null, tint = MagicColors.OnSurface60, modifier = Modifier.size(34.dp))
                 Text(text = "아직 영상이 없어요", fontSize = 14.sp, color = MagicColors.OnSurface60)
-            }
-        }
-
-        val vibe = project.vibe
-        if (vibe != null && vibe != Vibe.NONE && project.layout == LayoutType.FULL) {
-            Row(
-                modifier = Modifier
-                    .padding(10.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.45f))
-                    .padding(start = 7.dp, end = 10.dp, top = 5.dp, bottom = 5.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = MagicColors.AccentSparkle, modifier = Modifier.size(14.dp))
-                Text(text = vibe.displayName, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
         }
 

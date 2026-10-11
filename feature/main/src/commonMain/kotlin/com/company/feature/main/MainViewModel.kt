@@ -12,12 +12,11 @@ import com.company.core.domain.model.editor.VideoSummary
 import com.company.core.domain.repository.EditorProjectRepository
 import com.company.core.domain.repository.EditorSettingsRepository
 import com.company.core.domain.repository.MyVideoRepository
-import com.company.ui.editor.GalleryMode
 import kotlinx.coroutines.launch
 
 /** Tab of the main screen. */
 enum class MainTab {
-    /** Start card, template shortcuts, and recent drafts. */
+    /** Start cards, template shortcuts, and recent drafts. */
     HOME,
 
     /** All templates with a kind filter. */
@@ -44,18 +43,12 @@ enum class SettingKey {
     /** News about new templates. */
     TEMPLATE_NEWS,
 
-    /** Automatic decoration of new videos. */
-    AUTO_MAGIC,
-
     /** "magic" watermark on the video. */
     WATERMARK,
 }
 
 /** Bottom sheet of the main screen. */
 sealed interface MainSheet {
-    /** Create : Options to start a new video. */
-    data object Create : MainSheet
-
     /** Template(template) : Preview of one template with a start button. */
     data class Template(val template: EditorTemplate) : MainSheet
 
@@ -89,9 +82,6 @@ sealed class MainIntent : Intent() {
     /** SelectTab(tab) : Shows the tab and closes the open sheet. */
     data class SelectTab(val tab: MainTab) : MainIntent()
 
-    /** OpenCreateSheet : Opens the sheet with the start options. */
-    data object OpenCreateSheet : MainIntent()
-
     /** OpenTemplate(template) : Opens the preview sheet of the template. */
     data class OpenTemplate(val template: EditorTemplate) : MainIntent()
 
@@ -116,17 +106,11 @@ sealed class MainIntent : Intent() {
     /** ToggleSetting(key) : Switches the setting on or off. */
     data class ToggleSetting(val key: SettingKey) : MainIntent()
 
-    /** PickVideosForMagic : Opens the video picker for automatic decoration. */
-    data object PickVideosForMagic : MainIntent()
-
-    /** PickVideosManually : Opens the video picker without decoration. */
-    data object PickVideosManually : MainIntent()
+    /** StartNewVideo : Opens the photo and video picker for a new project. */
+    data object StartNewVideo : MainIntent()
 
     /** OpenCamera : Opens the camera. */
     data object OpenCamera : MainIntent()
-
-    /** StartFromTemplates : Closes the sheet and opens the template tab. */
-    data object StartFromTemplates : MainIntent()
 
     /** UseSelectedTemplate : Opens the video picker with the template of the open sheet. */
     data object UseSelectedTemplate : MainIntent()
@@ -137,8 +121,8 @@ sealed class MainIntent : Intent() {
 
 /** One-time events of the main screen. */
 sealed class MainSideEffect : SideEffect() {
-    /** OpenGallery(mode, template) : Navigates to the video picker. */
-    data class OpenGallery(val mode: GalleryMode, val template: EditorTemplate?) : MainSideEffect()
+    /** OpenGallery(template) : Navigates to the photo and video picker for a new project with the template, or with no template. */
+    data class OpenGallery(val template: EditorTemplate?) : MainSideEffect()
 
     /** OpenCamera : Navigates to the camera. */
     data object OpenCamera : MainSideEffect()
@@ -178,7 +162,6 @@ class MainViewModel(
     override fun handleIntent(intent: MainIntent) {
         when (intent) {
             is MainIntent.SelectTab -> reduce { copy(tab = intent.tab, sheet = null) }
-            MainIntent.OpenCreateSheet -> reduce { copy(sheet = MainSheet.Create) }
             is MainIntent.OpenTemplate -> reduce { copy(sheet = MainSheet.Template(intent.template)) }
             MainIntent.OpenAppInfo -> reduce { copy(sheet = MainSheet.AppInfo) }
             MainIntent.CloseSheet -> reduce { copy(sheet = null) }
@@ -187,13 +170,11 @@ class MainViewModel(
             MainIntent.ShowAllTemplates -> reduce { copy(tab = MainTab.TEMPLATES, templateFilter = null) }
             MainIntent.ShowAllDrafts -> reduce { copy(tab = MainTab.LIBRARY, librarySegment = LibrarySegment.DRAFTS) }
             is MainIntent.ToggleSetting -> toggleSetting(intent.key)
-            MainIntent.PickVideosForMagic -> openGallery(GalleryMode.MAGIC, template = null)
-            MainIntent.PickVideosManually -> openGallery(GalleryMode.MANUAL, template = null)
+            MainIntent.StartNewVideo -> openGallery(template = null)
             MainIntent.OpenCamera -> {
                 reduce { copy(sheet = null) }
                 postSideEffect { MainSideEffect.OpenCamera }
             }
-            MainIntent.StartFromTemplates -> reduce { copy(tab = MainTab.TEMPLATES, sheet = null) }
             MainIntent.UseSelectedTemplate -> useSelectedTemplate()
             is MainIntent.OpenProject -> openProject(intent.name)
         }
@@ -203,16 +184,14 @@ class MainViewModel(
     // Create flows
     // =====================================================================
 
-    private fun openGallery(mode: GalleryMode, template: EditorTemplate?) {
+    private fun openGallery(template: EditorTemplate?) {
         reduce { copy(sheet = null) }
-        postSideEffect { MainSideEffect.OpenGallery(mode, template) }
+        postSideEffect { MainSideEffect.OpenGallery(template) }
     }
 
-    /** Uses the magic picker when automatic decoration is on. Otherwise uses the manual picker. */
     private fun useSelectedTemplate() {
         val template = (currentState.sheet as? MainSheet.Template)?.template ?: return
-        val mode = if (currentState.settings.autoMagic) GalleryMode.MAGIC else GalleryMode.MANUAL
-        openGallery(mode, template)
+        openGallery(template)
     }
 
     private fun openProject(name: String) {
@@ -230,7 +209,6 @@ class MainViewModel(
         settingsRepository.update { settings ->
             when (key) {
                 SettingKey.TEMPLATE_NEWS -> settings.copy(templateNews = !settings.templateNews)
-                SettingKey.AUTO_MAGIC -> settings.copy(autoMagic = !settings.autoMagic)
                 SettingKey.WATERMARK -> settings.copy(watermark = !settings.watermark)
             }
         }

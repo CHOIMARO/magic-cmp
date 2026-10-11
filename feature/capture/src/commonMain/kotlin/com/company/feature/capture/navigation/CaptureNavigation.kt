@@ -44,13 +44,11 @@ fun NavController.navigateToCamera() {
  * Adds the video picker to the graph.
  *
  * @param onClose Goes back to the previous screen.
- * @param onOpenMagic Opens the magic screen with the template.
  * @param onOpenEditor Opens the editor with the new project.
  * @param onReturnToEditor Goes back to the editor after clips were added.
  */
 fun NavGraphBuilder.galleryScreen(
     onClose: () -> Unit,
-    onOpenMagic: (EditorTemplate?) -> Unit,
     onOpenEditor: () -> Unit,
     onReturnToEditor: () -> Unit,
 ) {
@@ -58,11 +56,10 @@ fun NavGraphBuilder.galleryScreen(
         val route = backStackEntry.toRoute<GalleryRoute>()
         GalleryRoute(
             args = GalleryArgs(
-                mode = GalleryMode.entries.find { it.name == route.mode } ?: GalleryMode.MAGIC,
+                mode = GalleryMode.entries.find { it.name == route.mode } ?: GalleryMode.CREATE,
                 template = EditorTemplate.fromKey(route.templateKey),
             ),
             onClose = backStackEntry.onlyWhenResumed(onClose),
-            onOpenMagic = backStackEntry.onlyWhenResumed(onOpenMagic),
             onOpenEditor = backStackEntry.onlyWhenResumed(onOpenEditor),
             onReturnToEditor = backStackEntry.onlyWhenResumed(onReturnToEditor),
         )
@@ -73,18 +70,12 @@ fun NavGraphBuilder.galleryScreen(
  * Adds the camera screen to the graph.
  *
  * @param onClose Goes back to the previous screen.
- * @param onOpenMagic Opens the magic screen with the new project.
  * @param onOpenEditor Opens the editor with the new project.
  */
-fun NavGraphBuilder.cameraScreen(
-    onClose: () -> Unit,
-    onOpenMagic: () -> Unit,
-    onOpenEditor: () -> Unit,
-) {
+fun NavGraphBuilder.cameraScreen(onClose: () -> Unit, onOpenEditor: () -> Unit) {
     composable<CameraRoute> { entry ->
         CameraRoute(
             onClose = entry.onlyWhenResumed(onClose),
-            onOpenMagic = entry.onlyWhenResumed(onOpenMagic),
             onOpenEditor = entry.onlyWhenResumed(onOpenEditor),
         )
     }

@@ -15,8 +15,6 @@ import com.company.feature.editor.navigation.EditorRoute
 import com.company.feature.editor.navigation.ExportRoute
 import com.company.feature.editor.navigation.editorScreen
 import com.company.feature.editor.navigation.exportScreen
-import com.company.feature.editor.navigation.magicScreen
-import com.company.feature.editor.navigation.navigateToMagic
 import com.company.feature.main.navigation.MainRoute
 import com.company.feature.main.navigation.mainScreen
 import com.company.ui.editor.GalleryMode
@@ -47,22 +45,17 @@ fun AppNavHost(
             popExitTransition = { ExitTransition.None },
         ) {
             mainScreen(
-                onOpenGallery = { mode, template -> navController.navigateToGallery(mode, template) },
+                onOpenGallery = { template -> navController.navigateToGallery(GalleryMode.CREATE, template) },
                 onOpenCamera = { navController.navigateToCamera() },
                 onOpenEditor = { navController.navigate(EditorRoute) },
             )
             galleryScreen(
                 onClose = { navController.popBackStack() },
-                onOpenMagic = { template -> navController.navigateToMagic(template) },
                 onOpenEditor = { navController.navigateToEditorFromMain() },
                 onReturnToEditor = { navController.popBackStack() },
             )
             cameraScreen(
                 onClose = { navController.popBackStack() },
-                onOpenMagic = { navController.navigateToMagic(template = null) },
-                onOpenEditor = { navController.navigateToEditorFromMain() },
-            )
-            magicScreen(
                 onOpenEditor = { navController.navigateToEditorFromMain() },
             )
             editorScreen(
@@ -81,7 +74,7 @@ fun AppNavHost(
         }
 }
 
-/** 새 프로젝트를 만든 뒤 편집 화면을 연다. 뒤로 가면 갤러리·매직이 아니라 탭 화면으로 돌아간다. */
+/** 새 프로젝트를 만든 뒤 편집 화면을 연다. 뒤로 가면 갤러리·촬영이 아니라 탭 화면으로 돌아간다. */
 private fun NavController.navigateToEditorFromMain() {
     navigate(EditorRoute) {
         popUpTo<MainRoute>()

@@ -36,7 +36,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,7 +59,6 @@ import com.company.core.domain.model.editor.EditorTemplate
 import com.company.core.domain.model.editor.FilterType
 import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.TextStyleType
-import com.company.core.domain.model.editor.Vibe
 import com.company.core.domain.model.editor.clipAt
 import com.company.feature.editor.preview.EditorPreviewData
 import com.company.ui.editor.CaptionText
@@ -94,7 +92,6 @@ internal fun ColumnScope.EditorSheetContent(
     onClose: () -> Unit,
 ) {
     val intro = when (sheet) {
-        EditorSheet.VIBE -> "필터·음악·글자·자막 스타일이 한 번에 바뀌어요"
         EditorSheet.LAYOUT -> "화면을 나누거나 액자처럼 꾸며요"
         EditorSheet.CAPTIONS -> if (state.project.captions.isNotEmpty()) {
             "스타일을 누르면 모든 자막에 바로 적용돼요"
@@ -108,7 +105,6 @@ internal fun ColumnScope.EditorSheetContent(
         if (intro != null) Text(text = intro, fontSize = 13.sp, color = MagicColors.OnSurface60)
     }
     when (sheet) {
-        EditorSheet.VIBE -> VibeSheet(state, onIntent)
         EditorSheet.LAYOUT -> LayoutSheet(state, onIntent)
         EditorSheet.TEXT -> TextSheet(state, onIntent)
         EditorSheet.MUSIC -> MusicSheet(state, onIntent)
@@ -124,52 +120,15 @@ private fun EditorSheet.title(state: EditorState): String = when (this) {
     EditorSheet.FILTER -> "필터"
     EditorSheet.SPEED -> "속도"
     EditorSheet.CAPTIONS -> "자막"
-    EditorSheet.VIBE -> "분위기 고르기"
     EditorSheet.LAYOUT -> "레이아웃"
 }
 
-/** Hue of the clip at the playhead. The filter and vibe previews use it. */
+/** Hue of the clip at the playhead. The filter previews use it. */
 private fun EditorState.currentHue(): Int = project.clipAt(time)?.clip?.thumbnailHue ?: 35
 
 // =====================================================================
-// Vibe, layout, filter
+// Layout, filter
 // =====================================================================
-
-@Composable
-private fun VibeSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
-    val hue = state.currentHue().toFloat()
-    FixedGrid(items = Vibe.entries, columns = 3, horizontalSpacing = 10.dp, verticalSpacing = 10.dp) { vibe ->
-        val selected = state.project.vibe == vibe
-        val music = state.musicTracks.find { it.id == vibe.musicId }
-        Column(
-            modifier = Modifier.pressClickable { onIntent(EditorIntent.PickVibe(vibe)) },
-            verticalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            StripeBox(
-                hue = hue,
-                lightness = 0.56f,
-                shape = RoundedCornerShape(14.dp),
-                colorFilter = remember(vibe) { vibe.filter.toColorFilter() },
-                modifier = Modifier.fillMaxWidth().aspectRatio(4f / 5f).selectionRing(selected, 14.dp),
-            )
-            Column(modifier = Modifier.padding(start = 2.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(
-                    text = vibe.displayName,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (selected) MagicColors.AccentLabel else MagicColors.OnSurface,
-                )
-                Text(
-                    text = music?.let { "♪ ${it.title}" } ?: "효과 없음",
-                    fontSize = 11.sp,
-                    color = MagicColors.OnSurface50,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun LayoutSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
@@ -508,10 +467,6 @@ private fun EditorSheetPreview(sheet: EditorSheet, state: EditorState = PreviewS
         }
     }
 }
-
-@Preview(name = "시트 - 분위기", widthDp = PHONE_PREVIEW_WIDTH)
-@Composable
-private fun VibeSheetPreview() = EditorSheetPreview(EditorSheet.VIBE)
 
 @Preview(name = "시트 - 레이아웃", widthDp = PHONE_PREVIEW_WIDTH)
 @Composable

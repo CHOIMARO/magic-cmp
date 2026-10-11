@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
@@ -52,6 +52,9 @@ const val PRESSED_SCALE = 0.97f
 
 /** Scale of a pressed icon button or tool. */
 const val PRESSED_SCALE_ICON = 0.94f
+
+/** Scale of a pressed bottom tab. */
+const val PRESSED_SCALE_TAB = 0.96f
 
 /**
  * Makes an element clickable without a ripple. The element shrinks a little while it is pressed.
@@ -105,7 +108,7 @@ enum class MagicButtonStyle(
     val fontSize: TextUnit,
     val fontWeight: FontWeight,
 ) {
-    /** Main action, large. For example "영상 고르기" and "저장하기". */
+    /** Main action, large. For example "이 템플릿으로 만들기" and "저장하기". */
     PRIMARY(56.dp, 26.dp, 16.sp, FontWeight.Bold),
 
     /** Main action, small. For example "완성" and "다음". */
@@ -120,7 +123,7 @@ enum class MagicButtonStyle(
     /** Destructive action. For example "삭제", "자막 지우기", and "로그아웃". */
     DANGER(48.dp, 20.dp, 15.sp, FontWeight.SemiBold),
 
-    /** Action without a background. For example "전체 보기" and "화질 바꾸기". */
+    /** Action without a background. For example "다른 영상 고르기" and "화질 바꾸기". */
     TEXT(40.dp, 12.dp, 13.sp, FontWeight.SemiBold),
 }
 
@@ -136,8 +139,7 @@ enum class MagicButtonStyle(
  * @property disabledContent Label color when disabled.
  * @property disabledBorder Border color when disabled.
  * @property progressFill Fill of the progress loading state.
- * @property sweep Light of the magic loading state.
- * @property sparkle Sparkle and spinner color of the loading states.
+ * @property spinner Color of the moving part of the spinner.
  * @property spinnerTrack Track color of the spinner.
  */
 @Immutable
@@ -151,8 +153,7 @@ data class MagicButtonColors(
     val disabledContent: Color,
     val disabledBorder: Color = Color.Transparent,
     val progressFill: Color,
-    val sweep: Color,
-    val sparkle: Color,
+    val spinner: Color,
     val spinnerTrack: Color,
 )
 
@@ -165,8 +166,7 @@ object MagicButtonDefaults {
         disabledContainer = MagicColors.SurfaceDisabled,
         disabledContent = MagicColors.OnSurface.copy(alpha = 0.3f),
         progressFill = MagicColors.Accent.copy(alpha = 0.22f),
-        sweep = MagicColors.Accent.copy(alpha = 0.22f),
-        sparkle = MagicColors.Accent,
+        spinner = MagicColors.OnSurface,
         spinnerTrack = MagicColors.OnSurface.copy(alpha = 0.18f),
     )
 
@@ -183,8 +183,7 @@ object MagicButtonDefaults {
             disabledContainer = MagicColors.SurfaceHigh,
             disabledContent = MagicColors.OnSurface.copy(alpha = 0.35f),
             progressFill = MagicColors.OnAccent.copy(alpha = 0.18f),
-            sweep = Color.White.copy(alpha = 0.55f),
-            sparkle = MagicColors.OnAccent,
+            spinner = MagicColors.OnAccent,
             spinnerTrack = MagicColors.OnAccent.copy(alpha = 0.2f),
         )
         MagicButtonStyle.SECONDARY -> LightLoading
@@ -219,8 +218,7 @@ object MagicButtonDefaults {
         disabledContainer = MagicColors.SwitchTrackOff,
         disabledContent = MagicColors.OnSurface.copy(alpha = 0.5f),
         progressFill = MagicColors.Background.copy(alpha = 0.18f),
-        sweep = Color.White.copy(alpha = 0.55f),
-        sparkle = MagicColors.Background,
+        spinner = MagicColors.Background,
         spinnerTrack = MagicColors.Background.copy(alpha = 0.2f),
     )
 }
@@ -248,13 +246,6 @@ sealed interface MagicButtonLoading {
      * @property fraction Progress from 0 to 1.
      */
     data class Progress(override val label: String, val fraction: Float) : MagicButtonLoading
-
-    /**
-     * Magic(label) : Use it only while magic decorates the video.
-     *
-     * @property label Label next to the sparkle, for example "magic 거는 중".
-     */
-    data class Magic(override val label: String) : MagicButtonLoading
 }
 
 /**
@@ -321,7 +312,7 @@ fun MagicButton(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                MagicSpinner(color = colors.sparkle, trackColor = colors.spinnerTrack)
+                MagicSpinner(color = colors.spinner, trackColor = colors.spinnerTrack)
                 ButtonText(text = loading.label, color = content, style = style)
             }
             is MagicButtonLoading.Progress -> {
@@ -334,17 +325,6 @@ fun MagicButton(
                         .background(colors.progressFill)
                 )
                 ButtonText(text = "${loading.label} ${(fraction * 100).roundToInt()}%", color = content, style = style)
-            }
-            is MagicButtonLoading.Magic -> {
-                MagicSweep(color = colors.sweep)
-                Row(
-                    modifier = Modifier.padding(horizontal = style.horizontalPadding),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    MagicTwinkle(color = colors.sparkle)
-                    ButtonText(text = loading.label, color = content, style = style)
-                }
             }
         }
     }
@@ -383,17 +363,17 @@ private fun MagicButtonPreview() {
     MagicPreview {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             MagicButton(
-                text = "3개로 매직 시작",
+                text = "저장하기",
                 onClick = {},
                 modifier = Modifier.fillMaxWidth(),
-                leadingIcon = Icons.Rounded.AutoAwesome,
+                leadingIcon = Icons.Rounded.Download,
             )
             MagicButton(text = "완성", onClick = {}, style = MagicButtonStyle.PRIMARY_SMALL)
             MagicButton(text = "더 편집하기", onClick = {}, modifier = Modifier.fillMaxWidth(), style = MagicButtonStyle.SECONDARY)
             MagicButton(text = "프로필 수정", onClick = {}, style = MagicButtonStyle.OUTLINE)
             MagicButton(text = "자막 지우기", onClick = {}, style = MagicButtonStyle.DANGER)
-            MagicButton(text = "전체 보기", onClick = {}, style = MagicButtonStyle.TEXT)
-            MagicButton(text = "사진·영상을 골라주세요", onClick = {}, modifier = Modifier.fillMaxWidth(), enabled = false)
+            MagicButton(text = "화질 바꾸기", onClick = {}, style = MagicButtonStyle.TEXT)
+            MagicButton(text = "영상이나 사진을 골라주세요", onClick = {}, modifier = Modifier.fillMaxWidth(), enabled = false)
         }
     }
 }
@@ -414,13 +394,7 @@ private fun MagicButtonLoadingPreview() {
                 onClick = {},
                 modifier = Modifier.fillMaxWidth(),
                 style = MagicButtonStyle.SECONDARY,
-                loading = MagicButtonLoading.Spinner(label = "자막 만드는 중"),
-            )
-            MagicButton(
-                text = "매직 시작",
-                onClick = {},
-                modifier = Modifier.fillMaxWidth(),
-                loading = MagicButtonLoading.Magic(label = "magic 거는 중"),
+                loading = MagicButtonLoading.Spinner(label = "불러오는 중"),
             )
         }
     }

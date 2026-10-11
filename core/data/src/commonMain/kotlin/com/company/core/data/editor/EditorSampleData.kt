@@ -59,6 +59,9 @@ internal object EditorSampleData {
     /** Title text of the sample draft project. */
     const val SampleTitle = "바닷가 주말"
 
+    /** Music of the sample draft project. */
+    const val SampleMusicId = "m5"
+
     /** Indexes in [SampleVideos] that make the sample draft project. */
     val SampleClipIndexes = listOf(0, 3, 6, 2)
 }

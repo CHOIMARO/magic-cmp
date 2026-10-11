@@ -12,9 +12,7 @@ import com.company.core.domain.model.editor.FilterType
 import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.MusicTrack
 import com.company.core.domain.model.editor.TextStyleType
-import com.company.core.domain.model.editor.Vibe
 import com.company.core.domain.model.editor.addText
-import com.company.core.domain.model.editor.applyVibe
 import com.company.core.domain.model.editor.duplicateClip
 import com.company.core.domain.model.editor.moveText
 import com.company.core.domain.model.editor.removeClip
@@ -34,9 +32,6 @@ import kotlinx.coroutines.launch
 
 /** Bottom sheet of the editor. */
 enum class EditorSheet {
-    /** Vibe presets ("매직"). */
-    VIBE,
-
     /** Screen layouts. */
     LAYOUT,
 
@@ -185,9 +180,6 @@ sealed class EditorIntent : Intent() {
     /** CloseSheet : Closes the sheet and stops the caption generation. */
     data object CloseSheet : EditorIntent()
 
-    /** PickVibe(vibe) : Applies the vibe preset. */
-    data class PickVibe(val vibe: Vibe) : EditorIntent()
-
     /** PickLayout(layout) : Applies the layout. */
     data class PickLayout(val layout: LayoutType) : EditorIntent()
 
@@ -328,9 +320,6 @@ class EditorViewModel(
                 }
             }
             EditorIntent.CloseSheet -> closeSheet()
-            is EditorIntent.PickVibe -> if (currentState.project.vibe != intent.vibe) {
-                projectRepository.commit { it.applyVibe(intent.vibe) }
-            }
             is EditorIntent.PickLayout -> pickLayout(intent.layout)
             is EditorIntent.PickMusic -> if (currentState.project.musicId != intent.musicId) {
                 projectRepository.commit { it.copy(musicId = intent.musicId) }

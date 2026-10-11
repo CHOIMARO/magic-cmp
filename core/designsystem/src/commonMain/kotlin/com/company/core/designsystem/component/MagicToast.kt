@@ -119,7 +119,7 @@ fun MagicToastHost(state: MagicToastState, modifier: Modifier = Modifier) {
 @Composable
 private fun MagicToastPreview() {
     // 실행형 프리뷰에서도 바로 사라지지 않도록 표시 시간을 길게 둔다.
-    val state = remember { MagicToastState().apply { show("매직 완료 · 분위기는 ✦ 매직에서 바꿔요", durationMillis = 60_000L) } }
+    val state = remember { MagicToastState().apply { show("3개를 붙였어요", durationMillis = 60_000L) } }
     MagicPreview(modifier = Modifier.height(120.dp)) {
         MagicToastHost(state = state)
     }

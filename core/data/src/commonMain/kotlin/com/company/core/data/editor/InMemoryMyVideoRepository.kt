@@ -2,11 +2,10 @@ package com.company.core.data.editor
 
 import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.EditorProject
+import com.company.core.domain.model.editor.FilterType
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.TextStyleType
-import com.company.core.domain.model.editor.Vibe
 import com.company.core.domain.model.editor.VideoSummary
-import com.company.core.domain.model.editor.applyVibe
 import com.company.core.domain.model.editor.newEditorId
 import com.company.core.domain.repository.CaptionRepository
 import com.company.core.domain.repository.MyVideoRepository
@@ -60,7 +59,9 @@ class InMemoryMyVideoRepository(
                     y = 24.0,
                 )
             ),
-        ).applyVibe(Vibe.WARM)
+            musicId = EditorSampleData.SampleMusicId,
+            filter = FilterType.WARM,
+        )
         return project.copy(captions = captionRepository.generateCaptions(project.totalDuration))
     }
 }

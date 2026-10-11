@@ -61,11 +61,9 @@ data class MusicTrack(
  * User settings of the editor.
  *
  * @property templateNews True to get news about new templates.
- * @property autoMagic True to decorate new videos automatically.
  * @property watermark True to show the "magic" watermark on the video.
  */
 data class EditorSettings(
     val templateNews: Boolean = false,
-    val autoMagic: Boolean = true,
     val watermark: Boolean = false,
 )
