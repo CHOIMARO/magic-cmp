@@ -1,11 +1,7 @@
 package com.company.ui.media
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import com.company.core.domain.model.editor.MediaType
@@ -35,18 +31,13 @@ private const val TIMESCALE = 600
 private const val FRAME_TIME_TOLERANCE = 0.25
 
 @Composable
-actual fun rememberMediaThumbnail(uri: String, type: MediaType, time: Double): ImageBitmap? {
-    val frameTime = thumbnailFrameTime(type, time)
-    val key = thumbnailKey(uri, frameTime)
-    var image by remember(uri, type) { mutableStateOf(MediaThumbnailCache[key]) }
-    LaunchedEffect(key) {
-        val loaded = MediaThumbnailCache[key] ?: when (type) {
+actual fun rememberMediaThumbnailLoader(): MediaThumbnailLoader = remember {
+    cachedThumbnailLoader { uri, type, frameTime ->
+        when (type) {
             MediaType.VIDEO -> loadVideoFrame(uri, frameTime)
             MediaType.PHOTO -> withContext(Dispatchers.IO) { loadPhoto(uri) }
-        }?.also { MediaThumbnailCache[key] = it }
-        if (loaded != null) image = loaded
+        }
     }
-    return image
 }
 
 @OptIn(ExperimentalForeignApi::class)

@@ -5,11 +5,7 @@ import android.graphics.ImageDecoder
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -20,21 +16,18 @@ import kotlinx.coroutines.withContext
 private const val THUMBNAIL_SIZE = 720
 
 @Composable
-actual fun rememberMediaThumbnail(uri: String, type: MediaType, time: Double): ImageBitmap? {
+actual fun rememberMediaThumbnailLoader(): MediaThumbnailLoader {
     val context = LocalContext.current.applicationContext
-    val frameTime = thumbnailFrameTime(type, time)
-    val key = thumbnailKey(uri, frameTime)
-    var image by remember(uri, type) { mutableStateOf(MediaThumbnailCache[key]) }
-    LaunchedEffect(key) {
-        val loaded = MediaThumbnailCache[key] ?: withContext(Dispatchers.IO) {
-            when (type) {
-                MediaType.VIDEO -> loadVideoFrame(context, uri, frameTime)
-                MediaType.PHOTO -> loadPhoto(context, uri)
+    return remember(context) {
+        cachedThumbnailLoader { uri, type, frameTime ->
+            withContext(Dispatchers.IO) {
+                when (type) {
+                    MediaType.VIDEO -> loadVideoFrame(context, uri, frameTime)
+                    MediaType.PHOTO -> loadPhoto(context, uri)
+                }
             }
-        }?.also { MediaThumbnailCache[key] = it }
-        if (loaded != null) image = loaded
+        }
     }
-    return image
 }
 
 // OPTION_CLOSEST는 키 프레임이 아닌 위치도 정확히 읽는다. 0초는 키 프레임이라 비용이 같다.

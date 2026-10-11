@@ -3,6 +3,11 @@ package com.company.ui.media
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
@@ -12,6 +17,23 @@ import androidx.compose.ui.layout.ContentScale
 import com.company.core.designsystem.component.StripeBox
 import com.company.core.domain.model.editor.MediaType
 import kotlin.math.roundToInt
+
+/** Loads thumbnails. Use it on the main thread. */
+fun interface MediaThumbnailLoader {
+    /**
+     * Loads a small image of a photo, or one frame of a video. Recent images come from a memory cache.
+     *
+     * @param uri Location of the file.
+     * @param type Photo or video.
+     * @param time Position of the video frame in seconds. A photo ignores it.
+     * @return The image, or null when the app cannot read the file.
+     */
+    suspend fun load(uri: String, type: MediaType, time: Double): ImageBitmap?
+}
+
+/** Returns the thumbnail loader of the platform. Code outside a composable, for example the export, can use it. */
+@Composable
+expect fun rememberMediaThumbnailLoader(): MediaThumbnailLoader
 
 /**
  * Loads a small image of a photo, or one frame of a video, for a thumbnail.
@@ -24,7 +46,27 @@ import kotlin.math.roundToInt
  * @return The image, or null while it loads or when the app cannot read the file.
  */
 @Composable
-expect fun rememberMediaThumbnail(uri: String, type: MediaType, time: Double = 0.0): ImageBitmap?
+fun rememberMediaThumbnail(uri: String, type: MediaType, time: Double = 0.0): ImageBitmap? {
+    val loader = rememberMediaThumbnailLoader()
+    val key = thumbnailKey(uri, thumbnailFrameTime(type, time))
+    var image by remember(uri, type) { mutableStateOf(MediaThumbnailCache[key]) }
+    LaunchedEffect(key) {
+        loader.load(uri, type, time)?.let { image = it }
+    }
+    return image
+}
+
+/**
+ * Makes a [MediaThumbnailLoader] that uses [MediaThumbnailCache].
+ *
+ * @param read Reads the image of a file at a frame time. It runs on the main thread, so it must switch threads for slow work.
+ */
+internal fun cachedThumbnailLoader(read: suspend (uri: String, type: MediaType, frameTime: Double) -> ImageBitmap?) =
+    MediaThumbnailLoader { uri, type, time ->
+        val frameTime = thumbnailFrameTime(type, time)
+        val key = thumbnailKey(uri, frameTime)
+        MediaThumbnailCache[key] ?: read(uri, type, frameTime)?.also { MediaThumbnailCache[key] = it }
+    }
 
 /**
  * Thumbnail of a photo or video. It shows the striped placeholder until the image loads.

@@ -54,7 +54,6 @@ import com.company.core.designsystem.component.MagicButtonStyle
 import com.company.core.designsystem.component.MagicIconButton
 import com.company.core.designsystem.component.SegmentOption
 import com.company.core.designsystem.component.SegmentedControl
-import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
@@ -63,6 +62,7 @@ import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.feature.editor.preview.EditorPreviewData
 import com.company.ui.editor.formatTime
 import com.company.ui.editor.toColorFilter
+import com.company.ui.media.MediaThumbnail
 
 /**
  * Export screen. It only draws [state] and sends user actions to [onIntent].
@@ -112,7 +112,14 @@ private fun ExportThumbnail(state: ExportState) {
     ) {
         val firstClip = project.clips.firstOrNull()
         if (firstClip != null) {
-            StripeBox(hue = firstClip.thumbnailHue.toFloat(), lightness = 0.52f, colorFilter = filter, modifier = Modifier.fillMaxSize())
+            MediaThumbnail(
+                uri = firstClip.sourceUri,
+                type = firstClip.type,
+                hue = firstClip.thumbnailHue,
+                modifier = Modifier.fillMaxSize(),
+                time = firstClip.inPoint,
+                colorFilter = filter,
+            )
         }
         project.texts.firstOrNull()?.let { overlay ->
             Text(
