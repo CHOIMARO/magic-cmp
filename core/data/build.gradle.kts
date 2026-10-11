@@ -57,6 +57,8 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(projects.core.domain)
+                implementation(projects.core.media)
+                implementation(libs.kotlinx.coroutines.core)
 
                 implementation(libs.kotlin.stdlib)
                 // Add KMP dependencies here
