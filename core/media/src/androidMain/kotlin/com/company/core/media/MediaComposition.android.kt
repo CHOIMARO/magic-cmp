@@ -38,14 +38,14 @@ private const val PHOTO_FRAME_RATE = 30
  *
  * Every clip fills a [frameWidth] × [frameHeight] frame first. When [videoArea] is not the whole
  * frame, the clip then fills the area, and the area moves to its place in the frame. The parts
- * outside are cut off. The filter changes only the video. The overlays go on top of the whole frame.
+ * outside are cut off. The filter changes only the video. The overlay tracks go on top of the whole frame.
  *
  * @param clips Clips in play order. All clips must have a source file.
  * @param filter Color filter for the video.
  * @param frameWidth Width of the output frame in pixels.
  * @param frameHeight Height of the output frame in pixels.
  * @param videoArea Area of the frame that shows the video.
- * @param overlays Images on top of the video, in time order.
+ * @param overlayTracks Images on top of the video. Each track holds images in time order. The first track is at the bottom.
  * @return The composition. The audio track has silence where a clip has no sound.
  */
 @OptIn(UnstableApi::class, ExperimentalApi::class)
@@ -55,7 +55,7 @@ fun buildMediaComposition(
     frameWidth: Int,
     frameHeight: Int,
     videoArea: FrameArea = FrameArea.FULL,
-    overlays: List<ExportOverlay> = emptyList(),
+    overlayTracks: List<List<ExportOverlay>> = emptyList(),
 ): Composition {
     val itemEffects = buildList<Effect> {
         add(Presentation.createForWidthAndHeight(frameWidth, frameHeight, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP))
@@ -68,7 +68,8 @@ fun buildMediaComposition(
     }
     val compositionEffects = buildList<Effect> {
         if (!videoArea.isFullFrame) add(AreaPlacement(frameWidth, frameHeight, videoArea))
-        if (overlays.isNotEmpty()) add(OverlayEffect(listOf(TimedBitmapOverlay(overlays))))
+        val tracks = overlayTracks.filter { it.isNotEmpty() }
+        if (tracks.isNotEmpty()) add(OverlayEffect(tracks.map { TimedBitmapOverlay(it) }))
     }
     val effects = Effects(emptyList(), itemEffects)
     val sequence = EditedMediaItemSequence.Builder(setOf(C.TRACK_TYPE_AUDIO, C.TRACK_TYPE_VIDEO))

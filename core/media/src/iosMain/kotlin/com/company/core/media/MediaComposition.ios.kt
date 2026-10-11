@@ -98,7 +98,7 @@ class MediaComposition(val asset: AVMutableComposition, val videoComposition: AV
  *
  * Every clip fills a [frameWidth] × [frameHeight] frame first. When [videoArea] is not the whole
  * frame, the clip then fills the area, and the area moves to its place in the frame. The parts
- * outside are cut off. The filter changes only the video. The overlays go on top of the whole frame.
+ * outside are cut off. The filter changes only the video. The overlay tracks go on top of the whole frame.
  *
  * A photo range uses a short black video as a placeholder track, and the frame handler draws the photo there.
  *
@@ -107,7 +107,7 @@ class MediaComposition(val asset: AVMutableComposition, val videoComposition: AV
  * @param frameWidth Width of the output frame in pixels.
  * @param frameHeight Height of the output frame in pixels.
  * @param videoArea Area of the frame that shows the video.
- * @param overlays Images on top of the video, in time order.
+ * @param overlayTracks Images on top of the video. Each track holds images in time order. The first track is at the bottom.
  * @return The composition, or null when a clip has no file or AVFoundation cannot make the video composition.
  */
 @OptIn(ExperimentalForeignApi::class)
@@ -117,7 +117,7 @@ suspend fun buildMediaComposition(
     frameWidth: Int,
     frameHeight: Int,
     videoArea: FrameArea = FrameArea.FULL,
-    overlays: List<ExportOverlay> = emptyList(),
+    overlayTracks: List<List<ExportOverlay>> = emptyList(),
 ): MediaComposition? {
     val composition = AVMutableComposition()
     val videoTrack = composition.addMutableTrackWithMediaType(AVMediaTypeVideo, kCMPersistentTrackID_Invalid) ?: return null
@@ -169,7 +169,9 @@ suspend fun buildMediaComposition(
         frameHeight = frameHeight.toDouble(),
         videoArea = videoArea,
         matrix = filter.colorMatrix(),
-        overlays = overlays.map { OverlayImage(it.start, it.end, it.png.toNSData()?.let { data -> CIImage.imageWithData(data) }) },
+        overlayTracks = overlayTracks.map { track ->
+            track.map { OverlayImage(it.start, it.end, it.png.toNSData()?.let { data -> CIImage.imageWithData(data) }) }
+        },
     )
     val videoComposition = suspendCancellableCoroutine<AVMutableVideoComposition?> { continuation ->
         AVMutableVideoComposition.videoCompositionWithAsset(
@@ -252,7 +254,7 @@ private class FrameRenderer(
     private val frameHeight: Double,
     private val videoArea: FrameArea,
     private val matrix: FloatArray?,
-    private val overlays: List<OverlayImage>,
+    private val overlayTracks: List<List<OverlayImage>>,
 ) {
     private val frameRect = CGRectMake(0.0, 0.0, frameWidth, frameHeight)
 
@@ -267,8 +269,10 @@ private class FrameRenderer(
         if (!videoArea.isFullFrame) video = video.placeInArea()
         if (matrix != null) video = video.applyColorMatrix(matrix)
         var image = video.imageByCompositingOverImage(blackImage())
-        overlays.firstOrNull { time >= it.start - TIME_EPSILON && time < it.end - TIME_EPSILON }?.image?.let {
-            image = it.imageByCompositingOverImage(image)
+        overlayTracks.forEach { track ->
+            track.firstOrNull { time >= it.start - TIME_EPSILON && time < it.end - TIME_EPSILON }?.image?.let {
+                image = it.imageByCompositingOverImage(image)
+            }
         }
         request.finishWithImage(image.imageByCroppingToRect(frameRect) as objcnames.classes.CIImage, context = null)
     }

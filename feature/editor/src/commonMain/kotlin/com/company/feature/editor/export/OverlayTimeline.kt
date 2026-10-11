@@ -6,30 +6,17 @@ import com.company.core.domain.model.editor.clipAt
 import com.company.feature.editor.editor.isVisibleAt
 import com.company.feature.editor.editor.spokenWordCount
 import com.company.feature.editor.editor.visibleAt
+import com.company.ui.editor.TextAnimation
+import com.company.ui.editor.animatedRanges
+import com.company.ui.editor.look
+import com.company.ui.editor.splitWords
+import kotlin.math.floor
 
 /** Shortest time range, in seconds, that gets its own overlay image. */
 private const val MIN_SPAN_LENGTH = 0.0001
 
-/**
- * What the overlay shows at a time. Two times with the same state give the same image.
- *
- * @property textIds Texts on screen.
- * @property captionId Caption on screen, or null.
- * @property spokenWords Number of highlighted words of the caption.
- * @property clipIndex Clip at the playhead, for a layout with more than one cell. The other cells show the next clips.
- * @property watermark True when the watermark shows.
- */
-internal data class OverlayState(
-    val textIds: List<String>,
-    val captionId: String?,
-    val spokenWords: Int,
-    val clipIndex: Int?,
-    val watermark: Boolean,
-) {
-    /** True when the overlay draws nothing. */
-    val isEmpty: Boolean
-        get() = textIds.isEmpty() && captionId == null && clipIndex == null && !watermark
-}
+/** Length of one animation frame of the overlay, in seconds. The overlay changes at 30 frames per second during an animation. */
+internal const val OVERLAY_FRAME_SECONDS = 1.0 / 30
 
 /**
  * Time range that uses one overlay image.
@@ -41,40 +28,128 @@ internal data class OverlayState(
 internal data class OverlaySpan(val start: Double, val end: Double, val time: Double)
 
 /**
- * Splits the timeline into ranges where the overlay does not change.
+ * State of one text or caption on screen.
  *
- * A range ends where a text or a caption starts or ends, where the next caption word starts,
- * and, for a layout with more than one cell, where the next clip starts. Ranges without a visible
- * overlay are left out.
+ * @property id ID of the text or the caption.
+ * @property animationFrame Index of the animation frame from the start of the item, or null between the entrance and the exit.
+ */
+internal data class ItemState(val id: String, val animationFrame: Int?)
+
+/**
+ * What the text layer shows at a time. Two times with the same state give the same image.
+ *
+ * @property texts Texts on screen.
+ * @property caption Caption on screen, or null.
+ * @property spokenWords Number of words that the speaker already said in the caption.
+ * @property watermark True when the watermark shows.
+ */
+internal data class TextLayerState(
+    val texts: List<ItemState>,
+    val caption: ItemState?,
+    val spokenWords: Int,
+    val watermark: Boolean,
+) {
+    /** True when the layer draws nothing. */
+    val isEmpty: Boolean
+        get() = texts.isEmpty() && caption == null && !watermark
+}
+
+/**
+ * Splits the timeline into ranges where the layout layer does not change.
+ *
+ * The layout layer holds the layout background and the other cells. They change where the next clip starts.
+ *
+ * @return Ranges in time order. It is empty for the full-screen layout.
+ */
+internal fun EditorProject.layoutSpans(): List<OverlaySpan> {
+    if (layout == LayoutType.FULL) return emptyList()
+    val boundaries = buildList {
+        add(0.0)
+        var start = 0.0
+        clips.forEach { clip ->
+            start += clip.duration
+            add(start)
+        }
+    }
+    return spans(boundaries) { time -> clipAt(time)?.index }
+}
+
+/**
+ * Splits the timeline into ranges where the text layer does not change.
+ *
+ * A range ends where a text or a caption starts or ends, and where the next caption word starts.
+ * During an entrance or an exit, a range is one animation frame long. Ranges without text are left out.
  *
  * @param watermark True when the watermark shows.
  * @return Ranges in time order.
  */
-internal fun EditorProject.overlaySpans(watermark: Boolean): List<OverlaySpan> {
-    val total = totalDuration
-    if (total <= 0.0) return emptyList()
+internal fun EditorProject.textSpans(watermark: Boolean): List<OverlaySpan> {
     val boundaries = buildList {
         add(0.0)
-        add(total)
-        texts.forEach { add(it.start); add(it.start + it.length) }
+        texts.forEach { text -> addItemBoundaries(text.start, text.length, text.style.look().animation) }
+        val captionAnimation = captionStyle.look().animation
         captions.forEach { caption ->
-            val words = caption.text.split(" ").size
-            for (step in 0..words) add(caption.start + caption.length * step / words)
+            addItemBoundaries(caption.start, caption.length, captionAnimation)
+            val words = caption.text.splitWords().size
+            for (step in 1 until words) add(caption.start + caption.length * step / words)
         }
-        if (layout != LayoutType.FULL) {
-            var start = 0.0
-            clips.forEach { clip ->
-                start += clip.duration
-                add(start)
-            }
-        }
-    }.filter { it in 0.0..total }.sorted()
+    }
+    return spans(boundaries) { time -> textLayerStateAt(time, watermark).takeUnless { it.isEmpty } }
+}
 
-    val spans = mutableListOf<Pair<OverlaySpan, OverlayState>>()
-    boundaries.zipWithNext().forEach { (start, end) ->
+/** State of the text layer at [time]. */
+internal fun EditorProject.textLayerStateAt(time: Double, watermark: Boolean): TextLayerState {
+    val caption = captions.visibleAt(time)
+    return TextLayerState(
+        texts = texts.filter { it.isVisibleAt(time) }.map { ItemState(it.id, animationFrame(time - it.start, it.length, it.style.look().animation)) },
+        caption = caption?.let { ItemState(it.id, animationFrame(time - it.start, it.length, captionStyle.look().animation)) },
+        spokenWords = caption?.spokenWordCount(time) ?: 0,
+        watermark = watermark,
+    )
+}
+
+/** Adds the start and the end of an item, and the edges and the frame starts of its animations. */
+private fun MutableList<Double>.addItemBoundaries(start: Double, length: Double, animation: TextAnimation) {
+    add(start)
+    add(start + length)
+    animation.animatedRanges(length).forEach { range ->
+        add(start + range.start)
+        add(start + range.endInclusive)
+        var frame = floor(range.start / OVERLAY_FRAME_SECONDS).toInt() + 1
+        while (frame * OVERLAY_FRAME_SECONDS < range.endInclusive) {
+            add(start + frame * OVERLAY_FRAME_SECONDS)
+            frame++
+        }
+    }
+}
+
+/**
+ * Index of the animation frame at [elapsed] seconds from the start of an item.
+ *
+ * @return The index during the entrance or the exit, or null between them.
+ */
+private fun animationFrame(elapsed: Double, length: Double, animation: TextAnimation): Int? =
+    if (animation.animatedRanges(length).any { elapsed >= it.start && elapsed < it.endInclusive }) {
+        floor(elapsed / OVERLAY_FRAME_SECONDS).toInt()
+    } else {
+        null
+    }
+
+/**
+ * Makes ranges between the boundaries. Next ranges with the same state become one range.
+ *
+ * @param boundaries Times where the state can change.
+ * @param stateAt State at a time, or null when the layer draws nothing.
+ */
+private fun EditorProject.spans(boundaries: List<Double>, stateAt: (Double) -> Any?): List<OverlaySpan> {
+    val total = totalDuration
+    if (total <= 0.0) return emptyList()
+    val times = (boundaries + total).filter { it in 0.0..total }.sorted()
+    val spans = mutableListOf<Pair<OverlaySpan, Any>>()
+    times.zipWithNext().forEach { (start, end) ->
         if (end - start < MIN_SPAN_LENGTH) return@forEach
         val time = (start + end) / 2
-        val state = overlayStateAt(time, watermark)
+        val state = stateAt(time) ?: return@forEach
         val last = spans.lastOrNull()
         if (last != null && last.second == state && last.first.end == start) {
             spans[spans.lastIndex] = last.first.copy(end = end) to state
@@ -82,17 +157,5 @@ internal fun EditorProject.overlaySpans(watermark: Boolean): List<OverlaySpan> {
             spans += OverlaySpan(start, end, time) to state
         }
     }
-    return spans.filterNot { it.second.isEmpty }.map { it.first }
-}
-
-/** State of the overlay at [time]. */
-internal fun EditorProject.overlayStateAt(time: Double, watermark: Boolean): OverlayState {
-    val caption = captions.visibleAt(time)
-    return OverlayState(
-        textIds = texts.filter { it.isVisibleAt(time) }.map { it.id },
-        captionId = caption?.id,
-        spokenWords = caption?.spokenWordCount(time) ?: 0,
-        clipIndex = if (layout == LayoutType.FULL) null else clipAt(time)?.index,
-        watermark = watermark,
-    )
+    return spans.map { it.first }
 }

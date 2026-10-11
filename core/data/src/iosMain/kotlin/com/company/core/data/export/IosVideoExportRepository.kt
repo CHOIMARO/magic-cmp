@@ -49,7 +49,7 @@ internal class IosVideoExportRepository : VideoExportRepository {
             frameWidth = request.width,
             frameHeight = request.height,
             videoArea = request.videoArea,
-            overlays = request.overlays,
+            overlayTracks = request.overlayTracks,
         ) ?: error("Cannot build the composition")
         val output = NSURL.fileURLWithPath(NSTemporaryDirectory() + exportFileName(request.name))
         val session = AVAssetExportSession(asset = composition.asset, presetName = AVAssetExportPresetHighestQuality).apply {

@@ -22,8 +22,8 @@ data class FrameArea(val left: Float, val top: Float, val width: Float, val heig
 /**
  * Image on top of the video for a time range of the export.
  *
- * The image has the size of the output frame. It holds the texts, the captions, the watermark,
- * and the layout background. The area of the video is transparent.
+ * The image has the size of the output frame. It holds the texts, the captions, and the watermark,
+ * or the layout background. The area of the video is transparent.
  *
  * @property start Start time on the timeline, in seconds.
  * @property end End time on the timeline, in seconds.
@@ -40,7 +40,8 @@ class ExportOverlay(val start: Double, val end: Double, val png: ByteArray)
  * @property width Width of the output frame in pixels.
  * @property height Height of the output frame in pixels.
  * @property videoArea Area of the frame that shows the video.
- * @property overlays Images on top of the video, in time order. A time without an overlay shows only the video.
+ * @property overlayTracks Images on top of the video. Each track holds images in time order, and a time
+ * without an image shows nothing of that track. The first track is at the bottom.
  */
 data class ExportRequest(
     val name: String,
@@ -49,7 +50,7 @@ data class ExportRequest(
     val width: Int,
     val height: Int,
     val videoArea: FrameArea = FrameArea.FULL,
-    val overlays: List<ExportOverlay> = emptyList(),
+    val overlayTracks: List<List<ExportOverlay>> = emptyList(),
 )
 
 /** State of a running export. */

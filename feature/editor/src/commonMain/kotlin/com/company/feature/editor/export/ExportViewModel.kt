@@ -111,8 +111,8 @@ sealed class ExportIntent : Intent() {
     /** OverlaysProgress(fraction) : Shows how much of the overlay images are ready, from 0 to 1. */
     data class OverlaysProgress(val fraction: Float) : ExportIntent()
 
-    /** OverlaysReady(overlays) : Starts the encoder with the overlay images that the screen drew. */
-    class OverlaysReady(val overlays: List<ExportOverlay>) : ExportIntent()
+    /** OverlaysReady(overlayTracks) : Starts the encoder with the overlay image tracks that the screen drew. */
+    class OverlaysReady(val overlayTracks: List<List<ExportOverlay>>) : ExportIntent()
 
     /** Cancel : Stops the export and goes back to the setup step. */
     data object Cancel : ExportIntent()
@@ -170,7 +170,7 @@ class ExportViewModel(
             is ExportIntent.OverlaysProgress -> if (currentState.overlayRequest != null) {
                 reduce { copy(progress = (intent.fraction * OVERLAY_PERCENT).roundToInt()) }
             }
-            is ExportIntent.OverlaysReady -> if (currentState.overlayRequest != null) encode(intent.overlays)
+            is ExportIntent.OverlaysReady -> if (currentState.overlayRequest != null) encode(intent.overlayTracks)
             ExportIntent.Cancel -> {
                 exportJob?.cancel()
                 reduce { copy(phase = ExportPhase.SETUP, progress = 0, overlayRequest = null) }
@@ -214,9 +214,9 @@ class ExportViewModel(
     /**
      * Encodes the video with the overlay images and saves it to the gallery.
      *
-     * @param overlays Overlay images that the screen drew.
+     * @param overlayTracks Overlay image tracks that the screen drew. The first track is at the bottom.
      */
-    private fun encode(overlays: List<ExportOverlay>) {
+    private fun encode(overlayTracks: List<List<ExportOverlay>>) {
         val project = currentState.project
         val resolution = currentState.resolution
         val request = ExportRequest(
@@ -226,7 +226,7 @@ class ExportViewModel(
             width = resolution.width,
             height = resolution.height,
             videoArea = project.layout.spec.cells.first().toFrameArea(),
-            overlays = overlays,
+            overlayTracks = overlayTracks,
         )
         reduce { copy(overlayRequest = null, progress = OVERLAY_PERCENT) }
         exportJob?.cancel()

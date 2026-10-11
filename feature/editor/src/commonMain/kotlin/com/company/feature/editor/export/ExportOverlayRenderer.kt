@@ -30,7 +30,6 @@ import com.company.core.designsystem.component.StripeBox
 import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.ExportOverlay
-import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.clipAt
 import com.company.feature.editor.editor.StageCanvas
 import com.company.feature.editor.editor.StageCaption
@@ -56,94 +55,115 @@ import kotlinx.coroutines.coroutineScope
  */
 internal expect fun ImageBitmap.encodeToPng(): ByteArray
 
+/** Layer of the overlay images. */
+private enum class OverlayLayer {
+    /** Layout background and the other cells. It changes only at clip boundaries. */
+    LAYOUT,
+
+    /** Texts, captions, and the watermark. It changes often during the animations. */
+    TEXT,
+}
+
+/**
+ * One overlay image to draw.
+ *
+ * @property layer Layer of the image.
+ * @property time Time on the timeline in seconds.
+ */
+private data class OverlayFrame(val layer: OverlayLayer, val time: Double)
+
 /**
  * Draws the overlay images of an export off screen, with the same code as the editor stage.
  *
- * The images have the size of the output frame. Nothing shows on the screen. The renderer needs
- * the screen to stay visible, because Compose draws only while the app shows frames.
+ * The images have the size of the output frame. The layout layer and the text layer are separate
+ * tracks, so the often changing text images stay small. Nothing shows on the screen. The renderer
+ * needs the screen to stay visible, because Compose draws only while the app shows frames.
  *
  * @param request What to draw, or null when nothing must be drawn.
  * @param onProgress Called with the part of the images that are ready, from 0 to 1.
- * @param onRendered Called with the images in time order.
+ * @param onRendered Called with the image tracks. The layout track is first.
  */
 @Composable
 internal fun ExportOverlayRenderer(
     request: OverlayRequest?,
     onProgress: (Float) -> Unit,
-    onRendered: (List<ExportOverlay>) -> Unit,
+    onRendered: (List<List<ExportOverlay>>) -> Unit,
 ) {
     if (request == null) return
     val loader = rememberMediaThumbnailLoader()
     val layer = rememberGraphicsLayer()
     val latestOnProgress by rememberUpdatedState(onProgress)
     val latestOnRendered by rememberUpdatedState(onRendered)
-    var frameTime by remember(request) { mutableStateOf<Double?>(null) }
+    var frame by remember(request) { mutableStateOf<OverlayFrame?>(null) }
     var thumbnails by remember(request) { mutableStateOf<Map<String, ImageBitmap>>(emptyMap()) }
 
     Box(modifier = Modifier.size(0.dp).wrapContentSize(align = Alignment.TopStart, unbounded = true)) {
-        val time = frameTime
-        if (time != null) {
+        val current = frame
+        if (current != null) {
             Box(
                 modifier = Modifier
                     .exactPixelSize(request.width, request.height)
                     // 레이어에 기록만 하고 화면에는 그리지 않는다.
                     .drawWithContent { layer.record { this@drawWithContent.drawContent() } },
             ) {
-                ExportOverlayFrame(
-                    project = request.project,
-                    time = time,
-                    watermark = request.watermark,
-                    thumbnails = thumbnails,
-                )
+                when (current.layer) {
+                    OverlayLayer.LAYOUT -> ExportLayoutFrame(project = request.project, time = current.time, thumbnails = thumbnails)
+                    OverlayLayer.TEXT -> ExportTextFrame(project = request.project, time = current.time, watermark = request.watermark)
+                }
             }
         }
     }
 
     LaunchedEffect(request) {
-        if (request.project.layout != LayoutType.FULL) thumbnails = loader.loadCellThumbnails(request.project.clips)
-        val spans = request.project.overlaySpans(request.watermark)
-        val overlays = coroutineScope {
-            spans.mapIndexed { index, span ->
-                frameTime = span.time
-                // 첫 프레임에서 새 시간으로 다시 그리고, 다음 프레임이 시작될 때 기록이 끝나 있다.
-                withFrameNanos { }
-                withFrameNanos { }
-                val image = layer.toImageBitmap()
-                latestOnProgress((index + 1f) / spans.size)
-                async(Dispatchers.Default) { ExportOverlay(start = span.start, end = span.end, png = image.encodeToPng()) }
-            }.awaitAll()
+        val layoutSpans = request.project.layoutSpans()
+        val textSpans = request.project.textSpans(request.watermark)
+        if (layoutSpans.isNotEmpty()) thumbnails = loader.loadCellThumbnails(request.project.clips)
+        val total = layoutSpans.size + textSpans.size
+        var done = 0
+        val tracks = coroutineScope {
+            listOf(OverlayLayer.LAYOUT to layoutSpans, OverlayLayer.TEXT to textSpans).map { (overlayLayer, spans) ->
+                spans.map { span ->
+                    frame = OverlayFrame(overlayLayer, span.time)
+                    // 첫 프레임에서 새 시간으로 다시 그리고, 다음 프레임이 시작될 때 기록이 끝나 있다.
+                    withFrameNanos { }
+                    withFrameNanos { }
+                    val image = layer.toImageBitmap()
+                    latestOnProgress(++done / total.toFloat())
+                    async(Dispatchers.Default) { ExportOverlay(start = span.start, end = span.end, png = image.encodeToPng()) }
+                }
+            }.map { it.awaitAll() }
         }
-        latestOnRendered(overlays)
+        latestOnRendered(tracks)
     }
 }
 
 /**
- * Overlay of the export at [time]: layout background, other cells, texts, caption, and watermark.
+ * Layout layer of the export at [time]: layout background, labels, and the other cells.
  *
  * The first layout cell is transparent, because the video shows there.
  */
 @Composable
-private fun ExportOverlayFrame(
-    project: EditorProject,
-    time: Double,
-    watermark: Boolean,
-    thumbnails: Map<String, ImageBitmap>,
-) {
+private fun ExportLayoutFrame(project: EditorProject, time: Double, thumbnails: Map<String, ImageBitmap>) {
     val filter = remember(project.filter) { project.filter.toColorFilter() }
     StageCanvas(modifier = Modifier.fillMaxSize()) {
-        if (project.layout != LayoutType.FULL) {
-            StageLayoutCells(
-                project = project,
-                clipIndex = project.clipAt(time)?.index ?: 0,
-                modifier = Modifier.fillMaxSize(),
-            ) { index, clip ->
-                if (index == 0) {
-                    Box(modifier = Modifier.matchParentSize().drawBehind { drawRect(Color.Black, blendMode = BlendMode.Clear) })
-                } else {
-                    CellThumbnail(clip = clip, image = thumbnails[clip.id], filter = filter, modifier = Modifier.matchParentSize())
-                }
+        StageLayoutCells(
+            project = project,
+            clipIndex = project.clipAt(time)?.index ?: 0,
+            modifier = Modifier.fillMaxSize(),
+        ) { index, clip ->
+            if (index == 0) {
+                Box(modifier = Modifier.matchParentSize().drawBehind { drawRect(Color.Black, blendMode = BlendMode.Clear) })
+            } else {
+                CellThumbnail(clip = clip, image = thumbnails[clip.id], filter = filter, modifier = Modifier.matchParentSize())
             }
         }
+    }
+}
+
+/** Text layer of the export at [time]: texts, caption, and watermark with their animations. */
+@Composable
+private fun ExportTextFrame(project: EditorProject, time: Double, watermark: Boolean) {
+    StageCanvas(modifier = Modifier.fillMaxSize()) {
         project.texts.filter { it.isVisibleAt(time) }.forEach { overlay ->
             OverlayText(
                 text = overlay.text,
