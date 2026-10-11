@@ -121,15 +121,21 @@ internal fun thumbnailFrameTime(type: MediaType, time: Double): Double =
 internal fun thumbnailKey(uri: String, frameTime: Double): String = "$uri#$frameTime"
 
 /** Keeps recent thumbnails in memory. Use it only on the main thread. */
-internal object MediaThumbnailCache {
-    private const val MAX_SIZE = 32
+internal val MediaThumbnailCache = ImageCache(maxSize = 32)
+
+/**
+ * Keeps the most recently used images in memory. Use it only on the main thread.
+ *
+ * @param maxSize Number of images to keep. The least recently used image goes out first.
+ */
+internal class ImageCache(private val maxSize: Int) {
     private val images = LinkedHashMap<String, ImageBitmap>()
 
-    operator fun get(uri: String): ImageBitmap? = images[uri]
+    operator fun get(key: String): ImageBitmap? = images.remove(key)?.also { images[key] = it }
 
-    operator fun set(uri: String, image: ImageBitmap) {
-        images.remove(uri)
-        images[uri] = image
-        if (images.size > MAX_SIZE) images.remove(images.keys.first())
+    operator fun set(key: String, image: ImageBitmap) {
+        images.remove(key)
+        images[key] = image
+        if (images.size > maxSize) images.remove(images.keys.first())
     }
 }
