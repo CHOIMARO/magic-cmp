@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * Holds the project that the user edits now, with an undo history.
  *
- * The gallery, the magic screen, the editor, and the export screen share this project.
+ * The gallery, the camera, the editor, and the export screen share this project.
  */
 interface EditorProjectRepository {
     /** Current project. */
