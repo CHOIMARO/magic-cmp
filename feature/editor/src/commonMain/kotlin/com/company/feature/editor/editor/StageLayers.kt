@@ -24,11 +24,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicTheme
 import com.company.core.domain.model.editor.CaptionSegment
+import com.company.core.domain.model.editor.CaptionStyleType
 import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.ui.editor.CaptionText
 import com.company.ui.editor.LayoutCells
+import com.company.ui.editor.TextFrame
+import com.company.ui.editor.frameAt
+import com.company.ui.editor.splitWords
 import com.company.ui.editor.spec
 import com.company.ui.editor.look
 import kotlin.math.ceil
@@ -104,31 +108,37 @@ internal fun TextOverlay.isVisibleAt(time: Double): Boolean = time >= start && t
 internal fun List<CaptionSegment>.visibleAt(time: Double): CaptionSegment? =
     find { time >= it.start && time < it.start + it.length }
 
-/** Number of words that the speaker already said at [time]. It is at least 1. */
+/** Number of words that the speaker already said at [time]. It is at least 1. The last of them is the current word. */
 internal fun CaptionSegment.spokenWordCount(time: Double): Int {
-    val words = text.split(" ").size
+    val words = text.splitWords().size
     return maxOf(1, ceil((time - start) / length * words).toInt())
 }
 
+/** Animation state of the text at [time]. */
+internal fun TextOverlay.frameAt(time: Double): TextFrame = style.look().animation.frameAt(time - start, start + length - time)
+
+/** Animation state of the caption at [time]. */
+internal fun CaptionSegment.frameAt(time: Double, style: CaptionStyleType): TextFrame =
+    style.look().animation.frameAt(time - start, start + length - time)
+
 /**
- * Shows the caption at [time]. The spoken words use the highlight color.
+ * Shows the caption at [time] with the highlight of the caption style.
  *
  * @param project Project with the captions and the caption style.
  * @param time Playhead position in seconds.
+ * @param animate True to show the entrance and the exit. False shows the caption without them.
  */
 @Composable
-internal fun StageCaption(project: EditorProject, time: Double) {
+internal fun StageCaption(project: EditorProject, time: Double, animate: Boolean) {
     val segment = project.captions.visibleAt(time) ?: return
-    val words = segment.text.split(" ")
-    val spokenCount = segment.spokenWordCount(time)
     val look = project.captionStyle.look()
     BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         val sideMargin = maxWidth * 0.06f
         CaptionText(
-            spoken = words.take(spokenCount).joinToString(" "),
-            upcoming = words.drop(spokenCount).joinToString(" "),
+            words = segment.text.splitWords(),
+            currentWord = segment.spokenWordCount(time) - 1,
             look = look,
-            maxLines = 2,
+            frame = if (animate) segment.frameAt(time, project.captionStyle) else TextFrame.Static,
             modifier = Modifier.padding(start = sideMargin, end = sideMargin, bottom = maxHeight * (look.bottomPercent / 100f)),
         )
     }

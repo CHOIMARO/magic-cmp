@@ -36,6 +36,7 @@ import com.company.feature.editor.editor.StageCanvas
 import com.company.feature.editor.editor.StageCaption
 import com.company.feature.editor.editor.StageLayoutCells
 import com.company.feature.editor.editor.StageWatermark
+import com.company.feature.editor.editor.frameAt
 import com.company.feature.editor.editor.isVisibleAt
 import com.company.ui.editor.OverlayText
 import com.company.ui.editor.centeredAt
@@ -147,10 +148,11 @@ private fun ExportOverlayFrame(
             OverlayText(
                 text = overlay.text,
                 look = overlay.style.look(),
+                frame = overlay.frameAt(time),
                 modifier = Modifier.centeredAt(xPercent = overlay.x.toFloat(), yPercent = overlay.y.toFloat()),
             )
         }
-        StageCaption(project = project, time = time)
+        StageCaption(project = project, time = time, animate = true)
         if (watermark) StageWatermark()
     }
 }

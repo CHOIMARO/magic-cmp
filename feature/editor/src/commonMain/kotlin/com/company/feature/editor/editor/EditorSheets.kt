@@ -33,7 +33,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,7 +64,7 @@ import com.company.core.domain.model.editor.Vibe
 import com.company.core.domain.model.editor.clipAt
 import com.company.feature.editor.preview.EditorPreviewData
 import com.company.ui.editor.CaptionText
-import com.company.ui.editor.LookText
+import com.company.ui.editor.OverlayText
 import com.company.ui.editor.TemplatePreview
 import com.company.ui.editor.displayName
 import com.company.ui.editor.formatTime
@@ -75,6 +74,9 @@ import kotlin.math.roundToInt
 
 private val SheetPadding = 18.dp
 private val SpeedOptions = listOf(0.5, 1.0, 1.5, 2.0, 3.0)
+
+/** Words of the sample caption in the caption style options. */
+private val CaptionSampleWords = listOf("자막", "예시")
 
 /**
  * Content of the open editor sheet.
@@ -305,8 +307,8 @@ private fun TextSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
                     .height(58.dp)
                     .then(if (selected) Modifier.border(2.dp, MagicColors.Accent, shape) else Modifier),
             ) {
-                LookText(
-                    text = AnnotatedString("가나다"),
+                OverlayText(
+                    text = "가나다",
                     look = style.look(0.66f),
                     modifier = Modifier.align(Alignment.Center),
                 )
@@ -441,9 +443,10 @@ private fun CaptionSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
                     .height(62.dp)
                     .then(if (selected) Modifier.border(2.dp, MagicColors.Accent, shape) else Modifier),
             ) {
+                // 정지 화면이라 마지막 단어를 지금 말하는 단어로 보여 준다.
                 CaptionText(
-                    spoken = "자막",
-                    upcoming = "예시",
+                    words = CaptionSampleWords,
+                    currentWord = CaptionSampleWords.lastIndex,
                     look = style.look(0.72f).copy(cornerRadius = 4f),
                     modifier = Modifier.align(Alignment.Center),
                 )

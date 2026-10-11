@@ -167,6 +167,9 @@ private val LayoutPreviewHues = listOf(35, 200, 150)
 /** Hue of the sample cell in a text preview. */
 private const val TEXT_PREVIEW_HUE = 250
 
+/** Words of the sample caption in a caption preview. */
+private val CaptionSampleWords = listOf("자막이", "이렇게", "나와요")
+
 /** Hue of the sample cell in a caption preview. */
 private const val CAPTION_PREVIEW_HUE = 160
 
@@ -213,9 +216,10 @@ fun TemplatePreview(
             is EditorTemplate.Caption -> {
                 val look = template.style.look(scale)
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    // 정지 화면이라 마지막 단어를 지금 말하는 단어로 보여 준다. 단어씩 나타나는 자막도 모든 단어가 보인다.
                     CaptionText(
-                        spoken = "자막이",
-                        upcoming = "이렇게 나와요",
+                        words = CaptionSampleWords,
+                        currentWord = CaptionSampleWords.lastIndex,
                         look = look.copy(cornerRadius = captionRadius),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)

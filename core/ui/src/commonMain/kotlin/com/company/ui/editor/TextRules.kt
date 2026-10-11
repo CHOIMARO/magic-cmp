@@ -1,0 +1,236 @@
+package com.company.ui.editor
+
+import androidx.compose.runtime.Immutable
+import kotlin.math.floor
+import kotlin.math.pow
+
+// =====================================================================
+// Text rules of the "Magic Text Templates" spec.
+// The spec uses pixels of the 1080×1920 canvas. TextLook sizes are dp of the editor stage at scale 1.
+// =====================================================================
+
+/** Width of the editor stage at scale 1, in dp. It is the 1080 px width of the spec canvas. */
+private const val STAGE_WIDTH_DP = 264.375f
+
+/** Converts spec canvas pixels to stage dp. */
+private const val DP_PER_SPEC_PX = STAGE_WIDTH_DP / 1080f
+
+/** Widest text box, as a part of the stage width. */
+private const val MAX_WIDTH_RATIO = 0.84f
+
+/** Average letter width, as a part of the font size. Pretendard and Gowun Batang both use 0.95. */
+private const val GLYPH_WIDTH_RATIO = 0.95f
+
+/** Safety margin of the character count per line. */
+private const val CHARS_PER_LINE_MARGIN = 0.9f
+
+/** Smallest font scale when a text is too long. */
+private const val MIN_FONT_SCALE = 0.7f
+
+/** Distance of the slide-up entrance, in spec pixels. */
+private const val SLIDE_UP_DISTANCE_PX = 70f
+
+/** Opacity steps of the flicker entrance. */
+private val FlickerSteps = floatArrayOf(0f, 0.9f, 0.1f, 0.8f, 0.3f, 1f, 0.6f, 1f)
+
+/** How a text comes on screen. */
+enum class TextEntrance {
+    /** Grows from 60% with a small overshoot ("팝"). */
+    POP,
+
+    /** Moves up into place ("밀어 올리기"). */
+    SLIDE_UP,
+
+    /** Fades in ("페이드"). */
+    FADE,
+
+    /** Blinks a few times ("깜빡임"). */
+    FLICKER,
+
+    /** The background draws from left to right ("형광펜 긋기"). */
+    MARKER_SWEEP,
+}
+
+/**
+ * Entrance and exit of a text. The exit is always a fade.
+ *
+ * @property entrance How the text comes on screen.
+ * @property entranceMillis Length of the entrance.
+ * @property exitMillis Length of the fade at the end.
+ */
+@Immutable
+data class TextAnimation(val entrance: TextEntrance, val entranceMillis: Int, val exitMillis: Int) {
+    /** Length of the entrance in seconds. */
+    val entranceSeconds: Double
+        get() = entranceMillis / 1000.0
+
+    /** Length of the exit in seconds. */
+    val exitSeconds: Double
+        get() = exitMillis / 1000.0
+}
+
+/** How a caption shows the word that the speaker says now. */
+enum class CaptionHighlight {
+    /** All words use the text color. */
+    NONE,
+
+    /** The current word uses the highlight color. */
+    CURRENT,
+}
+
+/**
+ * Look of an animated text at one moment.
+ *
+ * @property alpha Opacity from 0 to 1.
+ * @property scale Size factor around the center.
+ * @property offsetY Vertical move in dp. A positive value moves down.
+ * @property backgroundReveal Part of the background that shows, from the left edge, from 0 to 1.
+ */
+@Immutable
+data class TextFrame(
+    val alpha: Float = 1f,
+    val scale: Float = 1f,
+    val offsetY: Float = 0f,
+    val backgroundReveal: Float = 1f,
+) {
+    companion object {
+        /** Text without animation. */
+        val Static = TextFrame()
+    }
+}
+
+/**
+ * Calculates the look of the text at one moment.
+ *
+ * @param elapsed Seconds since the text came on screen.
+ * @param remaining Seconds until the text goes off screen.
+ * @return The look. It is [TextFrame.Static] between the entrance and the exit.
+ */
+fun TextAnimation.frameAt(elapsed: Double, remaining: Double): TextFrame {
+    val p = (elapsed / entranceSeconds).coerceIn(0.0, 1.0).toFloat()
+    var frame = when (entrance) {
+        TextEntrance.POP -> TextFrame(alpha = minOf(1f, p * 2.5f), scale = 0.6f + 0.4f * easeOutBack(p))
+        TextEntrance.SLIDE_UP -> TextFrame(alpha = minOf(1f, p * 1.5f), offsetY = (1f - easeOutCubic(p)) * SLIDE_UP_DISTANCE_PX * DP_PER_SPEC_PX)
+        TextEntrance.FADE -> TextFrame(alpha = easeInOutCubic(p))
+        TextEntrance.FLICKER -> TextFrame(alpha = if (p >= 1f) 1f else FlickerSteps[(p * FlickerSteps.size).toInt()])
+        TextEntrance.MARKER_SWEEP -> TextFrame(alpha = minOf(1f, p * 4f), backgroundReveal = easeOutCubic(p))
+    }
+    val exit = ((exitSeconds - remaining) / exitSeconds).coerceIn(0.0, 1.0).toFloat()
+    if (exit > 0f) frame = frame.copy(alpha = frame.alpha * (1f - easeInCubic(exit)))
+    return frame
+}
+
+/**
+ * Seconds from the start of the text, or to its end, where the animation changes the look.
+ *
+ * @param length Time on screen in seconds.
+ * @return The entrance range and the exit range, from the start of the text.
+ */
+fun TextAnimation.animatedRanges(length: Double): List<ClosedFloatingPointRange<Double>> = listOf(
+    0.0..minOf(entranceSeconds, length),
+    maxOf(0.0, length - exitSeconds)..length,
+)
+
+private fun easeOutCubic(p: Float): Float = 1f - (1f - p).pow(3)
+
+private fun easeInCubic(p: Float): Float = p.pow(3)
+
+private fun easeInOutCubic(p: Float): Float = if (p < 0.5f) 4f * p * p * p else 1f - (-2f * p + 2f).pow(3) / 2f
+
+private fun easeOutBack(p: Float): Float {
+    val c1 = 1.70158f
+    val c3 = c1 + 1f
+    return 1f + c3 * (p - 1f).pow(3) + c1 * (p - 1f).pow(2)
+}
+
+// =====================================================================
+// Overflow
+// =====================================================================
+
+/**
+ * Lines of a text after the overflow rule.
+ *
+ * @property lines Words of each line.
+ * @property fontScale Size factor of the text, from 0.7 to 1.
+ */
+@Immutable
+data class TextLines(val lines: List<List<String>>, val fontScale: Float)
+
+/**
+ * Number of characters that fit on one line, as in the spec: the widest box divided by the average letter width.
+ */
+internal fun TextLook.charactersPerLine(): Int {
+    val boxWidth = MAX_WIDTH_RATIO * STAGE_WIDTH_DP - paddingHorizontal * 2
+    val letterWidth = fontSize * GLYPH_WIDTH_RATIO + letterSpacingEm * fontSize
+    return maxOf(1, floor(boxWidth / letterWidth * CHARS_PER_LINE_MARGIN).toInt())
+}
+
+/**
+ * Breaks the words into lines with the overflow rule of the spec.
+ *
+ * Lines hold at most [TextLook.maxCharsPerLine] characters without spaces. A text that needs more
+ * than [TextLook.maxLines] lines gets smaller, to 70% at most, so that more characters fit. The
+ * lines have similar lengths. A word never breaks.
+ *
+ * @param words Words of the text.
+ * @return The lines and the font scale.
+ */
+fun TextLook.breakLines(words: List<String>): TextLines {
+    if (words.isEmpty()) return TextLines(emptyList(), 1f)
+    val length = words.sumOf { it.length }
+    val capacity = maxCharsPerLine * maxLines
+    val fontScale = if (length > capacity) maxOf(MIN_FONT_SCALE, capacity.toFloat() / length) else 1f
+    val perLine = floor(maxCharsPerLine / fontScale + 1e-4f).toInt()
+    val lineCount = minOf(maxLines, greedyLineCount(words, perLine))
+    return TextLines(balancedLines(words, lineCount), fontScale)
+}
+
+/** Number of lines that a simple fill needs. */
+private fun greedyLineCount(words: List<String>, perLine: Int): Int {
+    var lines = 1
+    var used = 0
+    words.forEach { word ->
+        if (used > 0 && used + word.length > perLine) {
+            lines++
+            used = 0
+        }
+        used += word.length
+    }
+    return lines
+}
+
+/**
+ * Splits the words into [lineCount] lines so that the longest line is as short as possible.
+ *
+ * A line length counts the letters and the spaces between the words.
+ */
+private fun balancedLines(words: List<String>, lineCount: Int): List<List<String>> {
+    val n = words.size
+    val count = lineCount.coerceIn(1, n)
+    if (count == 1) return listOf(words)
+    fun width(from: Int, to: Int): Int = (from until to).sumOf { words[it].length } + (to - from - 1)
+    // best[k][i]: 앞의 i개 단어를 k줄로 나눌 때 가장 긴 줄의 최솟값.
+    val best = Array(count + 1) { IntArray(n + 1) { Int.MAX_VALUE } }
+    val cut = Array(count + 1) { IntArray(n + 1) }
+    best[0][0] = 0
+    for (k in 1..count) {
+        for (i in k..n) {
+            for (j in (k - 1) until i) {
+                if (best[k - 1][j] == Int.MAX_VALUE) continue
+                val longest = maxOf(best[k - 1][j], width(j, i))
+                if (longest < best[k][i]) {
+                    best[k][i] = longest
+                    cut[k][i] = j
+                }
+            }
+        }
+    }
+    val lines = ArrayDeque<List<String>>()
+    var end = n
+    for (k in count downTo 1) {
+        val start = cut[k][end]
+        lines.addFirst(words.subList(start, end))
+        end = start
+    }
+    return lines.toList()
+}

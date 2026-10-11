@@ -43,6 +43,7 @@ import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.Vibe
 import com.company.core.domain.model.editor.clipAt
 import com.company.ui.editor.OverlayText
+import com.company.ui.editor.TextFrame
 import com.company.ui.editor.centeredAt
 import com.company.ui.editor.displayName
 import com.company.ui.editor.formatTime
@@ -164,13 +165,15 @@ internal fun EditorStage(
                 key(overlay.id) {
                     DraggableOverlay(
                         overlay = overlay,
+                        frame = if (state.playing) overlay.frameAt(state.time) else TextFrame.Static,
                         stageWidth = stageWidth,
                         stageHeight = stageHeight,
                         onIntent = onIntent,
                     )
                 }
             }
-            StageCaption(project = project, time = state.time)
+            // 등장·퇴장 애니메이션은 재생할 때만 보여 준다. 멈춘 화면에서는 글자를 고치기 쉽게 그대로 보여 준다.
+            StageCaption(project = project, time = state.time, animate = state.playing)
             if (state.watermark) StageWatermark()
         }
 
@@ -194,6 +197,7 @@ internal fun EditorStage(
 @Composable
 private fun DraggableOverlay(
     overlay: TextOverlay,
+    frame: TextFrame,
     stageWidth: Float,
     stageHeight: Float,
     onIntent: (EditorIntent) -> Unit,
@@ -202,6 +206,7 @@ private fun DraggableOverlay(
     OverlayText(
         text = overlay.text,
         look = overlay.style.look(),
+        frame = frame,
         modifier = Modifier
             .centeredAt(xPercent = overlay.x.toFloat(), yPercent = overlay.y.toFloat())
             .pointerInput(overlay.id) {
