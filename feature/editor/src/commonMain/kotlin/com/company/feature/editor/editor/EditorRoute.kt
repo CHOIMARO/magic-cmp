@@ -5,6 +5,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.company.core.designsystem.component.LocalMagicToast
 import org.koin.compose.viewmodel.koinViewModel
@@ -27,6 +29,7 @@ internal fun EditorRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val toast = LocalMagicToast.current
+    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(viewModel) {
         viewModel.sideEffect.collect { effect ->
@@ -35,6 +38,7 @@ internal fun EditorRoute(
                 EditorSideEffect.OpenGalleryToAppend -> onAddClips()
                 EditorSideEffect.OpenExport -> onExport()
                 EditorSideEffect.Close -> onBack()
+                EditorSideEffect.Snapped -> haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
             }
         }
     }

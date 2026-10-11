@@ -40,7 +40,6 @@ import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
-import com.company.core.domain.model.editor.canChangeSpeed
 import com.company.feature.editor.preview.EditorPreviewData
 import com.company.ui.editor.formatTime
 
@@ -70,19 +69,14 @@ internal fun EditorScreen(
                     onIntent = onIntent,
                     modifier = Modifier
                         .fillMaxHeight()
-                        .heightIn(max = 470.dp)
+                        .heightIn(max = 400.dp)
                         .aspectRatio(9f / 16f, matchHeightConstraintsFirst = true),
                     video = video,
                 )
             }
             PlaybackRow(state = state, onIntent = onIntent)
             EditorTimeline(state = state, onIntent = onIntent)
-            EditorTools(
-                hasSelection = state.selectedClip != null,
-                canChangeSpeed = state.selectedClip?.canChangeSpeed == true,
-                clipCount = state.project.clips.size,
-                onIntent = onIntent,
-            )
+            EditorTools(state = state, onIntent = onIntent)
         }
 
         // 미리보기가 보이도록 메인 시트보다 옅은 scrim을 쓴다.
@@ -179,4 +173,10 @@ private fun EditorDefaultPreview() = EditorScreenPreview(
 @Composable
 private fun EditorPhotoSelectedPreview() = EditorScreenPreview(
     EditorState(project = EditorPreviewData.project, time = 5.2, selectedClipId = "c3", musicTracks = EditorPreviewData.musicTracks),
+)
+
+@Preview(name = "편집기 - 글자 선택", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun EditorTextSelectedPreview() = EditorScreenPreview(
+    EditorState(project = EditorPreviewData.project, time = 1.0, selectedTextId = "t1", musicTracks = EditorPreviewData.musicTracks),
 )

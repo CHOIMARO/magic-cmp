@@ -1,5 +1,6 @@
 package com.company.feature.editor.editor
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -30,12 +31,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.domain.model.editor.MediaType
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.clipAt
 import com.company.ui.editor.OverlayText
@@ -45,6 +49,7 @@ import com.company.ui.editor.formatTime
 import com.company.ui.editor.look
 import com.company.ui.editor.toColorFilter
 import com.company.ui.media.MediaThumbnail
+import com.company.ui.media.rememberExactVideoFrame
 
 /**
  * 9:16 preview of the project at the playhead.
@@ -139,6 +144,11 @@ internal fun EditorStage(
             }
         }
 
+        // 손잡이를 끄는 동안 자르는 위치의 프레임을 무대 전체에 보여 준다. 글자와 자막은 그 위에 그린다.
+        state.trimEdgeFrame()?.let { (uri, time) ->
+            TrimEdgeFrame(uri = uri, time = time, colorFilter = filter, modifier = Modifier.fillMaxSize())
+        }
+
         StageCanvas(modifier = Modifier.fillMaxSize()) {
             project.texts.filter { it.isVisibleAt(state.time) }.forEach { overlay ->
                 key(overlay.id) {
@@ -156,7 +166,7 @@ internal fun EditorStage(
             if (state.watermark) StageWatermark()
         }
 
-        if (!state.playing && current != null && state.sheet == null) {
+        if (!state.playing && current != null && state.sheet == null && state.activeDrag == null) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -170,6 +180,39 @@ internal fun EditorStage(
             }
         }
     }
+}
+
+/** Time before the end of a clip that shows its last frame. It is one frame at 30 fps. */
+private const val LAST_FRAME_OFFSET = 1.0 / 30
+
+/**
+ * Finds the frame at the trim edge that the user drags.
+ *
+ * @return The source file and the source time of the frame, or null when no trim drag runs or the clip is not a video file.
+ */
+private fun EditorState.trimEdgeFrame(): Pair<String, Double>? {
+    val trim = activeDrag as? TimelineDragTarget.ClipEdge ?: return null
+    val clip = project.clips.find { it.id == trim.clipId } ?: return null
+    val uri = clip.sourceUri ?: return null
+    if (clip.type != MediaType.VIDEO) return null
+    val time = when (trim.edge) {
+        TrimEdge.START -> clip.inPoint
+        TrimEdge.END -> (clip.outPoint - LAST_FRAME_OFFSET).coerceAtLeast(clip.inPoint)
+    }
+    return uri to time
+}
+
+/** Exact video frame at the trim edge. Until the first frame loads, the stage below stays visible. */
+@Composable
+private fun TrimEdgeFrame(uri: String, time: Double, colorFilter: ColorFilter?, modifier: Modifier) {
+    val image = rememberExactVideoFrame(uri, time) ?: return
+    Image(
+        bitmap = image,
+        contentDescription = null,
+        modifier = modifier,
+        contentScale = ContentScale.Crop,
+        colorFilter = colorFilter,
+    )
 }
 
 /** Text overlay that the user can drag. A tap opens the text sheet. */
