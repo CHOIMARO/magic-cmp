@@ -9,6 +9,12 @@ const val SPLIT_EDGE_MARGIN = 0.15
 /** Shortest time that a text overlay stays on screen after a change of its time, in seconds. */
 const val MIN_TEXT_LENGTH = 0.5
 
+/** Smallest size factor of a text overlay. */
+const val MIN_TEXT_SCALE = 0.5
+
+/** Largest size factor of a text overlay. */
+const val MAX_TEXT_SCALE = 3.0
+
 /** Times closer than this, in seconds, count as the same time when the editor checks text overlaps. */
 private const val TIME_EPSILON = 1e-6
 
@@ -282,6 +288,21 @@ fun EditorProject.moveText(textId: String, x: Double, y: Double): EditorProject 
         if (it.id == textId) it.copy(x = x.coerceIn(12.0, 88.0), y = y.coerceIn(6.0, 94.0)) else it
     }
 )
+
+/**
+ * Changes the size and the angle of a text overlay. The whole text box changes, and the line breaks do not change.
+ *
+ * @param textId ID of the overlay.
+ * @param scale New size factor. The function keeps it from [MIN_TEXT_SCALE] to [MAX_TEXT_SCALE].
+ * @param rotation New angle in degrees. A positive value turns the text clockwise. The function changes it to the
+ *   same angle from -180 to below 180 degrees.
+ */
+fun EditorProject.transformText(textId: String, scale: Double, rotation: Double): EditorProject = mapText(textId) {
+    it.copy(scale = scale.coerceIn(MIN_TEXT_SCALE, MAX_TEXT_SCALE), rotation = normalizeDegrees(rotation))
+}
+
+/** Changes an angle to the same angle from -180 to below 180 degrees. */
+private fun normalizeDegrees(degrees: Double): Double = ((degrees + 180.0) % 360.0 + 360.0) % 360.0 - 180.0
 
 /**
  * Applies a template.

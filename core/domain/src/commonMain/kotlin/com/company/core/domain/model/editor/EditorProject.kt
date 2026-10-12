@@ -75,6 +75,9 @@ data class Clip(
  * @property y Vertical center in percent of the screen height.
  * @property layer Row of the text track on the timeline. 0 is the first row. Texts in one row do not overlap in time.
  * @property font Font of the text, or null for the font of [style].
+ * @property scale Size factor of the whole text box. 1 is the size of [style]. The line breaks do not change.
+ * @property rotation Angle of the whole text box in degrees, from -180 to below 180. A positive value turns it
+ *   clockwise. The rotation of [style] adds to it.
  */
 data class TextOverlay(
     val id: String,
@@ -86,6 +89,8 @@ data class TextOverlay(
     val y: Double,
     val layer: Int = 0,
     val font: TextFontType? = null,
+    val scale: Double = 1.0,
+    val rotation: Double = 0.0,
 ) {
     /** End time on the timeline. */
     val end: Double

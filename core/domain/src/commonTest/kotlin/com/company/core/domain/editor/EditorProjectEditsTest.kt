@@ -6,7 +6,9 @@ import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.EditorTemplate
 import com.company.core.domain.model.editor.LayoutType
+import com.company.core.domain.model.editor.MAX_TEXT_SCALE
 import com.company.core.domain.model.editor.MIN_TEXT_LENGTH
+import com.company.core.domain.model.editor.MIN_TEXT_SCALE
 import com.company.core.domain.model.editor.TextFontType
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.TextStyleType
@@ -22,6 +24,7 @@ import com.company.core.domain.model.editor.overlapsOtherText
 import com.company.core.domain.model.editor.removeText
 import com.company.core.domain.model.editor.splitAt
 import com.company.core.domain.model.editor.textLayerCount
+import com.company.core.domain.model.editor.transformText
 import com.company.core.domain.model.editor.trimClipEnd
 import com.company.core.domain.model.editor.trimClipStart
 import com.company.core.domain.model.editor.trimTextEnd
@@ -218,6 +221,36 @@ class EditorProjectEditsTest {
         val moved = project.copy(texts = listOf(overlay)).moveText("t", 0.0, 100.0).texts.single()
         assertEquals(12.0, moved.x)
         assertEquals(94.0, moved.y)
+    }
+
+    @Test
+    fun transformText_keepsScaleInRangeAndNormalizesAngle() {
+        val withText = project.addText("hi", TextStyleType.BOLD, time = 0.0)
+        val id = withText.texts.single().id
+        assertEquals(1.0, withText.texts.single().scale)
+        assertEquals(0.0, withText.texts.single().rotation)
+        val changed = withText.transformText(id, scale = 1.8, rotation = 30.0).texts.single()
+        assertEquals(1.8, changed.scale)
+        assertEquals(30.0, changed.rotation)
+        assertEquals(MAX_TEXT_SCALE, withText.transformText(id, scale = 10.0, rotation = 0.0).texts.single().scale)
+        assertEquals(MIN_TEXT_SCALE, withText.transformText(id, scale = 0.1, rotation = 0.0).texts.single().scale)
+        assertEquals(-170.0, withText.transformText(id, scale = 1.0, rotation = 190.0).texts.single().rotation)
+        assertEquals(170.0, withText.transformText(id, scale = 1.0, rotation = -190.0).texts.single().rotation)
+        assertEquals(-180.0, withText.transformText(id, scale = 1.0, rotation = 180.0).texts.single().rotation)
+    }
+
+    @Test
+    fun transformText_staysWithTextAndItsCopy() {
+        val withText = project.addText("hi", TextStyleType.BOLD, time = 0.0)
+        val id = withText.texts.single().id
+        val changed = withText.transformText(id, scale = 1.8, rotation = -15.0)
+        // 글자를 고치거나 복제해도 크기와 각도는 그대로다.
+        val updated = changed.updateText(id, "hello", TextStyleType.BOX).texts.single()
+        assertEquals(1.8, updated.scale)
+        assertEquals(-15.0, updated.rotation)
+        val copy = assertNotNull(changed.duplicateText(id)).first.texts.last()
+        assertEquals(1.8, copy.scale)
+        assertEquals(-15.0, copy.rotation)
     }
 
     @Test
