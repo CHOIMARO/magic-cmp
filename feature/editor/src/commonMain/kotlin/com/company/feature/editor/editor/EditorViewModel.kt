@@ -25,6 +25,7 @@ import com.company.core.domain.model.editor.removeClip
 import com.company.core.domain.model.editor.removeText
 import com.company.core.domain.model.editor.setClipSpeed
 import com.company.core.domain.model.editor.splitAt
+import com.company.core.domain.model.editor.transformText
 import com.company.core.domain.model.editor.trimClipEnd
 import com.company.core.domain.model.editor.trimClipStart
 import com.company.core.domain.model.editor.trimTextEnd
@@ -209,7 +210,7 @@ sealed class EditorIntent : Intent() {
     /** OpenTextEditor(textId) : Opens the text sheet for an overlay, or for a new overlay if null. */
     data class OpenTextEditor(val textId: String?) : EditorIntent()
 
-    /** SelectText(textId) : Selects the text overlay on the timeline, or clears the selection if it is selected. */
+    /** SelectText(textId) : Selects the text overlay, or clears the selection if it is selected. A tap on the timeline bar or on the stage sends it. */
     data class SelectText(val textId: String) : EditorIntent()
 
     /** DuplicateText : Puts a copy of the selected text overlay right after it in time. */
@@ -223,6 +224,15 @@ sealed class EditorIntent : Intent() {
 
     /** MoveText(textId, x, y) : Moves a text overlay to a percent position. */
     data class MoveText(val textId: String, val x: Double, val y: Double) : EditorIntent()
+
+    /** StartTextTransform : Pauses the preview and keeps an undo step before the first change of a size and angle gesture. */
+    data object StartTextTransform : EditorIntent()
+
+    /**
+     * TransformText(textId, scale, rotation) : Changes the size factor and the angle in degrees of a text overlay.
+     * The whole text box changes. A positive angle turns it clockwise.
+     */
+    data class TransformText(val textId: String, val scale: Double, val rotation: Double) : EditorIntent()
 
     /** ChangeDraftText(text) : Changes the input of the text sheet. */
     data class ChangeDraftText(val text: String) : EditorIntent()
@@ -409,6 +419,12 @@ class EditorViewModel(
                 projectRepository.saveCheckpoint()
             }
             is EditorIntent.MoveText -> projectRepository.update { it.moveText(intent.textId, intent.x, intent.y) }
+            EditorIntent.StartTextTransform -> {
+                pause()
+                projectRepository.saveCheckpoint()
+            }
+            is EditorIntent.TransformText ->
+                projectRepository.update { it.transformText(intent.textId, intent.scale, intent.rotation) }
             is EditorIntent.ChangeDraftText -> reduce { copy(textDraft = textDraft?.copy(text = intent.text)) }
             is EditorIntent.ChangeDraftStyle -> reduce { copy(textDraft = textDraft?.copy(style = intent.style)) }
             is EditorIntent.ChangeDraftFont -> reduce { copy(textDraft = textDraft?.copy(font = intent.font)) }

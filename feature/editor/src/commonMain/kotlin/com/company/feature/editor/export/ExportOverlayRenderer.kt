@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
@@ -169,7 +170,14 @@ private fun ExportTextFrame(project: EditorProject, time: Double, watermark: Boo
                 text = overlay.text,
                 look = overlay.style.look(font = overlay.font),
                 frame = overlay.frameAt(time),
-                modifier = Modifier.centeredAt(xPercent = overlay.x.toFloat(), yPercent = overlay.y.toFloat()),
+                modifier = Modifier
+                    .centeredAt(xPercent = overlay.x.toFloat(), yPercent = overlay.y.toFloat())
+                    // 편집 무대와 같이 글자 상자를 통째로 키우고 돌린다.
+                    .graphicsLayer {
+                        scaleX = overlay.scale.toFloat()
+                        scaleY = overlay.scale.toFloat()
+                        rotationZ = overlay.rotation.toFloat()
+                    },
             )
         }
         StageCaption(project = project, time = time, animate = true)

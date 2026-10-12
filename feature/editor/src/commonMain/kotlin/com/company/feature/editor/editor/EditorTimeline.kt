@@ -13,6 +13,7 @@ import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.drag
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -424,7 +425,8 @@ private fun TextTrack(
 /**
  * Bar of one text overlay on the text track.
  *
- * A tap selects the bar. A long press starts a move: the bar follows the finger in time and between the rows.
+ * A tap selects the bar, and a double tap opens the text sheet. A long press starts a move: the bar follows the
+ * finger in time and between the rows.
  * When the bar overlaps another text in its row, it turns red, and it goes back when the finger lifts.
  *
  * @param overlay Text overlay to show.
@@ -449,6 +451,7 @@ private fun TextBar(
 ) {
     val haptic = LocalHapticFeedback.current
     val latestSnapSeconds by rememberUpdatedState(snapSeconds)
+    val latestSelected by rememberUpdatedState(selected)
     val bar = remember { LayoutHolder() }
     val shape = if (selected) RoundedCornerShape(6.dp) else CircleShape
     val tone = if (blocked) MagicColors.Danger else MagicColors.Accent
@@ -467,6 +470,13 @@ private fun TextBar(
                         // 길게 누르기 전에 손을 떼면 탭이다. 타임라인 스크롤이 가져간 터치는 탭이 아니다.
                         if (currentEvent.changes.all { it.changedToUp() && !it.isConsumed }) {
                             onIntent(EditorIntent.SelectText(overlay.id))
+                            // 두 번 누르기 시간 안에 한 번 더 누르면 글자 시트를 연다.
+                            val secondDown = withTimeoutOrNull(viewConfiguration.doubleTapTimeoutMillis) { awaitFirstDown() }
+                            if (secondDown != null && waitForUpOrCancellation() != null) {
+                                // 첫 탭이 선택을 풀었으면 다시 선택한다.
+                                if (!latestSelected) onIntent(EditorIntent.SelectText(overlay.id))
+                                onIntent(EditorIntent.OpenTextEditor(overlay.id))
+                            }
                         }
                         return@awaitEachGesture
                     }
@@ -855,7 +865,7 @@ private fun MusicTrackRow(state: EditorState, onIntent: (EditorIntent) -> Unit, 
 internal fun Double.toSpeedLabel(): String = if (this % 1.0 == 0.0) toInt().toString() else toString()
 
 /** Keeps the layout of an element for code outside the composition, for example a gesture. */
-private class LayoutHolder {
+internal class LayoutHolder {
     var coordinates: LayoutCoordinates? = null
 }
 
