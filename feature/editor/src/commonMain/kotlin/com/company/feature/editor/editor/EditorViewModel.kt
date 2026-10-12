@@ -12,6 +12,7 @@ import com.company.core.domain.model.editor.FilterType
 import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.MusicTrack
 import com.company.core.domain.model.editor.TextOverlay
+import com.company.core.domain.model.editor.TextFontType
 import com.company.core.domain.model.editor.TextStyleType
 import com.company.core.domain.model.editor.addText
 import com.company.core.domain.model.editor.compactTextLayers
@@ -85,8 +86,9 @@ sealed interface TimelineDragTarget {
  * @property id ID of the overlay to change, or null for a new overlay.
  * @property text Current input.
  * @property style Selected style.
+ * @property font Selected font, or null for the font of [style].
  */
-data class TextDraft(val id: String?, val text: String, val style: TextStyleType)
+data class TextDraft(val id: String?, val text: String, val style: TextStyleType, val font: TextFontType? = null)
 
 /**
  * State of the editor screen.
@@ -227,6 +229,9 @@ sealed class EditorIntent : Intent() {
 
     /** ChangeDraftStyle(style) : Changes the style in the text sheet. */
     data class ChangeDraftStyle(val style: TextStyleType) : EditorIntent()
+
+    /** ChangeDraftFont(font) : Changes the font in the text sheet. */
+    data class ChangeDraftFont(val font: TextFontType) : EditorIntent()
 
     /** SaveText : Adds or changes the overlay from the text sheet. */
     data object SaveText : EditorIntent()
@@ -406,6 +411,7 @@ class EditorViewModel(
             is EditorIntent.MoveText -> projectRepository.update { it.moveText(intent.textId, intent.x, intent.y) }
             is EditorIntent.ChangeDraftText -> reduce { copy(textDraft = textDraft?.copy(text = intent.text)) }
             is EditorIntent.ChangeDraftStyle -> reduce { copy(textDraft = textDraft?.copy(style = intent.style)) }
+            is EditorIntent.ChangeDraftFont -> reduce { copy(textDraft = textDraft?.copy(font = intent.font)) }
             EditorIntent.SaveText -> saveText()
             EditorIntent.DeleteText -> deleteText()
 
@@ -687,7 +693,7 @@ class EditorViewModel(
     private fun openTextEditor(textId: String?) {
         pause()
         val overlay = currentState.project.texts.find { it.id == textId }
-        val draft = overlay?.let { TextDraft(id = it.id, text = it.text, style = it.style) }
+        val draft = overlay?.let { TextDraft(id = it.id, text = it.text, style = it.style, font = it.font) }
             ?: TextDraft(id = null, text = "", style = TextStyleType.BOLD)
         reduce { copy(sheet = EditorSheet.TEXT, textDraft = draft) }
     }
@@ -697,7 +703,11 @@ class EditorViewModel(
         val text = draft.text.trim().ifEmpty { "글자" }
         val time = currentState.time
         projectRepository.commit { project ->
-            if (draft.id != null) project.updateText(draft.id, text, draft.style) else project.addText(text, draft.style, time)
+            if (draft.id != null) {
+                project.updateText(draft.id, text, draft.style, draft.font)
+            } else {
+                project.addText(text, draft.style, time, draft.font)
+            }
         }
         reduce { copy(sheet = null, textDraft = null) }
     }
@@ -706,6 +716,7 @@ class EditorViewModel(
         val textId = currentState.textDraft?.id ?: return
         projectRepository.commit { it.removeText(textId) }
         reduce { copy(sheet = null, textDraft = null, selectedTextId = selectedTextId.takeIf { it != textId }) }
+        toast("삭제했어요 · 되돌리기 가능")
     }
 
     private fun duplicateText() {

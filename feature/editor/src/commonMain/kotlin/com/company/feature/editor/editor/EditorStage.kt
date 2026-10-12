@@ -227,7 +227,7 @@ private fun DraggableOverlay(
     val latest by rememberUpdatedState(overlay)
     OverlayText(
         text = overlay.text,
-        look = overlay.style.look(),
+        look = overlay.style.look(font = overlay.font),
         frame = frame,
         modifier = Modifier
             .centeredAt(xPercent = overlay.x.toFloat(), yPercent = overlay.y.toFloat())

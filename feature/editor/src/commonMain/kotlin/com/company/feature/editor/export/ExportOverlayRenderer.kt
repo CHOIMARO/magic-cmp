@@ -167,7 +167,7 @@ private fun ExportTextFrame(project: EditorProject, time: Double, watermark: Boo
         project.texts.filter { it.isVisibleAt(time) }.forEach { overlay ->
             OverlayText(
                 text = overlay.text,
-                look = overlay.style.look(),
+                look = overlay.style.look(font = overlay.font),
                 frame = overlay.frameAt(time),
                 modifier = Modifier.centeredAt(xPercent = overlay.x.toFloat(), yPercent = overlay.y.toFloat()),
             )
