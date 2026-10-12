@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.horizontalScroll
@@ -41,22 +42,26 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -91,10 +96,24 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.math.log2
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
-/** Width of one second on the timeline. */
+/** Width of one second on the timeline at the default zoom. */
 private val PixelsPerSecond = 50.dp
+
+/** Smallest timeline zoom. A long project fits on the screen. */
+private const val MIN_ZOOM = 0.2f
+
+/**
+ * Largest timeline zoom. One filmstrip frame then shows one frame of a 30 fps video.
+ * It is the filmstrip frame width (36 dp) times 30, divided by [PixelsPerSecond] (50 dp).
+ */
+private const val MAX_ZOOM = 36f * 30f / 50f
+
+/** Filmstrip frames that show this many source seconds or less are read exactly, not from a near key frame. */
+private const val EXACT_FRAME_SECONDS = 0.5
 
 /** Extra space after the last clip. */
 private val TrailingSpace = 60.dp
@@ -150,8 +169,8 @@ private val TrimHandleOverlap = 2.dp
 /** A dragged edge snaps to the playhead, and a text start to another text start, within this distance. */
 private val SnapDistance = 12.dp
 
-/** Fastest edge scrolling during a timeline drag, in timeline seconds per second. */
-private const val EDGE_SCROLL_MAX_SPEED = 6.0
+/** Fastest edge scrolling during a timeline drag, as a distance per second. It is the same at all zoom levels. */
+private val EdgeScrollMaxSpeed = 300.dp
 
 /**
  * Scrolling timeline with the clip track at the top, and the text rows and the music track under it.
@@ -161,13 +180,20 @@ private const val EDGE_SCROLL_MAX_SPEED = 6.0
  * The clip track stays at the top. The text rows and the music track scroll up and down when they do not fit.
  * The add button stays at the right edge on top of a fade.
  *
+ * Two fingers zoom the timeline in and out around the playhead. A larger zoom shows more filmstrip frames
+ * and makes trims finer.
+ *
  * @param state Editor state.
  * @param onIntent Called with each user action.
  */
 @Composable
 internal fun EditorTimeline(state: EditorState, onIntent: (EditorIntent) -> Unit) {
     val density = LocalDensity.current
-    val pixelsPerSecond = with(density) { PixelsPerSecond.toPx() }
+    var zoom by rememberSaveable { mutableFloatStateOf(1f) }
+    // 확대·축소에 따라 바뀌는 1초의 폭.
+    val secondWidth = PixelsPerSecond * zoom
+    val pixelsPerSecond = with(density) { secondWidth.toPx() }
+    val latestPixelsPerSecond by rememberUpdatedState(pixelsPerSecond)
     val scrollState = rememberScrollState()
     val layerScrollState = rememberScrollState()
     val snapSeconds = with(density) { SnapDistance.toPx() } / pixelsPerSecond.toDouble()
@@ -182,7 +208,8 @@ internal fun EditorTimeline(state: EditorState, onIntent: (EditorIntent) -> Unit
                 leftZone = EdgeScrollLeftZone.toPx(),
                 // 오른쪽 끝은 추가 버튼과 페이드가 덮는다. 손잡이는 그 앞에서 멈추고, 손가락이 넘어가면 스크롤한다.
                 rightStop = AddButtonFadeWidth.toPx(),
-            ) { latestOnIntent(EditorIntent.ScrollTimelineDrag(it)) }
+                maxSpeed = EdgeScrollMaxSpeed.toPx(),
+            ) { pixels -> latestOnIntent(EditorIntent.ScrollTimelineDrag(pixels / latestPixelsPerSecond.toDouble())) }
         }
     }
 
@@ -198,6 +225,15 @@ internal fun EditorTimeline(state: EditorState, onIntent: (EditorIntent) -> Unit
     LaunchedEffect(state.time, total) {
         if (!scrollState.isScrollInProgress) {
             val target = (state.time * pixelsPerSecond).roundToInt()
+            if (abs(scrollState.value - target) > 1) scrollState.scrollTo(target)
+        }
+    }
+    // 확대·축소는 손가락 사이에서 스크롤 위치를 바로 맞춘다. 내용이 커지기 전이라 끝에서 모자란 스크롤은
+    // 다음 프레임에 그려진 내용 크기로 다시 맞춘다.
+    LaunchedEffect(pixelsPerSecond) {
+        withFrameNanos { }
+        if (!scrollState.isScrollInProgress) {
+            val target = (latestState.time * pixelsPerSecond).roundToInt()
             if (abs(scrollState.value - target) > 1) scrollState.scrollTo(target)
         }
     }
@@ -218,10 +254,29 @@ internal fun EditorTimeline(state: EditorState, onIntent: (EditorIntent) -> Unit
                     awaitFirstDown(requireUnconsumed = false)
                     onIntent(EditorIntent.Pause)
                 }
+            }
+            .pointerInput(Unit) {
+                // 두 손가락 확대·축소. 스크롤과 막대·손잡이보다 먼저(Initial) 받아서, 두 손가락일 때는 그쪽으로 넘기지 않는다.
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    do {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        if (event.changes.count { it.pressed } >= 2) {
+                            val newZoom = (zoom * event.calculateZoom()).coerceIn(MIN_ZOOM, MAX_ZOOM)
+                            if (newZoom != zoom) {
+                                // 재생선이 가리키는 시간이 그대로 있도록 스크롤도 같은 비율로 바꾼다.
+                                val ratio = newZoom / zoom
+                                zoom = newZoom
+                                scrollState.dispatchRawDelta(scrollState.value * (ratio - 1f))
+                            }
+                            event.changes.forEach { it.consume() }
+                        }
+                    } while (event.changes.any { it.pressed })
+                }
             },
     ) {
         val playheadX = (maxWidth / 2 - 8.dp).coerceAtLeast(HandleInset)
-        val contentWidth = PixelsPerSecond * total.toFloat() + TrailingSpace
+        val contentWidth = secondWidth * total.toFloat() + TrailingSpace
         val playheadXPx = with(density) { playheadX.toPx() }
         val viewportWidthPx = constraints.maxWidth.toFloat()
         // 클립이 시작하는 타임라인 시간을 받아, 화면에 보이는 부분을 클립 왼쪽 기준 픽셀 범위로 돌려준다.
@@ -268,7 +323,7 @@ internal fun EditorTimeline(state: EditorState, onIntent: (EditorIntent) -> Unit
                             edgeScroller = edgeScroller,
                             snapSeconds = snapSeconds,
                         )
-                        MusicTrackRow(state = state, onIntent = onIntent, width = PixelsPerSecond * total.toFloat())
+                        MusicTrackRow(state = state, onIntent = onIntent, width = secondWidth * total.toFloat())
                     }
                 }
             }
@@ -318,14 +373,15 @@ private fun TextTrack(
     edgeScroller: TimelineEdgeScroller,
     snapSeconds: Double,
 ) {
+    val secondWidth = with(LocalDensity.current) { pixelsPerSecond.toDp() }
     val rowPitch = TextTrackHeight + TrackSpacing
     // 줄마다 따로 그리지 않고 한 상자에 줄 높이만큼 내려 그린다. 줄이 바뀌어도 막대를 다시 만들지 않는다.
     Box(modifier = Modifier.fillMaxWidth().height(rowPitch * state.project.textLayerCount - TrackSpacing)) {
         state.project.texts.forEach { overlay ->
             key(overlay.id) {
                 val top = rowPitch * overlay.layer
-                val left = HandleInset + PixelsPerSecond * overlay.start.toFloat()
-                val width = maxOf(8.dp, PixelsPerSecond * overlay.length.toFloat() - TimelineItemGap)
+                val left = HandleInset + secondWidth * overlay.start.toFloat()
+                val width = maxOf(8.dp, secondWidth * overlay.length.toFloat() - TimelineItemGap)
                 val selected = overlay.id == state.selectedTextId
                 val moving = (state.activeDrag as? TimelineDragTarget.TextMove)?.textId == overlay.id
                 TextBar(
@@ -477,11 +533,12 @@ private fun ClipTrack(
     edgeScroller: TimelineEdgeScroller,
     snapSeconds: Double,
 ) {
+    val secondWidth = with(LocalDensity.current) { pixelsPerSecond.toDp() }
     Box(modifier = Modifier.fillMaxWidth().height(ClipTrackHeight)) {
         var start = 0.0
         state.project.clips.forEach { clip ->
-            val left = HandleInset + PixelsPerSecond * start.toFloat()
-            val width = maxOf(8.dp, PixelsPerSecond * clip.duration.toFloat() - TimelineItemGap)
+            val left = HandleInset + secondWidth * start.toFloat()
+            val width = maxOf(8.dp, secondWidth * clip.duration.toFloat() - TimelineItemGap)
             val selected = clip.id == state.selectedClipId
             val clipStart = start
             ClipBlock(
@@ -619,8 +676,20 @@ private fun ClipFilmstrip(
     Box(modifier = modifier) {
         for (index in frames) {
             key(index) {
-                val time = ((index + 0.5) * frameSeconds).coerceAtMost(clip.sourceDuration - FILMSTRIP_END_MARGIN)
-                val image = if (clip.type == MediaType.PHOTO) photo else rememberFilmstripFrame(uri, clip.type, time)
+                val time = filmstripFrameTime(index, frameSeconds).coerceAtMost(clip.sourceDuration - FILMSTRIP_END_MARGIN)
+                // 확대해서 칸 사이가 가까우면 가까운 키 프레임 대신 그 시간의 프레임을 읽는다.
+                val image = if (clip.type == MediaType.PHOTO) {
+                    photo
+                } else {
+                    // 읽는 동안에는 두 칸 거리 안에서 이미 읽은 가장 가까운 프레임을 보여 준다.
+                    rememberFilmstripFrame(
+                        uri = uri,
+                        type = clip.type,
+                        time = time,
+                        exact = frameSeconds <= EXACT_FRAME_SECONDS,
+                        nearestWithin = frameSeconds * 2,
+                    )
+                }
                 if (image != null) {
                     // 칸 경계를 정수 픽셀로 맞춰 칸 사이에 틈이 생기지 않게 한다.
                     val left = (index * frameWidth - sourceOffset).roundToInt()
@@ -635,6 +704,23 @@ private fun ClipFilmstrip(
             }
         }
     }
+}
+
+/**
+ * Source time of the frame that a filmstrip frame shows.
+ *
+ * The time is on a grid of a power of two seconds (…, 0.25, 0.5, 1, 2 seconds). Thus the frames that a zoom
+ * already loaded come back at a near zoom. The grid step is not longer than one filmstrip frame, so neighbor
+ * frames do not show the same frame.
+ *
+ * @param index Position of the filmstrip frame from the source start.
+ * @param frameSeconds Source seconds in one filmstrip frame.
+ * @return The source time on the grid, nearest to the center of the filmstrip frame.
+ */
+internal fun filmstripFrameTime(index: Int, frameSeconds: Double): Double {
+    val grid = 2.0.pow(floor(log2(frameSeconds)))
+    // 반을 넘으면 올린다. round()는 x.5를 짝수 쪽으로 보내서, 칸 길이가 격자와 같을 때 이웃한 칸이 같은 시간이 된다.
+    return floor((index + 0.5) * frameSeconds / grid + 0.5) * grid
 }
 
 /** Places the element at [left] pixels from the left edge of the parent, [width] pixels wide and as high as the parent. */
@@ -787,19 +873,21 @@ private class LayoutHolder {
  * @param scope Scope for the scroll loop.
  * @param leftZone Width of the scroll area at the left end, in pixels.
  * @param rightStop Distance from the right end to the stop position of the dragged element, in pixels.
- * @param onScroll Called each frame with the timeline seconds to scroll. A negative value scrolls toward the project start.
+ * @param maxSpeed Fastest scroll speed in pixels per second.
+ * @param onScroll Called each frame with the pixels to scroll. A negative value scrolls toward the project start.
  */
 private class TimelineEdgeScroller(
     private val scope: CoroutineScope,
     private val leftZone: Float,
     private val rightStop: Float,
+    private val maxSpeed: Float,
     private val onScroll: (Double) -> Unit,
 ) {
     /** Visible area of the timeline. The finger position is measured in it. */
     var viewport: LayoutCoordinates? = null
 
-    /** Scroll speed in timeline seconds per second. A negative value scrolls toward the project start. */
-    private var speed = 0.0
+    /** Scroll speed in pixels per second. A negative value scrolls toward the project start. */
+    private var speed = 0f
     private var job: Job? = null
 
     /** Finger position in [viewport] when the current drag started. */
@@ -850,12 +938,12 @@ private class TimelineEdgeScroller(
         // 왼쪽 영역 안에서 잡았으면 잡은 위치보다 더 왼쪽으로 갈 때만 스크롤한다.
         val leftEdge = minOf(leftZone, startX)
         speed = when {
-            x < leftEdge -> -EDGE_SCROLL_MAX_SPEED * ((leftEdge - x) / leftEdge.coerceAtLeast(1f)).coerceAtMost(1f)
-            overshoot > 0f -> EDGE_SCROLL_MAX_SPEED * (overshoot / (width - fingerStop).coerceAtLeast(1f)).coerceAtMost(1f)
-            else -> 0.0
+            x < leftEdge -> -maxSpeed * ((leftEdge - x) / leftEdge.coerceAtLeast(1f)).coerceAtMost(1f)
+            overshoot > 0f -> maxSpeed * (overshoot / (width - fingerStop).coerceAtLeast(1f)).coerceAtMost(1f)
+            else -> 0f
         }
         when {
-            speed == 0.0 -> stop()
+            speed == 0f -> stop()
             job == null -> job = scope.launch {
                 var last = withFrameNanos { it }
                 while (true) {
@@ -870,7 +958,7 @@ private class TimelineEdgeScroller(
 
     /** Stops the scrolling. */
     fun stop() {
-        speed = 0.0
+        speed = 0f
         job?.cancel()
         job = null
     }
