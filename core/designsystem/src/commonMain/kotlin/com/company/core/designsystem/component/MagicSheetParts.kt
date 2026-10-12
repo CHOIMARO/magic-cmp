@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -49,12 +50,34 @@ fun SheetHandle(modifier: Modifier = Modifier) {
  */
 @Composable
 fun SheetHeader(title: String, onClose: () -> Unit, closeLabel: String = "닫기") {
+    SheetHeader(onClose = onClose, closeLabel = closeLabel) {
+        Text(text = title, modifier = Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+/**
+ * Top row of an editor sheet with custom content in place of the title, for example a text field.
+ *
+ * @param onClose Action of the close button.
+ * @param closeLabel Label of the close button.
+ * @param action Optional button before the close button, for example the main action of the sheet.
+ *   Make it [SheetHeaderButtonHeight] high.
+ * @param content Content at the start of the row. Give it `Modifier.weight(1f)` to fill the free width.
+ */
+@Composable
+fun SheetHeader(
+    onClose: () -> Unit,
+    closeLabel: String = "닫기",
+    action: (@Composable () -> Unit)? = null,
+    content: @Composable RowScope.() -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        content()
+        action?.invoke()
         // 디자인의 작은 "닫기" 버튼(36dp, 14sp)은 스펙에 없는 크기라서 크기는 두고 눌림 색만 맞춘다.
         val interactionSource = remember { MutableInteractionSource() }
         val pressed by interactionSource.collectIsPressedAsState()
@@ -64,7 +87,7 @@ fun SheetHeader(title: String, onClose: () -> Unit, closeLabel: String = "닫기
         )
         Box(
             modifier = Modifier
-                .height(36.dp)
+                .height(SheetHeaderButtonHeight)
                 .pressClickable(interactionSource = interactionSource, onClick = onClose)
                 .clip(CircleShape)
                 .background(background)
@@ -75,6 +98,9 @@ fun SheetHeader(title: String, onClose: () -> Unit, closeLabel: String = "닫기
         }
     }
 }
+
+/** Height of the buttons in a [SheetHeader]. */
+val SheetHeaderButtonHeight = 36.dp
 
 // MagicModalBottomSheet는 별도 창으로 열려 정적 프리뷰에 그려지지 않는다. 시트 표면의 모양만 보여 준다.
 @Preview(name = "Sheet parts", widthDp = 360)

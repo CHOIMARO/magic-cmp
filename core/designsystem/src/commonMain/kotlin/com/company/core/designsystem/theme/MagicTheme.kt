@@ -23,7 +23,7 @@ import org.jetbrains.compose.resources.Font
  * Font families of the magic design.
  *
  * @property sans Pretendard. The app uses it for all body text.
- * @property serif Instrument Serif Italic. The app uses it for the "magic" logo and serif styles.
+ * @property serif Instrument Serif Italic. The app uses it for the "magic" logo and watermark.
  */
 @Immutable
 data class MagicFonts(

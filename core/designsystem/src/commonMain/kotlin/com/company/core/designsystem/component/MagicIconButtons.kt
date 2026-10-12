@@ -73,6 +73,9 @@ enum class MagicIconButtonStyle {
 
     /** Dark round background, for example "닫기". */
     SURFACE,
+
+    /** Dark round background with a red icon, for example "삭제". It uses the colors of the danger button. */
+    DANGER,
 }
 
 /**
@@ -100,14 +103,22 @@ fun MagicIconButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val surface = style == MagicIconButtonStyle.SURFACE
-    val container = stateColor(
-        enabled = enabled,
-        pressed = pressed,
-        default = if (surface) MagicColors.Surface else Color.Transparent,
-        pressedColor = if (surface) MagicColors.SurfaceHighest else MagicColors.OnSurface.copy(alpha = 0.12f),
-        disabled = if (surface) MagicColors.SurfaceDisabled else Color.Transparent,
-    )
+    val container = when (style) {
+        MagicIconButtonStyle.PLAIN -> stateColor(
+            enabled, pressed, Color.Transparent, MagicColors.OnSurface.copy(alpha = 0.12f), Color.Transparent,
+        )
+        MagicIconButtonStyle.SURFACE -> stateColor(
+            enabled, pressed, MagicColors.Surface, MagicColors.SurfaceHighest, MagicColors.SurfaceDisabled,
+        )
+        MagicIconButtonStyle.DANGER -> stateColor(
+            enabled, pressed, MagicColors.SurfaceHighest, MagicColors.DangerPressed, MagicColors.DangerDisabled,
+        )
+    }
+    val tint = when {
+        !enabled -> MagicColors.OnSurface.copy(alpha = 0.25f)
+        style == MagicIconButtonStyle.DANGER -> MagicColors.Danger
+        else -> MagicColors.OnSurface
+    }
     Box(
         modifier = modifier
             .size(size)
@@ -119,7 +130,7 @@ fun MagicIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = if (enabled) MagicColors.OnSurface else MagicColors.OnSurface.copy(alpha = 0.25f),
+            tint = tint,
             modifier = Modifier.size(iconSize),
         )
     }
