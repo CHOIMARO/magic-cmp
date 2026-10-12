@@ -8,6 +8,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -21,7 +22,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontSynthesis
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
@@ -30,19 +31,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicColors
-import com.company.core.designsystem.theme.MagicTheme
 import com.company.core.domain.model.editor.CaptionStyleType
+import com.company.core.domain.model.editor.TextFontType
 import com.company.core.domain.model.editor.TextStyleType
 
 /**
- * Soft shadow behind text.
+ * Shadow behind text. A blur of 0 gives a hard shadow with sharp edges.
  *
  * @property color Color of the shadow.
  * @property offsetY Vertical offset in dp.
  * @property blur Blur radius in dp.
+ * @property offsetX Horizontal offset in dp.
  */
 @Immutable
-data class LookShadow(val color: Color, val offsetY: Float, val blur: Float)
+data class LookShadow(val color: Color, val offsetY: Float, val blur: Float, val offsetX: Float = 0f)
 
 /**
  * Visual style of overlay text or caption text.
@@ -54,13 +56,18 @@ data class LookShadow(val color: Color, val offsetY: Float, val blur: Float)
  * @property background Background of the text box.
  * @property fontSize Font size in sp.
  * @property fontWeight Font weight.
- * @property serif True for the serif italic font.
+ * @property font Font of the text.
  * @property shadows Shadows. The first shadow is on top.
- * @property outline True to draw a black outline around the letters.
+ * @property outline True to draw an outline around the letters.
+ * @property outlineColor Color of the outline.
+ * @property outlineWidth Width of the outline stroke in dp at font scale 1.
  * @property paddingHorizontal Horizontal padding of the text box.
  * @property paddingVertical Vertical padding of the text box.
  * @property cornerRadius Corner radius of the text box in dp.
  * @property letterSpacingEm Letter spacing in em.
+ * @property rotation Rotation of the text box in degrees. A negative value turns it counterclockwise.
+ * @property textAlign Alignment of the lines in the text box.
+ * @property boxWidthRatio Widest text box, as a part of the stage width.
  * @property bottomPercent Distance of a caption from the bottom, in percent of the screen height.
  * @property maxLines Largest number of lines. Longer texts get smaller.
  * @property maxCharsPerLine Largest number of characters on one line, without spaces.
@@ -75,13 +82,18 @@ data class TextLook(
     val background: Color = Color.Transparent,
     val fontSize: Float,
     val fontWeight: FontWeight,
-    val serif: Boolean = false,
+    val font: TextFontType = TextFontType.PRETENDARD,
     val shadows: List<LookShadow> = emptyList(),
     val outline: Boolean = false,
+    val outlineColor: Color = Color.Black,
+    val outlineWidth: Float = 3f,
     val paddingHorizontal: Float = 0f,
     val paddingVertical: Float = 0f,
     val cornerRadius: Float = 8f,
     val letterSpacingEm: Float = 0f,
+    val rotation: Float = 0f,
+    val textAlign: TextAlign = TextAlign.Center,
+    val boxWidthRatio: Float = 0.84f,
     val bottomPercent: Float = 17f,
     val maxLines: Int = 2,
     val maxCharsPerLine: Int = Int.MAX_VALUE,
@@ -106,6 +118,10 @@ private val NeonGlowNear = Color(0xFFE660FF)
 private val NeonGlowFar = Color(0xFFD852F5)
 private val MarkerYellow = Color(0xFFFDDC5B)
 private val PopYellow = Color(0xFFFBD35F)
+private val ImpactYellow = Color(0xFFFFE14D)
+private val RetroCream = Color(0xFFFFF3D6)
+private val RetroRed = Color(0xFFFF5A5F)
+private val CutePurple = Color(0xFF7B4FD6)
 
 /** Fade-out length of a title, from the spec. */
 private const val TITLE_EXIT_MILLIS = 200
@@ -119,8 +135,9 @@ private const val CAPTION_EXIT_MILLIS = 150
  * The entrance, the exit, and the line rules come from the "Magic Text Templates" spec.
  *
  * @param scale Size factor. 1 is the editor stage. Previews use smaller values.
+ * @param font Font that replaces the font of the style, or null to keep the font of the style.
  */
-fun TextStyleType.look(scale: Float = 1f): TextLook {
+fun TextStyleType.look(scale: Float = 1f, font: TextFontType? = null): TextLook {
     val base = TextLook(
         fontSize = 24f,
         fontWeight = FontWeight.ExtraBold,
@@ -137,7 +154,7 @@ fun TextStyleType.look(scale: Float = 1f): TextLook {
         )
         TextStyleType.OUTLINE -> base.copy(shadows = emptyList(), outline = true)
         TextStyleType.SERIF -> base.copy(
-            serif = true, fontWeight = FontWeight.Normal, fontSize = 32f,
+            font = TextFontType.GOWUN_BATANG, fontWeight = FontWeight.Bold, fontSize = 22f,
             shadows = listOf(LookShadow(Color.Black.copy(alpha = 0.45f), offsetY = 2f, blur = 14f)),
             animation = TextAnimation(TextEntrance.FADE, entranceMillis = 900, exitMillis = TITLE_EXIT_MILLIS),
         )
@@ -157,8 +174,35 @@ fun TextStyleType.look(scale: Float = 1f): TextLook {
             cornerRadius = 99f, shadows = emptyList(), letterSpacingEm = 0.03f, maxLines = 1,
             animation = TextAnimation(TextEntrance.POP, entranceMillis = 300, exitMillis = TITLE_EXIT_MILLIS),
         )
+        TextStyleType.HAND -> base.copy(
+            font = TextFontType.NANUM_PEN, fontWeight = FontWeight.Normal, fontSize = 35f,
+            shadows = listOf(LookShadow(Color.Black.copy(alpha = 0.45f), offsetY = 1.5f, blur = 7f)),
+            animation = TextAnimation(TextEntrance.WRITE, entranceMillis = 1000, exitMillis = TITLE_EXIT_MILLIS),
+        )
+        TextStyleType.IMPACT -> base.copy(
+            font = TextFontType.BLACK_HAN_SANS, fontSize = 30f, color = ImpactYellow,
+            outline = true, outlineWidth = 3.7f, shadows = listOf(LookShadow(Color.Black, offsetY = 2.5f, blur = 0f)),
+            rotation = -4f,
+            animation = TextAnimation(TextEntrance.STAMP, entranceMillis = 380, exitMillis = TITLE_EXIT_MILLIS),
+        )
+        TextStyleType.RETRO -> base.copy(
+            font = TextFontType.DO_HYEON, fontSize = 29f, color = RetroCream,
+            letterSpacingEm = 0.016f, shadows = listOf(LookShadow(RetroRed, offsetY = 2f, blur = 0f, offsetX = 2f)),
+            animation = TextAnimation(TextEntrance.BOUNCE, entranceMillis = 700, exitMillis = TITLE_EXIT_MILLIS),
+        )
+        TextStyleType.CUTE -> base.copy(
+            font = TextFontType.JUA, fontSize = 25f,
+            outline = true, outlineColor = CutePurple, shadows = listOf(LookShadow(CutePurple, offsetY = 1.7f, blur = 0f)),
+            animation = TextAnimation(TextEntrance.BOUNCE, entranceMillis = 650, exitMillis = TITLE_EXIT_MILLIS),
+        )
+        TextStyleType.MINIMAL -> base.copy(
+            fontWeight = FontWeight.Medium, fontSize = 12f, letterSpacingEm = 0.115f,
+            shadows = listOf(LookShadow(Color.Black.copy(alpha = 0.5f), offsetY = 0.5f, blur = 5f)),
+            textAlign = TextAlign.Start, boxWidthRatio = 0.7f,
+            animation = TextAnimation(TextEntrance.FADE_UP, entranceMillis = 700, exitMillis = TITLE_EXIT_MILLIS),
+        )
     }
-    return look.withLineLimit().scaled(scale)
+    return look.copy(font = font ?: look.font).withLineLimit().scaled(scale)
 }
 
 /**
@@ -189,7 +233,7 @@ fun CaptionStyleType.look(scale: Float = 1f): TextLook {
             shadows = listOf(LookShadow(Color.Black.copy(alpha = 0.7f), offsetY = 1f, blur = 6f)), bottomPercent = 9f,
         )
         CaptionStyleType.SERIF -> base.copy(
-            serif = true, fontWeight = FontWeight.Normal, fontSize = 22f, outline = false,
+            font = TextFontType.GOWUN_BATANG, fontWeight = FontWeight.Bold, fontSize = 16f, outline = false,
             shadows = listOf(LookShadow(Color.Black.copy(alpha = 0.6f), offsetY = 2f, blur = 10f)),
         )
         CaptionStyleType.BIG -> base.copy(
@@ -223,7 +267,7 @@ private fun LookText(
     wordColor: (Int) -> Color? = { null },
     wordHidden: (Int) -> Boolean = { false },
 ) {
-    val fonts = MagicTheme.fonts
+    val fontFamily = look.font.fontFamily()
     val density = LocalDensity.current
     val lines = remember(words, look) { look.breakLines(words) }
     val fit = lines.fontScale
@@ -231,11 +275,12 @@ private fun LookText(
         color = look.color,
         fontSize = (look.fontSize * fit).sp,
         fontWeight = look.fontWeight,
-        fontFamily = if (look.serif) fonts.serif else fonts.sans,
-        fontStyle = if (look.serif) FontStyle.Italic else FontStyle.Normal,
+        fontFamily = fontFamily,
+        // 파일에 없는 굵기를 흉내 내지 않는다. 굵기가 하나뿐인 글꼴은 그 굵기로 그린다.
+        fontSynthesis = FontSynthesis.None,
         letterSpacing = look.letterSpacingEm.em,
         lineHeight = 1.25.em,
-        textAlign = TextAlign.Center,
+        textAlign = look.textAlign,
     )
 
     /** Text of one layer. A highlighted word keeps the layer color when [useWordColors] is false. */
@@ -265,6 +310,20 @@ private fun LookText(
                 scaleX = frame.scale
                 scaleY = frame.scale
                 translationY = frame.offsetY.dp.toPx()
+                rotationZ = look.rotation
+            }
+            .drawWithContent {
+                if (frame.textReveal >= 1f) {
+                    drawContent()
+                } else {
+                    // 스펙처럼 위아래와 왼쪽은 넉넉히 남겨서, 그림자와 테두리가 잘리지 않게 한다.
+                    clipRect(
+                        left = -size.width * 0.1f,
+                        top = -size.height * 0.3f,
+                        right = size.width * frame.textReveal,
+                        bottom = size.height * 1.3f,
+                    ) { this@drawWithContent.drawContent() }
+                }
             }
             .drawBehind {
                 if (background.alpha > 0f) {
@@ -283,8 +342,8 @@ private fun LookText(
             Text(
                 text = layer(useWordColors = false),
                 style = style.copy(
-                    color = Color.Black,
-                    drawStyle = Stroke(width = with(density) { (3 * fit).dp.toPx() }, join = StrokeJoin.Round),
+                    color = look.outlineColor,
+                    drawStyle = Stroke(width = with(density) { (look.outlineWidth * fit).dp.toPx() }, join = StrokeJoin.Round),
                 ),
                 softWrap = false,
             )
@@ -342,5 +401,5 @@ fun CaptionText(
 fun String.splitWords(): List<String> = trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
 
 private fun LookShadow.toShadow(density: Density): Shadow = with(density) {
-    Shadow(color = color, offset = Offset(0f, offsetY.dp.toPx()), blurRadius = blur.dp.toPx())
+    Shadow(color = color, offset = Offset(offsetX.dp.toPx(), offsetY.dp.toPx()), blurRadius = blur.dp.toPx())
 }

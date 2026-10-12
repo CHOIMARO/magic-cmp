@@ -1,6 +1,7 @@
 package com.company.ui.editor
 
 import androidx.compose.runtime.Immutable
+import com.company.core.domain.model.editor.TextFontType
 import kotlin.math.floor
 import kotlin.math.pow
 
@@ -15,12 +16,6 @@ private const val STAGE_WIDTH_DP = 264.375f
 /** Converts spec canvas pixels to stage dp. */
 private const val DP_PER_SPEC_PX = STAGE_WIDTH_DP / 1080f
 
-/** Widest text box, as a part of the stage width. */
-private const val MAX_WIDTH_RATIO = 0.84f
-
-/** Average letter width, as a part of the font size. Pretendard and Gowun Batang both use 0.95. */
-private const val GLYPH_WIDTH_RATIO = 0.95f
-
 /** Safety margin of the character count per line. */
 private const val CHARS_PER_LINE_MARGIN = 0.9f
 
@@ -29,6 +24,21 @@ private const val MIN_FONT_SCALE = 0.7f
 
 /** Distance of the slide-up entrance, in spec pixels. */
 private const val SLIDE_UP_DISTANCE_PX = 70f
+
+/** Distance of the fade-up entrance, in spec pixels. */
+private const val FADE_UP_DISTANCE_PX = 40f
+
+/** Height of the bounce entrance, in spec pixels. */
+private const val BOUNCE_HEIGHT_PX = 160f
+
+/** Start size of the stamp entrance, as a factor of the final size. */
+private const val STAMP_START_SCALE = 1.9f
+
+/** Time that the text stays still in an animation preview, after the entrance. */
+private const val PREVIEW_HOLD_MILLIS = 1000L
+
+/** Time that no text shows in an animation preview, after the exit and before the next entrance. */
+private const val PREVIEW_PAUSE_MILLIS = 300L
 
 /** Opacity steps of the flicker entrance. */
 private val FlickerSteps = floatArrayOf(0f, 0.9f, 0.1f, 0.8f, 0.3f, 1f, 0.6f, 1f)
@@ -49,6 +59,18 @@ enum class TextEntrance {
 
     /** The background draws from left to right ("형광펜 긋기"). */
     MARKER_SWEEP,
+
+    /** Fades in and moves up a short distance ("떠오르기"). */
+    FADE_UP,
+
+    /** The text shows from left to right, as if a pen writes it ("써 내려가기"). */
+    WRITE,
+
+    /** Shrinks from a large size into place, as a stamp ("도장 찍기"). */
+    STAMP,
+
+    /** Drops from above and bounces into place ("통통"). */
+    BOUNCE,
 }
 
 /**
@@ -85,6 +107,7 @@ enum class CaptionHighlight {
  * @property scale Size factor around the center.
  * @property offsetY Vertical move in dp. A positive value moves down.
  * @property backgroundReveal Part of the background that shows, from the left edge, from 0 to 1.
+ * @property textReveal Part of the text box that shows, from the left edge, from 0 to 1.
  */
 @Immutable
 data class TextFrame(
@@ -92,6 +115,7 @@ data class TextFrame(
     val scale: Float = 1f,
     val offsetY: Float = 0f,
     val backgroundReveal: Float = 1f,
+    val textReveal: Float = 1f,
 ) {
     companion object {
         /** Text without animation. */
@@ -114,6 +138,10 @@ fun TextAnimation.frameAt(elapsed: Double, remaining: Double): TextFrame {
         TextEntrance.FADE -> TextFrame(alpha = easeInOutCubic(p))
         TextEntrance.FLICKER -> TextFrame(alpha = if (p >= 1f) 1f else FlickerSteps[(p * FlickerSteps.size).toInt()])
         TextEntrance.MARKER_SWEEP -> TextFrame(alpha = minOf(1f, p * 4f), backgroundReveal = easeOutCubic(p))
+        TextEntrance.FADE_UP -> TextFrame(alpha = easeOutCubic(p), offsetY = (1f - easeOutCubic(p)) * FADE_UP_DISTANCE_PX * DP_PER_SPEC_PX)
+        TextEntrance.WRITE -> TextFrame(textReveal = easeInOutCubic(p))
+        TextEntrance.STAMP -> TextFrame(alpha = minOf(1f, p * 2f), scale = STAMP_START_SCALE - (STAMP_START_SCALE - 1f) * easeOutCubic(p))
+        TextEntrance.BOUNCE -> TextFrame(alpha = minOf(1f, p * 3f), offsetY = -(1f - easeOutBounce(p)) * BOUNCE_HEIGHT_PX * DP_PER_SPEC_PX)
     }
     val exit = ((exitSeconds - remaining) / exitSeconds).coerceIn(0.0, 1.0).toFloat()
     if (exit > 0f) frame = frame.copy(alpha = frame.alpha * (1f - easeInCubic(exit)))
@@ -131,11 +159,45 @@ fun TextAnimation.animatedRanges(length: Double): List<ClosedFloatingPointRange<
     maxOf(0.0, length - exitSeconds)..length,
 )
 
+/** Length of one loop of the preview: the entrance, the hold, the exit, and the pause. */
+private val TextAnimation.previewLoopMillis: Long
+    get() = entranceMillis + PREVIEW_HOLD_MILLIS + exitMillis + PREVIEW_PAUSE_MILLIS
+
+/**
+ * Calculates the look of the text in a looping preview.
+ *
+ * The text comes on screen, stays still for 1 second, and goes off screen. After a 0.3 second pause, the loop
+ * starts again. The loop length changes with the entrance length, so texts with different animations do not go
+ * off screen at the same time.
+ *
+ * @param elapsedMillis Time since the preview started.
+ * @return The look of the text at that time.
+ */
+fun TextAnimation.previewFrameAt(elapsedMillis: Long): TextFrame {
+    val time = elapsedMillis % previewLoopMillis
+    return frameAt(
+        elapsed = time / 1000.0,
+        remaining = (entranceMillis + PREVIEW_HOLD_MILLIS + exitMillis - time) / 1000.0,
+    )
+}
+
 private fun easeOutCubic(p: Float): Float = 1f - (1f - p).pow(3)
 
 private fun easeInCubic(p: Float): Float = p.pow(3)
 
 private fun easeInOutCubic(p: Float): Float = if (p < 0.5f) 4f * p * p * p else 1f - (-2f * p + 2f).pow(3) / 2f
+
+/** Falls and bounces three times, as the easeOutBounce curve of the spec. */
+private fun easeOutBounce(p: Float): Float {
+    val n = 7.5625f
+    val d = 2.75f
+    return when {
+        p < 1f / d -> n * p * p
+        p < 2f / d -> (p - 1.5f / d).let { n * it * it + 0.75f }
+        p < 2.5f / d -> (p - 2.25f / d).let { n * it * it + 0.9375f }
+        else -> (p - 2.625f / d).let { n * it * it + 0.984375f }
+    }
+}
 
 private fun easeOutBack(p: Float): Float {
     val c1 = 1.70158f
@@ -160,10 +222,19 @@ data class TextLines(val lines: List<List<String>>, val fontScale: Float)
  * Number of characters that fit on one line, as in the spec: the widest box divided by the average letter width.
  */
 internal fun TextLook.charactersPerLine(): Int {
-    val boxWidth = MAX_WIDTH_RATIO * STAGE_WIDTH_DP - paddingHorizontal * 2
-    val letterWidth = fontSize * GLYPH_WIDTH_RATIO + letterSpacingEm * fontSize
+    val boxWidth = boxWidthRatio * STAGE_WIDTH_DP - paddingHorizontal * 2
+    val letterWidth = fontSize * font.glyphWidthRatio + letterSpacingEm * fontSize
     return maxOf(1, floor(boxWidth / letterWidth * CHARS_PER_LINE_MARGIN).toInt())
 }
+
+/** Average letter width of the font, as a part of the font size. The values come from the spec. */
+internal val TextFontType.glyphWidthRatio: Float
+    get() = when (this) {
+        TextFontType.PRETENDARD, TextFontType.GOWUN_BATANG, TextFontType.JUA -> 0.95f
+        TextFontType.NANUM_PEN -> 0.62f
+        TextFontType.BLACK_HAN_SANS -> 0.98f
+        TextFontType.DO_HYEON -> 0.85f
+    }
 
 /**
  * Breaks the words into lines with the overflow rule of the spec.

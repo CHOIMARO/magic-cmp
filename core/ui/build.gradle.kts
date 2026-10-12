@@ -18,6 +18,11 @@ kotlin {
         compileSdk = 37
         minSdk = 29
 
+        // 글자 글꼴 등 Compose Multiplatform 리소스를 Android에서 사용하기 위해 필요
+        androidResources {
+            enable = true
+        }
+
         withHostTestBuilder {
         }
 
@@ -109,4 +114,8 @@ kotlin {
         }
     }
 
+}
+
+compose.resources {
+    packageOfResClass = "com.company.ui.resources"
 }

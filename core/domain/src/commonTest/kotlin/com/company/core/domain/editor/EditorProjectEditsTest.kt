@@ -7,6 +7,7 @@ import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.EditorTemplate
 import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.MIN_TEXT_LENGTH
+import com.company.core.domain.model.editor.TextFontType
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.TextStyleType
 import com.company.core.domain.model.editor.addText
@@ -25,6 +26,7 @@ import com.company.core.domain.model.editor.trimClipEnd
 import com.company.core.domain.model.editor.trimClipStart
 import com.company.core.domain.model.editor.trimTextEnd
 import com.company.core.domain.model.editor.trimTextStart
+import com.company.core.domain.model.editor.updateText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -126,6 +128,17 @@ class EditorProjectEditsTest {
         assertEquals(2.0, duplicated.texts.last().start)
         assertEquals(1, duplicated.texts.last().layer)
         assertNull(withText.duplicateText("missing"))
+    }
+
+    @Test
+    fun textFont_staysWithTextAndItsCopy() {
+        val withText = project.addText("hi", TextStyleType.BOLD, time = 0.0, font = TextFontType.JUA)
+        val id = withText.texts.single().id
+        assertEquals(TextFontType.JUA, withText.texts.single().font)
+        assertEquals(TextFontType.JUA, assertNotNull(withText.duplicateText(id)).first.texts.last().font)
+        assertEquals(TextFontType.DO_HYEON, withText.updateText(id, "hi", TextStyleType.BOX, TextFontType.DO_HYEON).texts.single().font)
+        // null이면 스타일의 글꼴을 쓴다.
+        assertNull(withText.updateText(id, "hi", TextStyleType.BOX, font = null).texts.single().font)
     }
 
     /** Project of 5 seconds with texts at 0~3 seconds (row 0), 1~4 seconds (row 1), and 3~5 seconds (row 0). */

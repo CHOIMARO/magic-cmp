@@ -1,6 +1,8 @@
 package com.company.ui.editor
 
+import androidx.compose.ui.text.style.TextAlign
 import com.company.core.domain.model.editor.CaptionStyleType
+import com.company.core.domain.model.editor.TextFontType
 import com.company.core.domain.model.editor.TextStyleType
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -37,6 +39,74 @@ class TextRulesTest {
     fun tag_staysOnOneLine() {
         val lines = TextStyleType.TAG.look().breakLines("아주 긴 라벨 문구를 한 줄로 보여 줘요".splitWords())
         assertEquals(1, lines.lines.size)
+    }
+
+    @Test
+    fun font_replacesFontOfStyleAndChangesLineLength() {
+        assertEquals(TextFontType.GOWUN_BATANG, TextStyleType.SERIF.look().font)
+        assertEquals(TextFontType.GOWUN_BATANG, CaptionStyleType.SERIF.look().font)
+        assertEquals(TextFontType.JUA, TextStyleType.SERIF.look(font = TextFontType.JUA).font)
+        // 나눔손글씨 펜은 글자 폭이 좁아서, 같은 크기에서 한 줄에 더 많은 글자가 들어간다.
+        val pen = TextStyleType.BOLD.look(font = TextFontType.NANUM_PEN)
+        assertTrue(pen.maxCharsPerLine > TextStyleType.BOLD.look().maxCharsPerLine)
+    }
+
+    /** Checks that the frame is the look without animation. Float math can leave a very small offset. */
+    private fun assertStatic(frame: TextFrame, message: String) {
+        assertEquals(1f, frame.alpha, 1e-4f, message)
+        assertEquals(1f, frame.scale, 1e-4f, message)
+        assertEquals(0f, frame.offsetY, 1e-3f, message)
+        assertEquals(1f, frame.backgroundReveal, 1e-4f, message)
+        assertEquals(1f, frame.textReveal, 1e-4f, message)
+    }
+
+    /** True when no part of the text shows. */
+    private val TextFrame.hidden: Boolean
+        get() = alpha == 0f || textReveal == 0f
+
+    @Test
+    fun previewLoop_holdsOneSecondAndPausesShortly() {
+        TextStyleType.entries.forEach { style ->
+            val animation = style.look().animation
+            val entranceEnd = animation.entranceMillis.toLong()
+            val exitEnd = entranceEnd + 1000L + animation.exitMillis
+            // 처음에는 보이지 않는다.
+            assertTrue(animation.previewFrameAt(0L).hidden, style.name)
+            // 등장이 끝나면 1초 동안 정지 상태다.
+            assertStatic(animation.previewFrameAt(entranceEnd), style.name)
+            assertStatic(animation.previewFrameAt(entranceEnd + 1000L), style.name)
+            // 퇴장 뒤 0.3초 동안 보이지 않고, 그 다음에 처음부터 다시 재생한다.
+            assertTrue(animation.previewFrameAt(exitEnd + 100L).hidden, style.name)
+            assertEquals(animation.previewFrameAt(100L), animation.previewFrameAt(exitEnd + 300L + 100L), style.name)
+        }
+        // 퇴장 중에는 반쯤 보인다.
+        val fading = TextStyleType.BOLD.look().animation.previewFrameAt(350L + 1000L + 100L).alpha
+        assertTrue(fading > 0f && fading < 1f)
+    }
+
+    @Test
+    fun newEntrances_startAwayAndEndInPlace() {
+        fun start(entrance: TextEntrance) = TextAnimation(entrance, entranceMillis = 500, exitMillis = 200).frameAt(0.0, 3.0)
+        // 떠오르기는 아래에서 투명하게 시작한다.
+        assertEquals(0f, start(TextEntrance.FADE_UP).alpha)
+        assertTrue(start(TextEntrance.FADE_UP).offsetY > 0f)
+        // 써 내려가기는 보이는 폭 0에서 시작한다.
+        assertEquals(0f, start(TextEntrance.WRITE).textReveal)
+        // 도장 찍기는 크게 시작한다.
+        assertEquals(1.9f, start(TextEntrance.STAMP).scale, 1e-4f)
+        // 통통은 위에서 떨어진다.
+        assertTrue(start(TextEntrance.BOUNCE).offsetY < 0f)
+        listOf(TextEntrance.FADE_UP, TextEntrance.WRITE, TextEntrance.STAMP, TextEntrance.BOUNCE).forEach { entrance ->
+            assertStatic(TextAnimation(entrance, entranceMillis = 500, exitMillis = 200).frameAt(0.5, 2.5), entrance.name)
+        }
+    }
+
+    @Test
+    fun minimal_usesNarrowBoxAndLeftAlignment() {
+        val minimal = TextStyleType.MINIMAL.look()
+        assertEquals(TextAlign.Start, minimal.textAlign)
+        assertEquals(0.7f, minimal.boxWidthRatio)
+        assertEquals(-4f, TextStyleType.IMPACT.look().rotation)
     }
 
     @Test

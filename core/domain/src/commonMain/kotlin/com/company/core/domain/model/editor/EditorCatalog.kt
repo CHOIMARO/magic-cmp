@@ -32,7 +32,28 @@ enum class LayoutType(val clipCount: Int) {
 }
 
 /** Look of a text overlay. */
-enum class TextStyleType { BOLD, BOX, OUTLINE, SERIF, NEON, MARKER, TAG }
+enum class TextStyleType { BOLD, BOX, OUTLINE, SERIF, NEON, MARKER, TAG, HAND, IMPACT, RETRO, CUTE, MINIMAL }
+
+/** Font of a text overlay. All fonts use the SIL Open Font License 1.1. */
+enum class TextFontType {
+    /** Pretendard. Most text styles use it. */
+    PRETENDARD,
+
+    /** Gowun Batang (고운바탕), a serif font. The serif styles use it. */
+    GOWUN_BATANG,
+
+    /** Nanum Pen Script (나눔손글씨 펜), a handwriting font. */
+    NANUM_PEN,
+
+    /** Black Han Sans (검은고딕), a heavy display font. */
+    BLACK_HAN_SANS,
+
+    /** Do Hyeon (도현), a retro display font. */
+    DO_HYEON,
+
+    /** Jua (주아), a round display font. */
+    JUA,
+}
 
 /** Look of the automatic captions. */
 enum class CaptionStyleType { BASIC, POP, BOX, MINIMAL, SERIF, BIG }

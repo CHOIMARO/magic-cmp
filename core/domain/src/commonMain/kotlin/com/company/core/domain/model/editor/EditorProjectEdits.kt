@@ -126,8 +126,9 @@ fun EditorProject.addClips(newClips: List<Clip>): EditorProject = copy(clips = c
  * @param text Text to show.
  * @param style Look of the text.
  * @param time Current time on the timeline.
+ * @param font Font of the text, or null for the font of [style].
  */
-fun EditorProject.addText(text: String, style: TextStyleType, time: Double): EditorProject {
+fun EditorProject.addText(text: String, style: TextStyleType, time: Double, font: TextFontType? = null): EditorProject {
     val total = totalDuration
     val start = time.coerceIn(0.0, maxOf(0.0, total - 1))
     val length = maxOf(1.0, minOf(3.0, total - start))
@@ -140,19 +141,21 @@ fun EditorProject.addText(text: String, style: TextStyleType, time: Double): Edi
         x = 50.0,
         y = 40.0,
         layer = firstFreeTextLayer(start, start + length),
+        font = font,
     )
     return copy(texts = texts + overlay)
 }
 
 /**
- * Changes the text and the style of a text overlay.
+ * Changes the text, the style, and the font of a text overlay.
  *
  * @param textId ID of the overlay.
  * @param text New text.
  * @param style New look.
+ * @param font New font, or null for the font of [style].
  */
-fun EditorProject.updateText(textId: String, text: String, style: TextStyleType): EditorProject =
-    copy(texts = texts.map { if (it.id == textId) it.copy(text = text, style = style) else it })
+fun EditorProject.updateText(textId: String, text: String, style: TextStyleType, font: TextFontType? = null): EditorProject =
+    copy(texts = texts.map { if (it.id == textId) it.copy(text = text, style = style, font = font) else it })
 
 /**
  * Removes a text overlay. A row of the text track that becomes empty goes away, and the rows below it move up.

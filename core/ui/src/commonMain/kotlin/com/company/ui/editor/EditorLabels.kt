@@ -5,6 +5,7 @@ import com.company.core.domain.model.editor.EditorTemplate
 import com.company.core.domain.model.editor.FilterType
 import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.TemplateKind
+import com.company.core.domain.model.editor.TextFontType
 import com.company.core.domain.model.editor.TextStyleType
 
 /** Default text of a new title overlay. */
@@ -50,6 +51,22 @@ val TextStyleType.displayName: String
         TextStyleType.NEON -> "네온"
         TextStyleType.MARKER -> "형광펜"
         TextStyleType.TAG -> "라벨"
+        TextStyleType.HAND -> "손글씨"
+        TextStyleType.IMPACT -> "예능"
+        TextStyleType.RETRO -> "레트로"
+        TextStyleType.CUTE -> "말랑"
+        TextStyleType.MINIMAL -> "미니멀"
+    }
+
+/** Display name of the font. */
+val TextFontType.displayName: String
+    get() = when (this) {
+        TextFontType.PRETENDARD -> "프리텐다드"
+        TextFontType.GOWUN_BATANG -> "고운바탕"
+        TextFontType.NANUM_PEN -> "나눔손글씨 펜"
+        TextFontType.BLACK_HAN_SANS -> "검은고딕"
+        TextFontType.DO_HYEON -> "도현"
+        TextFontType.JUA -> "주아"
     }
 
 /** Display name of the caption style. */

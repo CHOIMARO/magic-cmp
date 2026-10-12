@@ -74,6 +74,7 @@ data class Clip(
  * @property x Horizontal center in percent of the screen width.
  * @property y Vertical center in percent of the screen height.
  * @property layer Row of the text track on the timeline. 0 is the first row. Texts in one row do not overlap in time.
+ * @property font Font of the text, or null for the font of [style].
  */
 data class TextOverlay(
     val id: String,
@@ -84,6 +85,7 @@ data class TextOverlay(
     val x: Double,
     val y: Double,
     val layer: Int = 0,
+    val font: TextFontType? = null,
 ) {
     /** End time on the timeline. */
     val end: Double
