@@ -6,11 +6,13 @@ import com.company.core.base.Intent
 import com.company.core.base.SideEffect
 import com.company.core.base.State
 import com.company.core.domain.model.editor.EditorSettings
+import com.company.core.domain.model.editor.MyVoiceStatus
 import com.company.core.domain.model.editor.EditorTemplate
 import com.company.core.domain.model.editor.TemplateKind
 import com.company.core.domain.model.editor.VideoSummary
 import com.company.core.domain.repository.EditorProjectRepository
 import com.company.core.domain.repository.EditorSettingsRepository
+import com.company.core.domain.repository.MyVoiceRepository
 import com.company.core.domain.repository.MyVideoRepository
 import kotlinx.coroutines.launch
 
@@ -66,6 +68,7 @@ sealed interface MainSheet {
  * @property drafts Draft projects.
  * @property completedVideos Saved videos. The newest video is first.
  * @property settings Editor settings.
+ * @property myVoice State of the user's own voice for dubbings.
  */
 data class MainState(
     val tab: MainTab = MainTab.HOME,
@@ -75,6 +78,7 @@ data class MainState(
     val drafts: List<VideoSummary> = emptyList(),
     val completedVideos: List<VideoSummary> = emptyList(),
     val settings: EditorSettings = EditorSettings(),
+    val myVoice: MyVoiceStatus = MyVoiceStatus.None,
 ) : State()
 
 /** User actions on the main screen. */
@@ -117,6 +121,9 @@ sealed class MainIntent : Intent() {
 
     /** OpenProject(name) : Loads the draft and opens the editor. */
     data class OpenProject(val name: String) : MainIntent()
+
+    /** OpenMyVoice : Opens the screen of the user's own voice. */
+    data object OpenMyVoice : MainIntent()
 }
 
 /** One-time events of the main screen. */
@@ -129,6 +136,9 @@ sealed class MainSideEffect : SideEffect() {
 
     /** OpenEditor : Navigates to the editor with the current project. */
     data object OpenEditor : MainSideEffect()
+
+    /** OpenMyVoice : Navigates to the screen of the user's own voice. */
+    data object OpenMyVoice : MainSideEffect()
 }
 
 /**
@@ -140,6 +150,7 @@ class MainViewModel(
     private val myVideoRepository: MyVideoRepository,
     private val settingsRepository: EditorSettingsRepository,
     private val projectRepository: EditorProjectRepository,
+    myVoiceRepository: MyVoiceRepository,
 ) : BaseViewModel<MainState, MainIntent, MainSideEffect>(
     initialState = MainState()
 ) {
@@ -148,6 +159,7 @@ class MainViewModel(
         viewModelScope.launch { myVideoRepository.drafts.collect { reduce { copy(drafts = it) } } }
         viewModelScope.launch { myVideoRepository.completedVideos.collect { reduce { copy(completedVideos = it) } } }
         viewModelScope.launch { settingsRepository.settings.collect { reduce { copy(settings = it) } } }
+        viewModelScope.launch { myVoiceRepository.status.collect { reduce { copy(myVoice = it) } } }
     }
 
     // =====================================================================
@@ -177,6 +189,7 @@ class MainViewModel(
             }
             MainIntent.UseSelectedTemplate -> useSelectedTemplate()
             is MainIntent.OpenProject -> openProject(intent.name)
+            MainIntent.OpenMyVoice -> postSideEffect { MainSideEffect.OpenMyVoice }
         }
     }
 

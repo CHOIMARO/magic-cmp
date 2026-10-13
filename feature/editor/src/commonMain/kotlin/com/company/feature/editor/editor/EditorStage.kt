@@ -29,12 +29,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,15 +61,20 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.MAX_TEXT_SCALE
 import com.company.core.domain.model.editor.MIN_TEXT_SCALE
 import com.company.core.domain.model.editor.MediaType
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.clipAt
+import com.company.core.domain.model.editor.transitionWindows
+import com.company.core.media.openingLook
+import com.company.core.media.transitionLook
 import com.company.ui.editor.OverlayText
 import com.company.ui.editor.TextFrame
 import com.company.ui.editor.centeredAt
 import com.company.ui.editor.formatTime
+import com.company.ui.editor.frameAt
 import com.company.ui.editor.look
 import com.company.ui.editor.toColorFilter
 import com.company.ui.media.MediaThumbnail
@@ -177,23 +184,43 @@ internal fun EditorStage(
             TrimEdgeFrame(uri = uri, time = time, colorFilter = filter, modifier = Modifier.fillMaxSize())
         }
 
+        // 재생 중 화면 전환: 원본 파일이 없는 샘플 클립은 줄무늬 장면으로 전환을 보여 준다. 실제 영상은 재생기가 그린다.
+        if (video == null && state.playing && current != null) {
+            PlaceholderTransition(project = project, time = state.time, filter = filter)
+        }
+
         // 선택한 글자가 무대에 보이면, 무대 어디에서든 두 손가락으로 그 글자의 크기와 각도를 바꾼다.
         val transformTarget by rememberUpdatedState(project.texts.find { it.id == state.selectedTextId && it.isVisibleAt(state.time) })
+        // 글자 시트가 열려 있으면 그 글자를 재생 위치와 상관없이 보여 주고, 입력 중인 문구와 꾸미기를 바로 반영한다.
+        val draft = state.textDraft?.takeIf { state.sheet == EditorSheet.TEXT }
+        val liveTexts = remember(project.texts, draft, state.time) { project.liveTexts(draft, state.time) }
+        val focusId = when {
+            draft != null && !draft.isCaption -> draft.id ?: DRAFT_TEXT_ID
+            state.sheet == EditorSheet.ANIMATION -> state.selectedTextId
+            else -> null
+        }
+        val demo = rememberAnimationDemo(state)
         StageCanvas(modifier = Modifier.fillMaxSize().pinchToTransformText(target = { transformTarget }, onIntent = onIntent)) {
-            project.texts.filter { it.isVisibleAt(state.time) }.forEach { overlay ->
+            liveTexts.filter { it.id == focusId || it.isVisibleAt(state.time) }.forEach { overlay ->
                 key(overlay.id) {
                     DraggableOverlay(
                         overlay = overlay,
-                        frame = if (state.playing) overlay.frameAt(state.time) else TextFrame.Static,
-                        selected = overlay.id == state.selectedTextId && !state.playing,
+                        frame = when {
+                            demo != null && overlay.id == state.selectedTextId -> demo
+                            // 등장·퇴장 애니메이션은 재생할 때만 보여 준다. 멈춘 화면에서는 글자를 고치기 쉽게 그대로 보여 준다.
+                            state.playing -> overlay.frameAt(state.time)
+                            else -> TextFrame.Static
+                        },
+                        selected = overlay.id == state.selectedTextId && !state.playing && draft == null,
                         stageWidth = stageWidth,
                         stageHeight = stageHeight,
                         onIntent = onIntent,
+                        interactive = overlay.id != DRAFT_TEXT_ID,
                     )
                 }
             }
-            // 등장·퇴장 애니메이션은 재생할 때만 보여 준다. 멈춘 화면에서는 글자를 고치기 쉽게 그대로 보여 준다.
-            StageCaption(project = project, time = state.time, animate = state.playing)
+            val captionPreview = draft?.captionId?.let { CaptionPreview(it, draft.text, draft.decorations) }
+            StageCaption(project = project, time = state.time, animate = state.playing, preview = captionPreview)
             if (state.watermark) StageWatermark()
         }
 
@@ -268,6 +295,7 @@ private const val ROTATION_SNAP_DEGREES = 5f
  * @param stageWidth Width of the stage in pixels.
  * @param stageHeight Height of the stage in pixels.
  * @param onIntent Called with each user action.
+ * @param interactive False for the text of a new draft. It does not take touches.
  */
 @Composable
 private fun DraggableOverlay(
@@ -277,6 +305,7 @@ private fun DraggableOverlay(
     stageWidth: Float,
     stageHeight: Float,
     onIntent: (EditorIntent) -> Unit,
+    interactive: Boolean = true,
 ) {
     val latest by rememberUpdatedState(overlay)
     var textSize by remember { mutableStateOf(IntSize.Zero) }
@@ -285,7 +314,8 @@ private fun DraggableOverlay(
     Box(modifier = Modifier.centeredAt(xPercent = overlay.x.toFloat(), yPercent = overlay.y.toFloat())) {
         OverlayText(
             text = overlay.text,
-            look = overlay.style.look(font = overlay.font),
+            look = overlay.look(),
+            decorations = overlay.decorations,
             frame = frame,
             modifier = Modifier
                 .onSizeChanged { textSize = it }
@@ -295,7 +325,8 @@ private fun DraggableOverlay(
                     scaleY = scale
                     rotationZ = rotation
                 }
-                .pointerInput(overlay.id) {
+                .pointerInput(overlay.id, interactive) {
+                    if (!interactive) return@pointerInput
                     var x = 0.0
                     var y = 0.0
                     detectDragGestures(
@@ -313,7 +344,8 @@ private fun DraggableOverlay(
                         },
                     )
                 }
-                .pointerInput(overlay.id) {
+                .pointerInput(overlay.id, interactive) {
+                    if (!interactive) return@pointerInput
                     detectTapGestures(
                         onTap = { onIntent(EditorIntent.SelectText(overlay.id)) },
                         onDoubleTap = { onIntent(EditorIntent.OpenTextEditor(overlay.id)) },
@@ -501,3 +533,95 @@ private fun Modifier.pinchToTransformText(target: () -> TextOverlay?, onIntent: 
             } while (event.changes.any { it.pressed })
         }
     }
+
+/** ID of the text that the text sheet adds. It is on the stage only while the sheet is open. */
+private const val DRAFT_TEXT_ID = "__draft"
+
+/**
+ * Texts of the stage with the input of the open text sheet.
+ *
+ * A text that the sheet changes shows its new text and look. A new text shows at the place of a new overlay.
+ *
+ * @param draft Draft of the open text sheet, or null.
+ * @param time Playhead position.
+ */
+private fun EditorProject.liveTexts(draft: TextDraft?, time: Double): List<TextOverlay> {
+    if (draft == null || draft.isCaption) return texts
+    val show = { overlay: TextOverlay ->
+        overlay.copy(text = draft.text, style = draft.style, font = draft.font, sizeStep = draft.sizeStep, decorations = draft.decorations)
+    }
+    return if (draft.id != null) {
+        texts.map { if (it.id == draft.id) show(it) else it }
+    } else {
+        texts + show(TextOverlay(id = DRAFT_TEXT_ID, text = "", start = time, length = 3.0, style = draft.style, x = 50.0, y = 40.0))
+    }.map { overlay ->
+        // 비운 입력은 '글자'로 보여 준다.
+        if (overlay.id == (draft.id ?: DRAFT_TEXT_ID) && overlay.text.isBlank()) overlay.copy(text = "글자", decorations = emptyList()) else overlay
+    }
+}
+
+/** Time without animation before an exit demo, in milliseconds. */
+private const val DEMO_EXIT_HOLD_MILLIS = 300L
+
+/** Time after a demo that the text stays still, in milliseconds. */
+private const val DEMO_END_MILLIS = 500L
+
+/**
+ * Plays the animation of the selected text once after each pick in the animation sheet (F09).
+ *
+ * @return The animation state of the selected text, or null when no demo plays.
+ */
+@Composable
+private fun rememberAnimationDemo(state: EditorState): TextFrame? {
+    var frame by remember { mutableStateOf<TextFrame?>(null) }
+    val text = state.selectedText?.takeIf { state.sheet == EditorSheet.ANIMATION }
+    LaunchedEffect(state.animationReplay, text != null) {
+        frame = null
+        if (text == null || state.animationReplay == 0) return@LaunchedEffect
+        val animation = text.look().animation
+        val entrance = state.animationTab == AnimationTab.ENTRANCE
+        val length = if (entrance) animation.entranceMillis + DEMO_END_MILLIS else DEMO_EXIT_HOLD_MILLIS + animation.exitMillis + DEMO_END_MILLIS
+        val start = withFrameMillis { it }
+        while (true) {
+            val elapsed = withFrameMillis { it } - start
+            if (elapsed >= length) break
+            frame = if (entrance) {
+                animation.copy(exitMillis = 0).frameAt(elapsed / 1000.0, 99.0)
+            } else {
+                animation.copy(entranceMillis = 0).frameAt(1.0, (DEMO_EXIT_HOLD_MILLIS + animation.exitMillis - elapsed) / 1000.0)
+                    .let { if (elapsed > DEMO_EXIT_HOLD_MILLIS + animation.exitMillis) TextFrame.Static.copy(alpha = 0f) else it }
+            }
+        }
+        frame = null
+    }
+    return frame
+}
+
+/**
+ * Transition of the placeholder stage while the preview plays. It draws striped scenes in the colors of the clips.
+ *
+ * @param project Project with the clips and the transitions.
+ * @param time Playhead position.
+ * @param filter Color filter of the project.
+ */
+@Composable
+private fun PlaceholderTransition(project: EditorProject, time: Double, filter: ColorFilter?) {
+    val window = remember(project.clips, project.transitions, project.openingTransition) { project.transitionWindows() }
+        .firstOrNull { time >= it.start && time < it.end } ?: return
+    val progress = window.progressAt(time).toFloat()
+    val transition = window.transition
+    val look = if (window.fromClip == null) {
+        openingLook(transition.type, progress)
+    } else {
+        transitionLook(transition.type, progress, transition.direction)
+    }
+    val fromHue = window.fromClip?.let { project.clips[it].thumbnailHue } ?: 0
+    TransitionScenes(
+        look = look,
+        fromHue = fromHue.toFloat(),
+        toHue = project.clips[window.toClip].thumbnailHue.toFloat(),
+        modifier = Modifier.fillMaxSize(),
+        colorFilter = filter,
+        stripeOffset = (time * 26).dp,
+    )
+}

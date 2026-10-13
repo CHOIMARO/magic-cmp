@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.Hd
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Icon
@@ -48,6 +49,7 @@ import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.domain.model.editor.EditorSettings
+import com.company.core.domain.model.editor.MyVoiceStatus
 import com.company.feature.main.SettingKey
 import com.company.feature.main.component.TabContentBottomPadding
 import com.company.feature.main.component.TabTitle
@@ -76,15 +78,19 @@ private data class SettingRow(
  *
  * @param settings Current editor settings.
  * @param completedCount Number of completed videos.
+ * @param myVoice State of the user's own voice.
  * @param onToggleSetting Called with the tapped setting.
  * @param onOpenAppInfo Action of the "앱 정보" row.
+ * @param onOpenMyVoice Action of the "내 목소리" row.
  */
 @Composable
 internal fun MyTab(
     settings: EditorSettings,
     completedCount: Int,
+    myVoice: MyVoiceStatus,
     onToggleSetting: (SettingKey) -> Unit,
     onOpenAppInfo: () -> Unit,
+    onOpenMyVoice: () -> Unit,
 ) {
     val groups = listOf(
         "계정" to listOf(
@@ -96,6 +102,16 @@ internal fun MyTab(
             SettingRow(Icons.Outlined.Campaign, "새 템플릿 소식", toggle = SettingKey.TEMPLATE_NEWS),
         ),
         "편집" to listOf(
+            SettingRow(
+                Icons.Outlined.RecordVoiceOver,
+                "내 목소리",
+                value = when (myVoice) {
+                    MyVoiceStatus.Ready -> "등록됨"
+                    is MyVoiceStatus.Making -> "만드는 중"
+                    MyVoiceStatus.None -> "없음"
+                },
+                onClick = onOpenMyVoice,
+            ),
             SettingRow(Icons.AutoMirrored.Outlined.BrandingWatermark, "magic 워터마크", toggle = SettingKey.WATERMARK),
             SettingRow(Icons.Outlined.Hd, "기본 저장 화질", value = "1080p"),
         ),

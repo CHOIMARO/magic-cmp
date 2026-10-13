@@ -67,8 +67,10 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
             MainTab.MY -> MyTab(
                 settings = state.settings,
                 completedCount = state.completedVideos.size,
+                myVoice = state.myVoice,
                 onToggleSetting = { onIntent(MainIntent.ToggleSetting(it)) },
                 onOpenAppInfo = { onIntent(MainIntent.OpenAppInfo) },
+                onOpenMyVoice = { onIntent(MainIntent.OpenMyVoice) },
             )
         }
         MainBottomBar(

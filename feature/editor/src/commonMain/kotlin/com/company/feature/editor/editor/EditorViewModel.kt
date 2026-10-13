@@ -2,310 +2,69 @@ package com.company.feature.editor.editor
 
 import androidx.lifecycle.viewModelScope
 import com.company.core.base.BaseViewModel
-import com.company.core.base.Intent
-import com.company.core.base.SideEffect
-import com.company.core.base.State
-import com.company.core.domain.model.editor.CaptionStyleType
-import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.EditorProject
-import com.company.core.domain.model.editor.FilterType
 import com.company.core.domain.model.editor.LayoutType
-import com.company.core.domain.model.editor.MusicTrack
-import com.company.core.domain.model.editor.TextOverlay
-import com.company.core.domain.model.editor.TextFontType
-import com.company.core.domain.model.editor.TextStyleType
-import com.company.core.domain.model.editor.addText
+import com.company.core.domain.model.editor.MY_VOICE_ID
+import com.company.core.domain.model.editor.MyVoiceStatus
 import com.company.core.domain.model.editor.compactTextLayers
 import com.company.core.domain.model.editor.duplicateClip
 import com.company.core.domain.model.editor.duplicateText
+import com.company.core.domain.model.editor.finishAudioMove
+import com.company.core.domain.model.editor.itemsOf
 import com.company.core.domain.model.editor.moveText
-import com.company.core.domain.model.editor.moveTextTime
 import com.company.core.domain.model.editor.overlapsOtherText
+import com.company.core.domain.model.editor.placedCaptions
 import com.company.core.domain.model.editor.removeClip
 import com.company.core.domain.model.editor.removeText
 import com.company.core.domain.model.editor.setClipSpeed
 import com.company.core.domain.model.editor.splitAt
 import com.company.core.domain.model.editor.transformText
-import com.company.core.domain.model.editor.trimClipEnd
-import com.company.core.domain.model.editor.trimClipStart
-import com.company.core.domain.model.editor.trimTextEnd
-import com.company.core.domain.model.editor.trimTextStart
-import com.company.core.domain.model.editor.updateText
+import com.company.core.domain.repository.DubbingRepository
 import com.company.core.domain.repository.EditorProjectRepository
 import com.company.core.domain.repository.EditorSettingsRepository
+import com.company.core.domain.repository.FontRepository
 import com.company.core.domain.repository.MediaLibraryRepository
+import com.company.core.domain.repository.MyVoiceRepository
 import com.company.core.domain.usecase.editor.GenerateCaptionsUseCase
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/** Bottom sheet of the editor. */
-enum class EditorSheet {
-    /** Screen layouts. */
-    LAYOUT,
-
-    /** Text input and text styles. */
-    TEXT,
-
-    /** Background music. */
-    MUSIC,
-
-    /** Color filters. */
-    FILTER,
-
-    /** Play speed of the selected clip. */
-    SPEED,
-
-    /** Automatic captions and caption styles. */
-    CAPTIONS,
-}
-
-/** Edge of a clip or a text overlay that the user drags. */
-enum class TrimEdge {
-    /** Start of the item. */
-    START,
-
-    /** End of the item. */
-    END,
-}
-
-/** Part of the timeline that the user drags. */
-sealed interface TimelineDragTarget {
-    /** ClipEdge(clipId, edge) : Trims one edge of a clip. The stage shows the frame at the edge. */
-    data class ClipEdge(val clipId: String, val edge: TrimEdge) : TimelineDragTarget
-
-    /** TextEdge(textId, edge) : Changes when a text overlay starts or ends. */
-    data class TextEdge(val textId: String, val edge: TrimEdge) : TimelineDragTarget
-
-    /** TextMove(textId) : Moves a text overlay in time and to another row. Its length stays. */
-    data class TextMove(val textId: String) : TimelineDragTarget
-}
-
 /**
- * Text that the user types in the text sheet.
- *
- * @property id ID of the overlay to change, or null for a new overlay.
- * @property text Current input.
- * @property style Selected style.
- * @property font Selected font, or null for the font of [style].
+ * Part of the editor that the action classes use. It gives the state, the project, and the one-time events.
  */
-data class TextDraft(val id: String?, val text: String, val style: TextStyleType, val font: TextFontType? = null)
+internal interface EditorHost {
+    /** Current screen state. */
+    val state: EditorState
 
-/**
- * State of the editor screen.
- *
- * @property project Project that the user edits.
- * @property canUndo True when the undo button can restore an earlier state.
- * @property time Position of the playhead in seconds.
- * @property playing True while the preview plays.
- * @property selectedClipId ID of the selected clip, or null. Only one clip or one text overlay is selected at a time.
- * @property selectedTextId ID of the text overlay selected on the timeline, or null.
- * @property activeDrag Part of the timeline that the user drags now, or null.
- * @property dragShift Timeline seconds that the timeline moves to the right during a timeline drag.
- *   The playhead cannot go before 0, so this shift moves the timeline for the rest. It is 0 at other times.
- * @property dragBlocked True while the moved text overlaps another text in its row. The text cannot stay there,
- *   so it goes back when the drag ends.
- * @property sheet Open bottom sheet, or null.
- * @property textDraft Input of the text sheet, or null.
- * @property captionProgress Progress of the caption generation from 0 to 100, or null when it does not run.
- * @property musicTracks Music tracks that the user can pick.
- * @property watermark True to show the "magic" watermark on the stage.
- */
-data class EditorState(
-    val project: EditorProject = EditorProject(name = ""),
-    val canUndo: Boolean = false,
-    val time: Double = 0.0,
-    val playing: Boolean = false,
-    val selectedClipId: String? = null,
-    val selectedTextId: String? = null,
-    val activeDrag: TimelineDragTarget? = null,
-    val dragShift: Double = 0.0,
-    val dragBlocked: Boolean = false,
-    val sheet: EditorSheet? = null,
-    val textDraft: TextDraft? = null,
-    val captionProgress: Int? = null,
-    val musicTracks: List<MusicTrack> = emptyList(),
-    val watermark: Boolean = false,
-) : State() {
-    /** Length of the project in seconds. */
-    val totalDuration: Double
-        get() = project.totalDuration
+    /** Project and undo history. */
+    val projects: EditorProjectRepository
 
-    /** Selected clip, or null. */
-    val selectedClip: Clip?
-        get() = project.clips.find { it.id == selectedClipId }
-
-    /** Text overlay selected on the timeline, or null. */
-    val selectedText: TextOverlay?
-        get() = project.texts.find { it.id == selectedTextId }
-}
-
-/** User actions on the editor screen. */
-sealed class EditorIntent : Intent() {
-    // ----- Playback -----
-
-    /** TogglePlay : Starts or pauses the preview. */
-    data object TogglePlay : EditorIntent()
-
-    /** Pause : Pauses the preview. */
-    data object Pause : EditorIntent()
-
-    /** Scrub(time) : Moves the playhead. Ignored while the preview plays or while a timeline drag runs. */
-    data class Scrub(val time: Double) : EditorIntent()
-
-    /** PlaybackProgress(time) : Moves the playhead to the position of the playing preview. Ignored when the preview does not play. */
-    data class PlaybackProgress(val time: Double) : EditorIntent()
-
-    /** PlaybackEnded : Stops the preview at the end of the project. */
-    data object PlaybackEnded : EditorIntent()
-
-    // ----- Clips -----
-
-    /** SelectClip(clipId) : Selects the clip, or clears the selection if the clip is selected. */
-    data class SelectClip(val clipId: String) : EditorIntent()
-
-    /** ClearSelection : Clears the clip and text selection. */
-    data object ClearSelection : EditorIntent()
+    /** Scope for work that ends with the screen. */
+    val scope: CoroutineScope
 
     /**
-     * StartTimelineDrag(target, snapSeconds) : Starts a drag of a clip edge, a text edge, or a text overlay on the
-     * timeline, and keeps an undo step. A text drag also selects the text. A dragged edge snaps to the playhead, and
-     * a text start also snaps to the start or the end of another text, within [snapSeconds].
+     * Changes the screen state.
+     *
+     * @param reducer Makes the new state from the current state.
      */
-    data class StartTimelineDrag(val target: TimelineDragTarget, val snapSeconds: Double) : EditorIntent()
+    fun reduce(reducer: EditorState.() -> EditorState)
 
     /**
-     * MoveTimelineDrag(delta, rowDelta) : The finger moved [delta] timeline seconds and [rowDelta] text rows from the
-     * drag start. A positive [rowDelta] is downward. Only a text move uses [rowDelta]. The dragged part follows the
-     * finger. During a clip trim, the other edge of the clip stays in place on the screen.
+     * Shows a short message.
+     *
+     * @param message Text of the message.
      */
-    data class MoveTimelineDrag(val delta: Double, val rowDelta: Int = 0) : EditorIntent()
+    fun toast(message: String)
 
     /**
-     * ScrollTimelineDrag(seconds) : Scrolls the timeline by [seconds] during a timeline drag, because the finger is at
-     * the edge of the timeline. The dragged part moves with the timeline. A negative value scrolls toward the project start.
+     * Sends a one-time event to the screen.
+     *
+     * @param effect The event.
      */
-    data class ScrollTimelineDrag(val seconds: Double) : EditorIntent()
+    fun send(effect: EditorSideEffect)
 
-    /**
-     * EndTimelineDrag : Ends the timeline drag. The timeline moves back from [EditorState.dragShift].
-     * A moved text that overlaps another text goes back to its place before the drag.
-     */
-    data object EndTimelineDrag : EditorIntent()
-
-    /** SplitClip : Splits the clip at the playhead. */
-    data object SplitClip : EditorIntent()
-
-    /** DuplicateClip : Puts a copy of the selected clip after it. */
-    data object DuplicateClip : EditorIntent()
-
-    /** RemoveClip : Removes the selected clip. */
-    data object RemoveClip : EditorIntent()
-
-    /** AddClips : Opens the video picker to add clips. */
-    data object AddClips : EditorIntent()
-
-    // ----- Texts -----
-
-    /** OpenTextEditor(textId) : Opens the text sheet for an overlay, or for a new overlay if null. */
-    data class OpenTextEditor(val textId: String?) : EditorIntent()
-
-    /** SelectText(textId) : Selects the text overlay, or clears the selection if it is selected. A tap on the timeline bar or on the stage sends it. */
-    data class SelectText(val textId: String) : EditorIntent()
-
-    /** DuplicateText : Puts a copy of the selected text overlay right after it in time. */
-    data object DuplicateText : EditorIntent()
-
-    /** RemoveText : Removes the selected text overlay. */
-    data object RemoveText : EditorIntent()
-
-    /** StartTextDrag : Keeps an undo step before the first text move. */
-    data object StartTextDrag : EditorIntent()
-
-    /** MoveText(textId, x, y) : Moves a text overlay to a percent position. */
-    data class MoveText(val textId: String, val x: Double, val y: Double) : EditorIntent()
-
-    /** StartTextTransform : Pauses the preview and keeps an undo step before the first change of a size and angle gesture. */
-    data object StartTextTransform : EditorIntent()
-
-    /**
-     * TransformText(textId, scale, rotation) : Changes the size factor and the angle in degrees of a text overlay.
-     * The whole text box changes. A positive angle turns it clockwise.
-     */
-    data class TransformText(val textId: String, val scale: Double, val rotation: Double) : EditorIntent()
-
-    /** ChangeDraftText(text) : Changes the input of the text sheet. */
-    data class ChangeDraftText(val text: String) : EditorIntent()
-
-    /** ChangeDraftStyle(style) : Changes the style in the text sheet. */
-    data class ChangeDraftStyle(val style: TextStyleType) : EditorIntent()
-
-    /** ChangeDraftFont(font) : Changes the font in the text sheet. */
-    data class ChangeDraftFont(val font: TextFontType) : EditorIntent()
-
-    /** SaveText : Adds or changes the overlay from the text sheet. */
-    data object SaveText : EditorIntent()
-
-    /** DeleteText : Removes the overlay of the text sheet. */
-    data object DeleteText : EditorIntent()
-
-    // ----- Sheets -----
-
-    /** OpenSheet(sheet) : Opens a tool sheet and pauses the preview. */
-    data class OpenSheet(val sheet: EditorSheet) : EditorIntent()
-
-    /** CloseSheet : Closes the sheet and stops the caption generation. */
-    data object CloseSheet : EditorIntent()
-
-    /** PickLayout(layout) : Applies the layout. */
-    data class PickLayout(val layout: LayoutType) : EditorIntent()
-
-    /** PickMusic(musicId) : Sets the music. Null removes the music. */
-    data class PickMusic(val musicId: String?) : EditorIntent()
-
-    /** PickFilter(filter) : Applies the filter. */
-    data class PickFilter(val filter: FilterType) : EditorIntent()
-
-    /** PickSpeed(speed) : Sets the play speed of the selected clip. */
-    data class PickSpeed(val speed: Double) : EditorIntent()
-
-    /** PickCaptionStyle(style) : Applies the caption style. */
-    data class PickCaptionStyle(val style: CaptionStyleType) : EditorIntent()
-
-    /** GenerateCaptions : Makes captions for the whole project. */
-    data object GenerateCaptions : EditorIntent()
-
-    /** RemoveCaptions : Removes all captions. */
-    data object RemoveCaptions : EditorIntent()
-
-    // ----- Project -----
-
-    /** Undo : Restores the last undo step. */
-    data object Undo : EditorIntent()
-
-    /** Export : Opens the export screen. */
-    data object Export : EditorIntent()
-
-    /** Back : Leaves the editor. */
-    data object Back : EditorIntent()
-}
-
-/** One-time events of the editor screen. */
-sealed class EditorSideEffect : SideEffect() {
-    /** ShowToast(message) : Shows a short message. */
-    data class ShowToast(val message: String) : EditorSideEffect()
-
-    /** OpenGalleryToAppend : Navigates to the video picker in append mode. */
-    data object OpenGalleryToAppend : EditorSideEffect()
-
-    /** OpenExport : Navigates to the export screen. */
-    data object OpenExport : EditorSideEffect()
-
-    /** Close : Leaves the editor. */
-    data object Close : EditorSideEffect()
-
-    /** Snapped : The dragged part snapped to the playhead or to another text. The screen gives a short vibration. */
-    data object Snapped : EditorSideEffect()
+    /** Pauses the preview. */
+    fun pause()
 }
 
 /**
@@ -316,20 +75,52 @@ sealed class EditorSideEffect : SideEffect() {
  *
  * The preview player of the screen moves the playhead. It sends [EditorIntent.PlaybackProgress]
  * while it plays and [EditorIntent.PlaybackEnded] at the end.
+ *
+ * The sheets of the editor have their own action classes: texts and animations, captions, sound, transitions, and
+ * copy and paste.
  */
 class EditorViewModel(
     private val projectRepository: EditorProjectRepository,
     settingsRepository: EditorSettingsRepository,
     mediaLibraryRepository: MediaLibraryRepository,
-    private val generateCaptions: GenerateCaptionsUseCase,
+    generateCaptions: GenerateCaptionsUseCase,
+    fontRepository: FontRepository,
+    dubbingRepository: DubbingRepository,
+    private val myVoiceRepository: MyVoiceRepository,
 ) : BaseViewModel<EditorState, EditorIntent, EditorSideEffect>(
     initialState = EditorState(
         project = projectRepository.project.value,
         canUndo = projectRepository.canUndo.value,
         musicTracks = mediaLibraryRepository.getMusicTracks(),
+        voices = dubbingRepository.getVoices(),
+        soundEffects = mediaLibraryRepository.getSoundEffects(),
+        myVoice = myVoiceRepository.status.value,
     )
 ) {
-    private var captionJob: Job? = null
+    private val host = object : EditorHost {
+        override val state: EditorState
+            get() = currentState
+        override val projects: EditorProjectRepository
+            get() = projectRepository
+        override val scope: CoroutineScope
+            get() = viewModelScope
+
+        override fun reduce(reducer: EditorState.() -> EditorState) = this@EditorViewModel.reduce(reducer)
+
+        override fun toast(message: String) = this@EditorViewModel.toast(message)
+
+        override fun send(effect: EditorSideEffect) {
+            postSideEffect { effect }
+        }
+
+        override fun pause() = this@EditorViewModel.pause()
+    }
+
+    private val texts = TextActions(host, fontRepository)
+    private val captions = CaptionActions(host, generateCaptions)
+    private val audio = AudioActions(host, dubbingRepository)
+    private val transitions = TransitionActions(host)
+    private val clipboard = ClipboardActions(host)
 
     /** Dragged item when the current timeline drag started. */
     private var dragOrigin: DragOrigin? = null
@@ -360,6 +151,22 @@ class EditorViewModel(
         }
         viewModelScope.launch { projectRepository.canUndo.collect { reduce { copy(canUndo = it) } } }
         viewModelScope.launch { settingsRepository.settings.collect { reduce { copy(watermark = it.watermark) } } }
+        viewModelScope.launch {
+            myVoiceRepository.status.collect { status ->
+                reduce {
+                    val draft = dubbingDraft?.let {
+                        when {
+                            // 더빙 시트에서 내 목소리를 만들었으면, 다 된 목소리를 바로 고른다.
+                            status == MyVoiceStatus.Ready && myVoice != MyVoiceStatus.Ready -> it.copy(voiceId = MY_VOICE_ID)
+                            // 내 목소리를 지우면 그 목소리를 고른 초안은 기본 목소리로 바꾼다.
+                            status != MyVoiceStatus.Ready && it.voiceId == MY_VOICE_ID -> it.copy(voiceId = voices.first().id)
+                            else -> it
+                        }
+                    }
+                    copy(myVoice = status, dubbingDraft = draft)
+                }
+            }
+        }
     }
 
     // =====================================================================
@@ -376,8 +183,9 @@ class EditorViewModel(
             EditorIntent.TogglePlay -> if (currentState.playing) pause() else play()
             EditorIntent.Pause -> pause()
             is EditorIntent.Scrub -> if (!currentState.playing && currentState.activeDrag == null) {
-                reduce { copy(time = intent.time.coerceIn(0.0, totalDuration)) }
+                reduce { copy(time = intent.time.coerceIn(0.0, totalDuration), scrubbing = true) }
             }
+            EditorIntent.ScrubEnded -> reduce { copy(scrubbing = false) }
             is EditorIntent.PlaybackProgress -> if (currentState.playing) {
                 reduce { copy(time = intent.time.coerceIn(0.0, totalDuration)) }
             }
@@ -385,9 +193,21 @@ class EditorViewModel(
 
             is EditorIntent.SelectClip -> {
                 pause()
-                reduce { copy(selectedClipId = if (selectedClipId == intent.clipId) null else intent.clipId, selectedTextId = null) }
+                reduce { copy(selectedClipId = if (selectedClipId == intent.clipId) null else intent.clipId, selectedTextId = null, selectedTrackItem = null) }
             }
-            EditorIntent.ClearSelection -> reduce { copy(selectedClipId = null, selectedTextId = null) }
+            is EditorIntent.SelectTrackItem -> {
+                pause()
+                reduce {
+                    copy(
+                        selectedTrackItem = if (selectedTrackItem == intent.item) null else intent.item,
+                        selectedClipId = null,
+                        selectedTextId = null,
+                    )
+                }
+            }
+            EditorIntent.ClearSelection ->
+                // [완료]를 누르면 복사·붙여넣기도 끝난다.
+                reduce { copy(selectedClipId = null, selectedTextId = null, selectedTrackItem = null, clipboard = null) }
             is EditorIntent.StartTimelineDrag -> startDrag(intent.target, intent.snapSeconds)
             is EditorIntent.MoveTimelineDrag -> {
                 dragFingerDelta = intent.delta
@@ -407,10 +227,9 @@ class EditorViewModel(
                 postSideEffect { EditorSideEffect.OpenGalleryToAppend }
             }
 
-            is EditorIntent.OpenTextEditor -> openTextEditor(intent.textId)
             is EditorIntent.SelectText -> {
                 pause()
-                reduce { copy(selectedTextId = if (selectedTextId == intent.textId) null else intent.textId, selectedClipId = null) }
+                reduce { copy(selectedTextId = if (selectedTextId == intent.textId) null else intent.textId, selectedClipId = null, selectedTrackItem = null) }
             }
             EditorIntent.DuplicateText -> duplicateText()
             EditorIntent.RemoveText -> removeText()
@@ -425,39 +244,87 @@ class EditorViewModel(
             }
             is EditorIntent.TransformText ->
                 projectRepository.update { it.transformText(intent.textId, intent.scale, intent.rotation) }
-            is EditorIntent.ChangeDraftText -> reduce { copy(textDraft = textDraft?.copy(text = intent.text)) }
-            is EditorIntent.ChangeDraftStyle -> reduce { copy(textDraft = textDraft?.copy(style = intent.style)) }
-            is EditorIntent.ChangeDraftFont -> reduce { copy(textDraft = textDraft?.copy(font = intent.font)) }
-            EditorIntent.SaveText -> saveText()
-            EditorIntent.DeleteText -> deleteText()
 
-            is EditorIntent.OpenSheet -> {
-                if (intent.sheet == EditorSheet.TEXT) {
-                    openTextEditor(textId = null)
-                } else {
-                    pause()
-                    reduce { copy(sheet = intent.sheet) }
-                }
-            }
+            is EditorIntent.OpenTextEditor -> texts.openTextEditor(intent.textId)
+            is EditorIntent.ChangeDraftText -> texts.changeText(intent.text, intent.selectionStart, intent.selectionEnd)
+            is EditorIntent.SelectTextTab -> reduce { copy(textDraft = textDraft?.copy(tab = intent.tab)) }
+            is EditorIntent.ChangeDraftStyle -> reduce { copy(textDraft = textDraft?.copy(style = intent.style)) }
+            is EditorIntent.ChangeDraftFont -> texts.changeFont(intent.font)
+            is EditorIntent.ChangeDraftSize -> reduce { copy(textDraft = textDraft?.copy(sizeStep = intent.step)) }
+            is EditorIntent.DecorateDraft -> texts.decorate(intent.change)
+            is EditorIntent.PickCustomColor -> texts.pickCustomColor(intent.rgb)
+            EditorIntent.ResetDraftDecorations -> reduce { copy(textDraft = textDraft?.copy(decorations = emptyList())) }
+            EditorIntent.SaveText -> texts.save()
+            EditorIntent.DeleteText -> texts.delete()
+
+            EditorIntent.OpenAnimationSheet -> texts.openAnimationSheet()
+            is EditorIntent.SelectAnimationTab -> reduce { copy(animationTab = intent.tab) }
+            is EditorIntent.PickEntrance -> texts.pickEntrance(intent.entrance)
+            is EditorIntent.PickExit -> texts.pickExit(intent.exit)
+            is EditorIntent.ChangeAnimationLength -> texts.changeAnimationLength(intent.millis)
+            EditorIntent.ResetAnimation -> texts.resetAnimation()
+
+            is EditorIntent.OpenSheet -> openSheet(intent.sheet)
             EditorIntent.CloseSheet -> closeSheet()
             is EditorIntent.PickLayout -> pickLayout(intent.layout)
-            is EditorIntent.PickMusic -> if (currentState.project.musicId != intent.musicId) {
-                projectRepository.commit { it.copy(musicId = intent.musicId) }
-            }
             is EditorIntent.PickFilter -> if (currentState.project.filter != intent.filter) {
                 projectRepository.commit { it.copy(filter = intent.filter) }
             }
             is EditorIntent.PickSpeed -> currentState.selectedClip?.let { clip ->
-                projectRepository.commit { it.setClipSpeed(clip.id, intent.speed) }
+                if (clip.speed != intent.speed) projectRepository.commit { it.setClipSpeed(clip.id, intent.speed) }
             }
-            is EditorIntent.PickCaptionStyle -> if (currentState.project.captionStyle != intent.style) {
-                projectRepository.commit { it.copy(captionStyle = intent.style) }
+
+            is EditorIntent.PickCaptionStyle -> captions.pickStyle(intent.style)
+            EditorIntent.GenerateCaptions -> captions.generate()
+            EditorIntent.RemoveCaptions -> captions.removeAll()
+            EditorIntent.OpenCaptionScript -> captions.openScript()
+            EditorIntent.CloseCaptionScript -> captions.closeScript()
+            is EditorIntent.ChangeCaptionScript -> reduce { copy(captionScript = intent.script) }
+            EditorIntent.InsertCaptionScript -> captions.insertScript()
+            EditorIntent.AddCaptionAtPlayhead -> captions.addAtPlayhead { texts.openCaptionEditor(it) }
+            is EditorIntent.OpenCaptionEditor -> texts.openCaptionEditor(intent.captionId)
+            EditorIntent.SplitCaption -> captions.splitSelected()
+
+            is EditorIntent.PickMusicMood -> reduce { copy(musicDraft = musicDraft?.copy(mood = intent.mood)) }
+            is EditorIntent.TapMusicTrack -> audio.tapMusic(intent.musicId)
+            is EditorIntent.MoveMusicRange -> audio.moveMusicRange(intent.origin, intent.delta, intent.moveStart, intent.moveEnd)
+            is EditorIntent.ChangeMusicVolume -> reduce { copy(musicDraft = musicDraft?.copy(volume = intent.volume.coerceIn(0, 100))) }
+            EditorIntent.ToggleMusicFade -> reduce { copy(musicDraft = musicDraft?.copy(fade = !musicDraft.fade)) }
+            EditorIntent.ApplyMusic -> audio.applyMusic()
+
+            is EditorIntent.OpenDubbing -> audio.openDubbing(intent.captionId, intent.editId)
+            is EditorIntent.ChangeDubbingText -> audio.changeDubbingText(intent.text)
+            is EditorIntent.PickDubbingVoice -> reduce { copy(dubbingDraft = dubbingDraft?.copy(voiceId = intent.voiceId)) }
+            is EditorIntent.PickDubbingSpeed -> reduce { copy(dubbingDraft = dubbingDraft?.copy(speed = intent.speed)) }
+            EditorIntent.InsertDubbing -> audio.insertDubbing()
+            EditorIntent.FitDubbing -> audio.fitDubbing()
+            EditorIntent.OpenMyVoice -> {
+                pause()
+                postSideEffect { EditorSideEffect.OpenMyVoice }
             }
-            EditorIntent.GenerateCaptions -> startCaptionGeneration()
-            EditorIntent.RemoveCaptions -> {
-                projectRepository.commit { it.copy(captions = emptyList()) }
-                reduce { copy(sheet = null) }
+
+            is EditorIntent.PickSoundEffectCategory -> reduce { copy(soundEffectCategory = intent.category) }
+            is EditorIntent.InsertSoundEffect -> audio.insertSoundEffect(intent.effectId)
+            is EditorIntent.OpenVolume -> {
+                pause()
+                reduce { copy(sheet = EditorSheet.VOLUME, volumeTarget = intent.target) }
             }
+            is EditorIntent.ChangeVolume -> audio.changeVolume(intent.volume)
+            EditorIntent.DuplicateTrackItem -> audio.duplicateSelected()
+            EditorIntent.RemoveTrackItem -> removeTrackItem()
+
+            is EditorIntent.OpenTransition -> transitions.open(intent.slot)
+            EditorIntent.OpenNearestTransition -> transitions.openNearest()
+            is EditorIntent.PickTransition -> transitions.pick(intent.type)
+            is EditorIntent.PickPushDirection -> transitions.pickDirection(intent.direction)
+            EditorIntent.ApplyTransitionToAll -> transitions.applyToAll()
+
+            EditorIntent.CopySelected -> clipboard.copySelected()
+            EditorIntent.OpenPaste -> clipboard.openPaste()
+            is EditorIntent.Paste -> clipboard.paste(intent.target)
+
+            EditorIntent.ConfirmDialog -> confirmDialog()
+            EditorIntent.DismissDialog -> reduce { copy(dialog = null) }
 
             EditorIntent.Undo -> undo()
             EditorIntent.Export -> {
@@ -480,7 +347,7 @@ class EditorViewModel(
         val total = currentState.totalDuration
         if (total <= 0.0) return
         val start = if (currentState.time >= total - END_MARGIN) 0.0 else currentState.time
-        reduce { copy(playing = true, selectedClipId = null, selectedTextId = null, time = start) }
+        reduce { copy(playing = true, selectedClipId = null, selectedTextId = null, selectedTrackItem = null, time = start) }
     }
 
     private fun pause() {
@@ -500,6 +367,10 @@ class EditorViewModel(
                 ?.let { DragOrigin(start = it.start, end = it.end, layer = it.layer) }
             is TimelineDragTarget.TextMove -> project.texts.find { it.id == target.textId }
                 ?.let { DragOrigin(start = it.start, end = it.end, layer = it.layer) }
+            is TimelineDragTarget.CaptionEdge -> project.placedCaptions.find { it.id == target.captionId }
+                ?.let { DragOrigin(start = it.start, end = it.end, layer = 0) }
+            is TimelineDragTarget.AudioMove -> project.itemsOf(target.track).find { it.id == target.id }
+                ?.let { DragOrigin(start = it.start, end = it.end, layer = it.layer) }
         } ?: return
         pause()
         projectRepository.saveCheckpoint()
@@ -513,11 +384,18 @@ class EditorViewModel(
         dragSnapped = snapOffset(project.snapEdges(target, origin, delta = 0.0), snapSeconds) != null
         reduce {
             when (target) {
-                is TimelineDragTarget.ClipEdge -> copy(activeDrag = target, dragBlocked = false)
+                is TimelineDragTarget.ClipEdge, is TimelineDragTarget.AudioMove -> copy(activeDrag = target, dragBlocked = false)
                 is TimelineDragTarget.TextEdge ->
-                    copy(activeDrag = target, dragBlocked = false, selectedTextId = target.textId, selectedClipId = null)
+                    copy(activeDrag = target, dragBlocked = false, selectedTextId = target.textId, selectedClipId = null, selectedTrackItem = null)
                 is TimelineDragTarget.TextMove ->
-                    copy(activeDrag = target, dragBlocked = false, selectedTextId = target.textId, selectedClipId = null)
+                    copy(activeDrag = target, dragBlocked = false, selectedTextId = target.textId, selectedClipId = null, selectedTrackItem = null)
+                is TimelineDragTarget.CaptionEdge -> copy(
+                    activeDrag = target,
+                    dragBlocked = false,
+                    selectedTrackItem = TrackSelection.Caption(target.captionId),
+                    selectedClipId = null,
+                    selectedTextId = null,
+                )
             }
         }
     }
@@ -525,11 +403,11 @@ class EditorViewModel(
     /**
      * Moves the dragged part by the finger movement plus the edge scrolling, then moves the playhead.
      *
-     * The dragged edge snaps to the playhead, and a text start also snaps to the start or the end of another text.
-     * The edge scrolling moves the playhead, so the dragged part stays under the finger. The clips are laid out from
-     * the project start, so a clip start trim moves the clip end on the screen. Thus a clip start trim also moves the
-     * playhead by the trimmed length, and the clip end stays in place. Near the project start, [EditorState.dragShift]
-     * moves the timeline for the part that the playhead cannot move.
+     * The dragged edge snaps to the playhead and to other items. The edge scrolling moves the playhead, so the dragged
+     * part stays under the finger. The clips are laid out from the project start, so a clip start trim moves the clip
+     * end on the screen. Thus a clip start trim also moves the playhead by the trimmed length, and the clip end stays
+     * in place. Near the project start, [EditorState.dragShift] moves the timeline for the part that the playhead
+     * cannot move.
      */
     private fun applyDrag() {
         val target = currentState.activeDrag ?: return
@@ -543,10 +421,10 @@ class EditorViewModel(
         }
         dragSnapped = snap != null
         val layer = if (target is TimelineDragTarget.TextMove) before.dragLayer(target.textId, origin) else null
-        projectRepository.update { project -> project.dragTo(target, origin, requested, layer) }
+        projectRepository.update { project -> project.dragTo(target, origin.start, origin.end, requested, layer) }
         val project = projectRepository.project.value
-        // 도메인은 클립과 글자를 허용 범위 안에 둔다. 실제로 움직인 길이를 기준으로 계산한다.
-        val moved = project.draggedDistance(target, origin) ?: return
+        // 도메인은 항목을 허용 범위 안에 둔다. 실제로 움직인 길이를 기준으로 계산한다.
+        val moved = project.draggedDistance(target, origin.start, origin.end) ?: return
         // 원본 끝, 최소 길이, 프로젝트 끝에 닿으면 가장자리 스크롤도 더 가지 않는다.
         // 붙기로 더해진 거리는 손가락 이동으로 본다.
         val scrollLimit = moved - dragFingerDelta - (snap ?: 0.0)
@@ -574,13 +452,16 @@ class EditorViewModel(
         val blocked = currentState.dragBlocked
         dragOrigin = null
         dragSnapped = false
-        if (target is TimelineDragTarget.TextMove) {
-            if (blocked) {
+        when (target) {
+            is TimelineDragTarget.TextMove -> if (blocked) {
                 // 다른 글자와 겹치는 곳에는 놓지 않는다. 끌기를 시작할 때 저장한 단계로 되돌린다.
                 projectRepository.undo()
             } else {
                 projectRepository.update { it.compactTextLayers() }
             }
+            // 다른 더빙·효과음과 겹치면 빈 줄로 옮긴다.
+            is TimelineDragTarget.AudioMove -> projectRepository.update { it.finishAudioMove(target.track, target.id) }
+            else -> Unit
         }
         reduce { copy(project = projectRepository.project.value, activeDrag = null, dragShift = 0.0, dragBlocked = false) }
     }
@@ -603,58 +484,11 @@ class EditorViewModel(
     }
 
     /**
-     * Moves the dragged part [delta] timeline seconds from [origin].
-     *
-     * @param target Dragged part.
-     * @param origin Dragged item when the drag started.
-     * @param delta Requested movement in timeline seconds.
-     * @param layer New row of a moved text, or null to keep the row.
-     */
-    private fun EditorProject.dragTo(target: TimelineDragTarget, origin: DragOrigin, delta: Double, layer: Int?): EditorProject =
-        when (target) {
-            is TimelineDragTarget.ClipEdge -> {
-                // 클립 가장자리는 원본 시간으로 움직이므로 재생 속도를 곱한다.
-                val speed = clips.find { it.id == target.clipId }?.speed ?: 1.0
-                when (target.edge) {
-                    TrimEdge.START -> trimClipStart(target.clipId, origin.start + delta * speed)
-                    TrimEdge.END -> trimClipEnd(target.clipId, origin.end + delta * speed)
-                }
-            }
-            is TimelineDragTarget.TextEdge -> when (target.edge) {
-                TrimEdge.START -> trimTextStart(target.textId, origin.start + delta)
-                TrimEdge.END -> trimTextEnd(target.textId, origin.end + delta)
-            }
-            is TimelineDragTarget.TextMove -> moveTextTime(target.textId, origin.start + delta, layer)
-        }
-
-    /**
-     * Timeline seconds that the dragged part moved from [origin].
-     *
-     * @return The distance, or null when the dragged item does not exist.
-     */
-    private fun EditorProject.draggedDistance(target: TimelineDragTarget, origin: DragOrigin): Double? =
-        when (target) {
-            is TimelineDragTarget.ClipEdge -> clips.find { it.id == target.clipId }?.let { clip ->
-                when (target.edge) {
-                    TrimEdge.START -> (clip.inPoint - origin.start) / clip.speed
-                    TrimEdge.END -> (clip.outPoint - origin.end) / clip.speed
-                }
-            }
-            is TimelineDragTarget.TextEdge -> texts.find { it.id == target.textId }?.let { text ->
-                when (target.edge) {
-                    TrimEdge.START -> text.start - origin.start
-                    TrimEdge.END -> text.end - origin.end
-                }
-            }
-            is TimelineDragTarget.TextMove -> texts.find { it.id == target.textId }?.let { it.start - origin.start }
-        }
-
-    /**
      * Dragged item when a timeline drag started.
      *
-     * @property start Start of the item. For a clip, it is the source in-point. For a text, it is a timeline time.
-     * @property end End of the item. For a clip, it is the source out-point. For a text, it is a timeline time.
-     * @property layer Row of a text overlay. It is 0 for a clip.
+     * @property start Start of the item. For a clip, it is the source in-point. For other items, it is a timeline time.
+     * @property end End of the item. For a clip, it is the source out-point. For other items, it is a timeline time.
+     * @property layer Row of a text overlay or an audio item. It is 0 for a clip and a caption.
      */
     private data class DragOrigin(val start: Double, val end: Double, val layer: Int)
 
@@ -698,42 +532,13 @@ class EditorViewModel(
     private fun undo() {
         if (!projectRepository.undo()) return
         pause()
-        reduce { copy(selectedClipId = null, selectedTextId = null) }
+        reduce { copy(selectedClipId = null, selectedTextId = null, selectedTrackItem = null) }
         toast("되돌렸어요")
     }
 
     // =====================================================================
-    // Texts
+    // Texts and track items
     // =====================================================================
-
-    private fun openTextEditor(textId: String?) {
-        pause()
-        val overlay = currentState.project.texts.find { it.id == textId }
-        val draft = overlay?.let { TextDraft(id = it.id, text = it.text, style = it.style, font = it.font) }
-            ?: TextDraft(id = null, text = "", style = TextStyleType.BOLD)
-        reduce { copy(sheet = EditorSheet.TEXT, textDraft = draft) }
-    }
-
-    private fun saveText() {
-        val draft = currentState.textDraft ?: return
-        val text = draft.text.trim().ifEmpty { "글자" }
-        val time = currentState.time
-        projectRepository.commit { project ->
-            if (draft.id != null) {
-                project.updateText(draft.id, text, draft.style, draft.font)
-            } else {
-                project.addText(text, draft.style, time, draft.font)
-            }
-        }
-        reduce { copy(sheet = null, textDraft = null) }
-    }
-
-    private fun deleteText() {
-        val textId = currentState.textDraft?.id ?: return
-        projectRepository.commit { it.removeText(textId) }
-        reduce { copy(sheet = null, textDraft = null, selectedTextId = selectedTextId.takeIf { it != textId }) }
-        toast("삭제했어요 · 되돌리기 가능")
-    }
 
     private fun duplicateText() {
         val textId = currentState.selectedTextId ?: return
@@ -750,30 +555,60 @@ class EditorViewModel(
         toast("삭제했어요 · 되돌리기 가능")
     }
 
+    private fun removeTrackItem() {
+        val item = currentState.selectedTrackItem ?: return
+        when (item) {
+            is TrackSelection.Caption -> captions.remove(item.id)
+            is TrackSelection.Dubbing, is TrackSelection.SoundEffect -> audio.removeSelected()
+        }
+        reduce { copy(selectedTrackItem = null) }
+        toast("삭제했어요 · 되돌리기 가능")
+    }
+
     // =====================================================================
-    // Captions and sheets
+    // Sheets and popups
     // =====================================================================
 
-    /** Shows a progress bar first. The prototype has no real speech recognition. */
-    private fun startCaptionGeneration() {
-        captionJob?.cancel()
-        reduce { copy(captionProgress = 0) }
-        captionJob = viewModelScope.launch {
-            while ((currentState.captionProgress ?: 0) < 100 - CAPTION_STEP) {
-                delay(CAPTION_TICK_MILLIS)
-                reduce { copy(captionProgress = (captionProgress ?: 0) + CAPTION_STEP) }
+    private fun openSheet(sheet: EditorSheet) {
+        when (sheet) {
+            EditorSheet.TEXT -> texts.openTextEditor(textId = null)
+            EditorSheet.MUSIC -> audio.openMusic()
+            EditorSheet.DUBBING -> audio.openDubbing(captionId = null, editId = null)
+            EditorSheet.TRANSITION -> transitions.openNearest()
+            EditorSheet.PASTE -> clipboard.openPaste()
+            EditorSheet.ANIMATION -> texts.openAnimationSheet()
+            else -> {
+                pause()
+                reduce { copy(sheet = sheet, captionScript = null) }
             }
-            delay(CAPTION_TICK_MILLIS)
-            val captions = generateCaptions(currentState.project.clips)
-            projectRepository.commit { it.copy(captions = captions) }
-            reduce { copy(captionProgress = null, sheet = null) }
-            toast("자막을 넣었어요")
         }
     }
 
     private fun closeSheet() {
-        captionJob?.cancel()
-        reduce { copy(sheet = null, textDraft = null, captionProgress = null) }
+        captions.stop()
+        audio.stop()
+        reduce {
+            copy(
+                sheet = null,
+                textDraft = null,
+                captionProgress = null,
+                captionScript = null,
+                musicDraft = null,
+                dubbingDraft = null,
+                volumeTarget = null,
+                transitionSlot = null,
+            )
+        }
+    }
+
+    private fun confirmDialog() {
+        val dialog = currentState.dialog ?: return
+        reduce { copy(dialog = null) }
+        when (val action = dialog.action) {
+            DialogAction.ReplaceWithSpeechCaptions -> captions.startGeneration()
+            is DialogAction.InsertScript -> captions.putScript(action.checkExisting)
+            is DialogAction.PasteReplacingCaption -> clipboard.pasteNow(action.target, replaceCaptions = true)
+        }
     }
 
     private fun toast(message: String) {
@@ -783,11 +618,5 @@ class EditorViewModel(
     private companion object {
         /** A playhead this close to the end, in seconds, counts as the end. */
         const val END_MARGIN = 0.05
-
-        /** Update interval of the caption progress. */
-        const val CAPTION_TICK_MILLIS = 45L
-
-        /** Progress step of the caption generation in percent. */
-        const val CAPTION_STEP = 4
     }
 }

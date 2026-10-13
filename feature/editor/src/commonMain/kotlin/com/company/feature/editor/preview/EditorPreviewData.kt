@@ -6,7 +6,10 @@ import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.FilterType
 import com.company.core.domain.model.editor.MediaType
+import com.company.core.domain.model.editor.DubbingVoice
 import com.company.core.domain.model.editor.MusicTrack
+import com.company.core.domain.model.editor.SoundEffect
+import com.company.core.domain.model.editor.SoundEffectCategory
 import com.company.core.domain.model.editor.PHOTO_CLIP_DEFAULT_LENGTH
 import com.company.core.domain.model.editor.PHOTO_CLIP_MAX_LENGTH
 import com.company.core.domain.model.editor.TextOverlay
@@ -50,5 +53,19 @@ internal object EditorPreviewData {
         MusicTrack(id = "m3", title = "빅 룸", mood = "신나는", durationSeconds = 24, thumbnailHue = 35),
         MusicTrack(id = "m4", title = "종이 등불", mood = "감성 로파이", durationSeconds = 65, thumbnailHue = 300),
         MusicTrack(id = "m5", title = "일요일 버스", mood = "따뜻한 어쿠스틱", durationSeconds = 51, thumbnailHue = 80),
+    )
+
+    /** Voices for dubbings. */
+    val voices = listOf(
+        DubbingVoice(id = "v1", name = "하늘", description = "여성 · 맑고 밝은 목소리", hue = 330),
+        DubbingVoice(id = "v2", name = "서윤", description = "여성 · 차분한 내레이션", hue = 260),
+        DubbingVoice(id = "v3", name = "도윤", description = "남성 · 친근한 브이로그", hue = 200),
+    )
+
+    /** Sound effects. */
+    val soundEffects = listOf(
+        SoundEffect(id = "s1", category = SoundEffectCategory.HIGHLIGHT, name = "띠링", length = 0.6),
+        SoundEffect(id = "s2", category = SoundEffectCategory.HIGHLIGHT, name = "반짝", length = 0.8),
+        SoundEffect(id = "s3", category = SoundEffectCategory.HIGHLIGHT, name = "뿅", length = 0.3),
     )
 }

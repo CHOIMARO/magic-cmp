@@ -18,6 +18,7 @@ import org.koin.compose.viewmodel.koinViewModel
  * @param onBack Leaves the editor.
  * @param onAddClips Opens the video picker in append mode.
  * @param onExport Opens the export screen.
+ * @param onOpenMyVoice Opens the screen of the user's own voice.
  * @param viewModel ViewModel of the screen.
  */
 @Composable
@@ -25,6 +26,7 @@ internal fun EditorRoute(
     onBack: () -> Unit,
     onAddClips: () -> Unit,
     onExport: () -> Unit,
+    onOpenMyVoice: () -> Unit,
     viewModel: EditorViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -37,6 +39,7 @@ internal fun EditorRoute(
                 is EditorSideEffect.ShowToast -> toast.show(effect.message)
                 EditorSideEffect.OpenGalleryToAppend -> onAddClips()
                 EditorSideEffect.OpenExport -> onExport()
+                EditorSideEffect.OpenMyVoice -> onOpenMyVoice()
                 EditorSideEffect.Close -> onBack()
                 EditorSideEffect.Snapped -> haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
             }

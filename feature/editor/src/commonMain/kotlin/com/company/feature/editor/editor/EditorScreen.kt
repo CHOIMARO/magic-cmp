@@ -21,6 +21,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,6 +43,7 @@ import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.feature.editor.preview.EditorPreviewData
 import com.company.ui.editor.formatTime
+import com.company.ui.editor.formatTimeTenths
 
 /**
  * Editor screen. It only draws [state] and sends user actions to [onIntent].
@@ -79,12 +81,15 @@ internal fun EditorScreen(
             EditorTools(state = state, onIntent = onIntent)
         }
 
-        // 미리보기가 보이도록 메인 시트보다 옅은 scrim을 쓴다.
+        // 미리보기가 보이도록 메인 시트보다 옅은 scrim을 쓴다. 글자·애니메이션 시트는 무대에서 바로 확인하도록 scrim이 없다.
+        val lastSheet = remember { LastSheet() }
+        state.sheet?.let { lastSheet.value = it }
+        val clearScrim = lastSheet.value == EditorSheet.TEXT || lastSheet.value == EditorSheet.ANIMATION
         MagicModalBottomSheet(
             target = state.sheet,
             onDismissRequest = { onIntent(EditorIntent.CloseSheet) },
             showDragHandle = true,
-            scrimColor = Color.Black.copy(alpha = 0.3f),
+            scrimColor = if (clearScrim) Color.Transparent else Color.Black.copy(alpha = 0.3f),
         ) { sheet, requestDismiss ->
             Column(
                 modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 22.dp),
@@ -93,7 +98,21 @@ internal fun EditorScreen(
                 EditorSheetContent(sheet = sheet, state = state, onIntent = onIntent, onClose = requestDismiss)
             }
         }
+        state.dialog?.let { dialog ->
+            EditorConfirmDialog(
+                title = dialog.title,
+                message = dialog.message,
+                confirmLabel = dialog.confirmLabel,
+                onConfirm = { onIntent(EditorIntent.ConfirmDialog) },
+                onDismiss = { onIntent(EditorIntent.DismissDialog) },
+            )
+        }
     }
+}
+
+/** Last open sheet. The sheet keeps its scrim during the close animation. */
+private class LastSheet {
+    var value: EditorSheet? = null
 }
 
 @Composable
@@ -147,7 +166,8 @@ private fun PlaybackRow(state: EditorState, onIntent: (EditorIntent) -> Unit) {
         )
         Text(
             text = buildAnnotatedString {
-                append(formatTime(state.time))
+                // 타임라인을 끄는 동안에는 0.1초 단위로 보여 준다.
+                append(if (state.scrubbing) formatTimeTenths(state.time) else formatTime(state.time))
                 withStyle(SpanStyle(color = MagicColors.OnSurface40)) { append(" / ${formatTime(state.totalDuration)}") }
             },
             fontSize = 13.sp,

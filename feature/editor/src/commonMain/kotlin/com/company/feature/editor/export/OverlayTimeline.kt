@@ -3,8 +3,9 @@ package com.company.feature.editor.export
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.clipAt
+import com.company.core.domain.model.editor.currentWordIndex
+import com.company.core.domain.model.editor.placedCaptions
 import com.company.feature.editor.editor.isVisibleAt
-import com.company.feature.editor.editor.spokenWordCount
 import com.company.feature.editor.editor.visibleAt
 import com.company.ui.editor.TextAnimation
 import com.company.ui.editor.animatedRanges
@@ -86,12 +87,18 @@ internal fun EditorProject.layoutSpans(): List<OverlaySpan> {
 internal fun EditorProject.textSpans(watermark: Boolean): List<OverlaySpan> {
     val boundaries = buildList {
         add(0.0)
-        texts.forEach { text -> addItemBoundaries(text.start, text.length, text.style.look().animation) }
+        texts.forEach { text -> addItemBoundaries(text.start, text.length, text.look().animation) }
         val captionAnimation = captionStyle.look().animation
-        captions.forEach { caption ->
+        placedCaptions.forEach { caption ->
             addItemBoundaries(caption.start, caption.length, captionAnimation)
-            val words = caption.text.splitWords().size
-            for (step in 1 until words) add(caption.start + caption.length * step / words)
+            // 단어마다 글자 수에 비례한 시간이 있다. 다음 단어가 시작하는 곳에서 모습이 바뀐다.
+            val words = caption.text.splitWords()
+            val characters = words.sumOf { it.length }.coerceAtLeast(1)
+            var before = 0
+            words.dropLast(1).forEach { word ->
+                before += word.length
+                add(caption.start + caption.length * before / characters)
+            }
         }
     }
     return spans(boundaries) { time -> textLayerStateAt(time, watermark).takeUnless { it.isEmpty } }
@@ -99,11 +106,11 @@ internal fun EditorProject.textSpans(watermark: Boolean): List<OverlaySpan> {
 
 /** State of the text layer at [time]. */
 internal fun EditorProject.textLayerStateAt(time: Double, watermark: Boolean): TextLayerState {
-    val caption = captions.visibleAt(time)
+    val caption = placedCaptions.visibleAt(time)
     return TextLayerState(
-        texts = texts.filter { it.isVisibleAt(time) }.map { ItemState(it.id, animationFrame(time - it.start, it.length, it.style.look().animation)) },
+        texts = texts.filter { it.isVisibleAt(time) }.map { ItemState(it.id, animationFrame(time - it.start, it.length, it.look().animation)) },
         caption = caption?.let { ItemState(it.id, animationFrame(time - it.start, it.length, captionStyle.look().animation)) },
-        spokenWords = caption?.spokenWordCount(time) ?: 0,
+        spokenWords = caption?.let { it.currentWordIndex(time) + 1 } ?: 0,
         watermark = watermark,
     )
 }

@@ -15,20 +15,37 @@ object EditorRoute
 @Serializable
 object ExportRoute
 
+/** Route of the screen of the user's own voice. */
+@Serializable
+object MyVoiceRoute
+
 /**
  * Adds the editor screen to the graph.
  *
  * @param onBack Leaves the editor.
  * @param onAddClips Opens the video picker in append mode.
  * @param onExport Opens the export screen.
+ * @param onOpenMyVoice Opens the screen of the user's own voice.
  */
-fun NavGraphBuilder.editorScreen(onBack: () -> Unit, onAddClips: () -> Unit, onExport: () -> Unit) {
+fun NavGraphBuilder.editorScreen(onBack: () -> Unit, onAddClips: () -> Unit, onExport: () -> Unit, onOpenMyVoice: () -> Unit) {
     composable<EditorRoute> { entry ->
         EditorRoute(
             onBack = entry.onlyWhenResumed(onBack),
             onAddClips = entry.onlyWhenResumed(onAddClips),
             onExport = entry.onlyWhenResumed(onExport),
+            onOpenMyVoice = entry.onlyWhenResumed(onOpenMyVoice),
         )
+    }
+}
+
+/**
+ * Adds the screen of the user's own voice to the graph. The main tab and the dubbing sheet open it.
+ *
+ * @param onClose Leaves the screen.
+ */
+fun NavGraphBuilder.myVoiceScreen(onClose: () -> Unit) {
+    composable<MyVoiceRoute> { entry ->
+        com.company.feature.editor.voice.MyVoiceRoute(onClose = entry.onlyWhenResumed(onClose))
     }
 }
 

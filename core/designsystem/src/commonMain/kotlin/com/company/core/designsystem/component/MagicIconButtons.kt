@@ -150,6 +150,9 @@ enum class MagicToolStyle {
 
     /** Confirm tool on a light circle, for example "완료". */
     CONFIRM,
+
+    /** Tool that stands out on an accent circle, for example "붙여넣기" while the clipboard has an element. */
+    HIGHLIGHT,
 }
 
 /**
@@ -176,20 +179,30 @@ fun MagicToolButton(
     val circle = stateColor(
         enabled = enabled,
         pressed = pressed,
-        default = if (style == MagicToolStyle.CONFIRM) MagicColors.OnSurface else MagicColors.Surface,
-        pressedColor = if (style == MagicToolStyle.CONFIRM) MagicColors.LightPressed else MagicColors.SurfaceHighest,
+        default = when (style) {
+            MagicToolStyle.CONFIRM -> MagicColors.OnSurface
+            MagicToolStyle.HIGHLIGHT -> MagicColors.Accent
+            else -> MagicColors.Surface
+        },
+        pressedColor = when (style) {
+            MagicToolStyle.CONFIRM -> MagicColors.LightPressed
+            MagicToolStyle.HIGHLIGHT -> MagicColors.AccentPressed
+            else -> MagicColors.SurfaceHighest
+        },
         disabled = MagicColors.SurfaceDisabled,
     )
     val disabledColor = MagicColors.OnSurface.copy(alpha = 0.25f)
     val iconColor = when {
         !enabled -> disabledColor
         style == MagicToolStyle.CONFIRM -> MagicColors.Background
+        style == MagicToolStyle.HIGHLIGHT -> MagicColors.OnAccent
         style == MagicToolStyle.DANGER -> MagicColors.DangerIcon
         else -> MagicColors.OnSurface
     }
     val labelColor = when {
         !enabled -> disabledColor
         style == MagicToolStyle.DANGER -> MagicColors.Danger
+        style == MagicToolStyle.HIGHLIGHT -> MagicColors.AccentLabel
         else -> MagicColors.OnSurface80
     }
     Column(

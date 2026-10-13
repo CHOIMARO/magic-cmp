@@ -26,16 +26,17 @@ import com.company.core.designsystem.theme.MagicTheme
 import com.company.core.domain.model.editor.CaptionSegment
 import com.company.core.domain.model.editor.CaptionStyleType
 import com.company.core.domain.model.editor.Clip
+import com.company.core.domain.model.editor.DecorationRange
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.TextOverlay
+import com.company.core.domain.model.editor.currentWordIndex
+import com.company.core.domain.model.editor.placedCaptions
 import com.company.ui.editor.CaptionText
 import com.company.ui.editor.LayoutCells
 import com.company.ui.editor.TextFrame
 import com.company.ui.editor.frameAt
-import com.company.ui.editor.splitWords
 import com.company.ui.editor.spec
 import com.company.ui.editor.look
-import kotlin.math.ceil
 
 /** Background of the stage outside the layout cells. */
 internal val StageBackground = Color(0xFF111111)
@@ -108,37 +109,50 @@ internal fun TextOverlay.isVisibleAt(time: Double): Boolean = time >= start && t
 internal fun List<CaptionSegment>.visibleAt(time: Double): CaptionSegment? =
     find { time >= it.start && time < it.start + it.length }
 
-/** Number of words that the speaker already said at [time]. It is at least 1. The last of them is the current word. */
-internal fun CaptionSegment.spokenWordCount(time: Double): Int {
-    val words = text.splitWords().size
-    return maxOf(1, ceil((time - start) / length * words).toInt())
-}
-
-/** Animation state of the text at [time]. */
-internal fun TextOverlay.frameAt(time: Double): TextFrame = style.look().animation.frameAt(time - start, start + length - time)
+/** Animation state of the text at [time]. It uses the animations that the user picked. */
+internal fun TextOverlay.frameAt(time: Double): TextFrame = look().animation.frameAt(time - start, start + length - time)
 
 /** Animation state of the caption at [time]. */
 internal fun CaptionSegment.frameAt(time: Double, style: CaptionStyleType): TextFrame =
     style.look().animation.frameAt(time - start, start + length - time)
 
 /**
- * Shows the caption at [time] with the highlight of the caption style.
+ * Caption that the text sheet changes now. The stage shows it at all times while the sheet is open.
+ *
+ * @property id ID of the caption.
+ * @property text Text in the text field.
+ * @property decorations Decorations of the text.
+ */
+internal data class CaptionPreview(val id: String, val text: String, val decorations: List<DecorationRange>)
+
+/**
+ * Shows the caption at [time] with the highlight of the caption style and its decorations.
  *
  * @param project Project with the captions and the caption style.
  * @param time Playhead position in seconds.
  * @param animate True to show the entrance and the exit. False shows the caption without them.
+ * @param preview Caption that the text sheet changes, or null. It shows in place of the caption at [time].
  */
 @Composable
-internal fun StageCaption(project: EditorProject, time: Double, animate: Boolean) {
-    val segment = project.captions.visibleAt(time) ?: return
-    val look = project.captionStyle.look()
+internal fun StageCaption(project: EditorProject, time: Double, animate: Boolean, preview: CaptionPreview? = null) {
+    val captions = project.placedCaptions
+    val placed = preview?.let { p -> captions.find { it.id == p.id } } ?: captions.visibleAt(time) ?: return
+    val segment = if (preview != null && preview.id == placed.id) {
+        // 비운 입력은 '자막'으로 보여 준다.
+        placed.copy(text = preview.text.ifBlank { "자막" }, decorations = if (preview.text.isBlank()) emptyList() else preview.decorations)
+    } else {
+        placed
+    }
+    val look = project.captionStyle.look(decorations = segment.decorations)
     BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         val sideMargin = maxWidth * 0.06f
         CaptionText(
-            words = segment.text.splitWords(),
-            currentWord = segment.spokenWordCount(time) - 1,
+            text = segment.text,
+            decorations = segment.decorations,
+            // 고치는 동안에는 모든 단어를 보여 준다.
+            currentWord = if (preview != null) Int.MAX_VALUE else segment.currentWordIndex(time),
             look = look,
-            frame = if (animate) segment.frameAt(time, project.captionStyle) else TextFrame.Static,
+            frame = if (animate && preview == null) segment.frameAt(time, project.captionStyle) else TextFrame.Static,
             modifier = Modifier.padding(start = sideMargin, end = sideMargin, bottom = maxHeight * (look.bottomPercent / 100f)),
         )
     }

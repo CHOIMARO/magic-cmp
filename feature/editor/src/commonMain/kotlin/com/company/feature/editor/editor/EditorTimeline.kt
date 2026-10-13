@@ -86,10 +86,14 @@ import com.company.core.designsystem.component.PRESSED_SCALE_ICON
 import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.domain.model.editor.AudioTrack
 import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.MediaType
+import com.company.core.domain.model.editor.MusicRange
+import com.company.core.domain.model.editor.clipBoundaries
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.textLayerCount
+import com.company.ui.editor.formatTime
 import com.company.ui.media.rememberFilmstripFrame
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -123,7 +127,7 @@ private val TrailingSpace = 60.dp
 private val AddButtonFadeWidth = 92.dp
 
 /** Space before the clip track, so the left trim handle of the first clip stays inside the track. */
-private val HandleInset = 16.dp
+internal val HandleInset = 16.dp
 
 /** Time of the color change of a text bar that cannot stay at its place. */
 private const val BAR_COLOR_MILLIS = 100
@@ -144,28 +148,28 @@ private const val FILMSTRIP_END_MARGIN = 0.05
 private val EdgeScrollLeftZone = 48.dp
 
 /** Width of a trim handle. */
-private val TrimHandleWidth = 16.dp
+internal val TrimHandleWidth = 16.dp
 
-/** Height of the whole timeline. It shows the clip track, three text rows, and the music track without scrolling. */
+/** Height of the whole timeline. The tracks under the clip track scroll up and down when they do not fit. */
 private val TimelineHeight = 184.dp
 
 /** Space above the clip track and under the last track. */
 private val TimelinePadding = 6.dp
 
 /** Space between two tracks or two text rows. */
-private val TrackSpacing = 6.dp
+internal val TrackSpacing = 6.dp
 
 /** Height of one text row. */
-private val TextTrackHeight = 22.dp
+internal val TextTrackHeight = 22.dp
 
 /** Height of the clip track. */
-private val ClipTrackHeight = 62.dp
+internal val ClipTrackHeight = 62.dp
 
 /** Gap after each clip block and text bar, so that neighbors look apart. */
-private val TimelineItemGap = 3.dp
+internal val TimelineItemGap = 3.dp
 
 /** Part of a trim handle that lies on the clip. The rest is outside the clip. */
-private val TrimHandleOverlap = 2.dp
+internal val TrimHandleOverlap = 2.dp
 
 /** A dragged edge snaps to the playhead, and a text start to another text start, within this distance. */
 private val SnapDistance = 12.dp
@@ -214,12 +218,26 @@ internal fun EditorTimeline(state: EditorState, onIntent: (EditorIntent) -> Unit
         }
     }
 
+    val haptic = LocalHapticFeedback.current
     // 사용자가 스크롤하면 재생 위치를 옮긴다. 재생 중에는 무시한다.
+    // 재생선이 클립 경계를 지나면 짧게 진동한다. 경계에 붙지는 않는다 (D26).
     LaunchedEffect(scrollState, pixelsPerSecond) {
         snapshotFlow { scrollState.value }.collect { value ->
-            if (scrollState.isScrollInProgress && !latestState.playing) {
-                onIntent(EditorIntent.Scrub(value / pixelsPerSecond.toDouble()))
+            if (scrollState.isScrollInProgress && !latestState.playing && latestState.activeDrag == null) {
+                val before = latestState.time
+                val after = value / pixelsPerSecond.toDouble()
+                val boundaries = latestState.project.clipBoundaries()
+                if (boundaries.drop(1).dropLast(1).any { (before - it) * (after - it) < 0 }) {
+                    haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                }
+                onIntent(EditorIntent.Scrub(after))
             }
+        }
+    }
+    // 끌기를 멈추면 현재 시간을 다시 초 단위로 보여 준다.
+    LaunchedEffect(scrollState) {
+        snapshotFlow { scrollState.isScrollInProgress }.collect { scrolling ->
+            if (!scrolling && latestState.scrubbing) onIntent(EditorIntent.ScrubEnded)
         }
     }
     // 재생 위치가 코드로 바뀌면(재생, 삭제, 앞 손잡이 끌기 등) 스크롤을 맞춘다.
@@ -324,7 +342,30 @@ internal fun EditorTimeline(state: EditorState, onIntent: (EditorIntent) -> Unit
                             edgeScroller = edgeScroller,
                             snapSeconds = snapSeconds,
                         )
-                        MusicTrackRow(state = state, onIntent = onIntent, width = secondWidth * total.toFloat())
+                        CaptionTrack(
+                            state = state,
+                            onIntent = onIntent,
+                            pixelsPerSecond = pixelsPerSecond,
+                            edgeScroller = edgeScroller,
+                            snapSeconds = snapSeconds,
+                        )
+                        AudioTrackRows(
+                            state = state,
+                            track = AudioTrack.DUBBING,
+                            onIntent = onIntent,
+                            pixelsPerSecond = pixelsPerSecond,
+                            edgeScroller = edgeScroller,
+                            snapSeconds = snapSeconds,
+                        )
+                        AudioTrackRows(
+                            state = state,
+                            track = AudioTrack.SOUND_EFFECT,
+                            onIntent = onIntent,
+                            pixelsPerSecond = pixelsPerSecond,
+                            edgeScroller = edgeScroller,
+                            snapSeconds = snapSeconds,
+                        )
+                        MusicTrackRow(state = state, onIntent = onIntent, secondWidth = secondWidth)
                     }
                 }
             }
@@ -583,6 +624,10 @@ private fun ClipTrack(
             }
             start += clip.duration
         }
+        // 클립을 고르거나 끄는 동안에는 손잡이를 가리지 않도록 전환 버튼을 숨긴다.
+        if (state.selectedClipId == null && state.activeDrag == null) {
+            TransitionButtons(state = state, onIntent = onIntent, secondWidth = secondWidth)
+        }
     }
 }
 
@@ -760,7 +805,7 @@ private fun AddClipButton(onClick: () -> Unit, modifier: Modifier) {
 }
 
 /**
- * Purple handle that moves one edge of the selected clip or text overlay.
+ * Handle that moves one edge of the selected clip, text overlay, or caption.
  *
  * @param target Part of the timeline that the handle drags.
  * @param side Side of the item that the handle is on.
@@ -770,9 +815,10 @@ private fun AddClipButton(onClick: () -> Unit, modifier: Modifier) {
  * @param pixelsPerSecond Width of one timeline second in pixels.
  * @param edgeScroller Scrolls the timeline while the handle is at the end of the timeline.
  * @param snapSeconds Largest distance in seconds that snaps the edge.
+ * @param color Color of the handle.
  */
 @Composable
-private fun TrimHandle(
+internal fun TrimHandle(
     target: TimelineDragTarget,
     side: TrimEdge,
     height: Dp,
@@ -781,6 +827,7 @@ private fun TrimHandle(
     pixelsPerSecond: Float,
     edgeScroller: TimelineEdgeScroller,
     snapSeconds: Double,
+    color: Color = MagicColors.Accent,
 ) {
     val latestSnapSeconds by rememberUpdatedState(snapSeconds)
     val shape = if (side == TrimEdge.START) {
@@ -794,7 +841,7 @@ private fun TrimHandle(
             .size(width = TrimHandleWidth, height = height)
             .onGloballyPositioned { handle.coordinates = it }
             .clip(shape)
-            .background(MagicColors.Accent)
+            .background(color)
             .pointerInput(target) {
                 var dragged = 0f
                 var stopOffset = 0f
@@ -840,13 +887,24 @@ private fun TrimHandle(
     }
 }
 
+/**
+ * Music bar of the timeline. It shows the title and the part of the track, and it is as long as the part or the
+ * project, whichever is shorter. A tap opens the music sheet.
+ *
+ * @param state Editor state.
+ * @param onIntent Called with each user action.
+ * @param secondWidth Width of one timeline second.
+ */
 @Composable
-private fun MusicTrackRow(state: EditorState, onIntent: (EditorIntent) -> Unit, width: Dp) {
+private fun MusicTrackRow(state: EditorState, onIntent: (EditorIntent) -> Unit, secondWidth: Dp) {
     Box(modifier = Modifier.fillMaxWidth().height(20.dp).padding(start = HandleInset)) {
-        val track = state.musicTracks.find { it.id == state.project.musicId } ?: return@Box
+        val project = state.project
+        val track = state.musicTracks.find { it.id == project.musicId } ?: return@Box
+        val range = project.musicRange ?: MusicRange(0.0, track.durationSeconds.toDouble())
+        val seconds = minOf(range.length, project.totalDuration)
         Row(
             modifier = Modifier
-                .width(width)
+                .width(maxOf(8.dp, secondWidth * seconds.toFloat() - TimelineItemGap))
                 .height(20.dp)
                 .pressClickable(pressedScale = 0.99f) { onIntent(EditorIntent.OpenSheet(EditorSheet.MUSIC)) }
                 .clip(CircleShape)
@@ -856,7 +914,14 @@ private fun MusicTrackRow(state: EditorState, onIntent: (EditorIntent) -> Unit, 
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = MagicColors.Music, modifier = Modifier.size(13.dp))
-            Text(text = track.title, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.Music, maxLines = 1)
+            Text(
+                text = "${track.title} · ${formatTime(range.start)}~${formatTime(range.end)}",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MagicColors.Music,
+                maxLines = 1,
+                softWrap = false,
+            )
         }
     }
 }
@@ -886,7 +951,7 @@ internal class LayoutHolder {
  * @param maxSpeed Fastest scroll speed in pixels per second.
  * @param onScroll Called each frame with the pixels to scroll. A negative value scrolls toward the project start.
  */
-private class TimelineEdgeScroller(
+internal class TimelineEdgeScroller(
     private val scope: CoroutineScope,
     private val leftZone: Float,
     private val rightStop: Float,

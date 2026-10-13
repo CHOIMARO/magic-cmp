@@ -13,8 +13,10 @@ import com.company.feature.capture.navigation.navigateToCamera
 import com.company.feature.capture.navigation.navigateToGallery
 import com.company.feature.editor.navigation.EditorRoute
 import com.company.feature.editor.navigation.ExportRoute
+import com.company.feature.editor.navigation.MyVoiceRoute
 import com.company.feature.editor.navigation.editorScreen
 import com.company.feature.editor.navigation.exportScreen
+import com.company.feature.editor.navigation.myVoiceScreen
 import com.company.feature.main.navigation.MainRoute
 import com.company.feature.main.navigation.mainScreen
 import com.company.ui.editor.GalleryMode
@@ -48,6 +50,7 @@ fun AppNavHost(
                 onOpenGallery = { template -> navController.navigateToGallery(GalleryMode.CREATE, template) },
                 onOpenCamera = { navController.navigateToCamera() },
                 onOpenEditor = { navController.navigate(EditorRoute) },
+                onOpenMyVoice = { navController.navigate(MyVoiceRoute) },
             )
             galleryScreen(
                 onClose = { navController.popBackStack() },
@@ -62,7 +65,9 @@ fun AppNavHost(
                 onBack = { navController.popBackStack() },
                 onAddClips = { navController.navigateToGallery(GalleryMode.APPEND) },
                 onExport = { navController.navigate(ExportRoute) },
+                onOpenMyVoice = { navController.navigate(MyVoiceRoute) },
             )
+            myVoiceScreen(onClose = { navController.popBackStack() })
             exportScreen(
                 onBack = { navController.popBackStack() },
                 onGoHome = {
