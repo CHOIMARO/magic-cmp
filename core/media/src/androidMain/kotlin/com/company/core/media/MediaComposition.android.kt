@@ -8,6 +8,9 @@ import androidx.media3.common.C
 import androidx.media3.common.Effect
 import androidx.media3.common.MediaItem
 import androidx.media3.common.SpeedParameters
+import androidx.media3.common.audio.AudioProcessor
+import androidx.media3.common.audio.ChannelMixingAudioProcessor
+import androidx.media3.common.audio.ChannelMixingMatrix
 import androidx.media3.common.audio.SpeedProvider
 import androidx.media3.common.util.ExperimentalApi
 import androidx.media3.common.util.Size
@@ -25,6 +28,7 @@ import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.ExportOverlay
 import com.company.core.domain.model.editor.FilterType
 import com.company.core.domain.model.editor.FrameArea
+import com.company.core.domain.model.editor.MAX_VOLUME
 import com.company.core.domain.model.editor.MediaType
 import com.company.core.domain.model.editor.TransitionWindow
 import com.company.core.domain.model.editor.colorMatrix
@@ -34,12 +38,16 @@ import kotlin.math.roundToLong
 /** Frame rate of a photo clip. */
 private const val PHOTO_FRAME_RATE = 30
 
+/** Largest number of audio channels that the clip volume supports. It is 7.1 sound. */
+private const val MAX_AUDIO_CHANNELS = 8
+
 /**
  * Builds the Media3 composition of the clips. The preview player and the export use it.
  *
  * Every clip fills a [frameWidth] × [frameHeight] frame first. When [videoArea] is not the whole
  * frame, the clip then fills the area, and the area moves to its place in the frame. The parts
- * outside are cut off. The filter changes only the video. The overlay tracks go on top of the whole frame.
+ * outside are cut off. The filter and the transitions change only the video. The overlay tracks go on top of
+ * the whole frame. The volume of each video clip changes only the sound of that clip.
  *
  * @param clips Clips in play order. All clips must have a source file.
  * @param filter Color filter for the video.
@@ -60,23 +68,36 @@ fun buildMediaComposition(
     overlayTracks: List<List<ExportOverlay>> = emptyList(),
     transitions: List<TransitionWindow> = emptyList(),
 ): Composition {
+    val areaWidth = (videoArea.width * frameWidth).roundToInt().coerceAtLeast(1)
+    val areaHeight = (videoArea.height * frameHeight).roundToInt().coerceAtLeast(1)
     val itemEffects = buildList<Effect> {
         add(Presentation.createForWidthAndHeight(frameWidth, frameHeight, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP))
         if (!videoArea.isFullFrame) {
-            val areaWidth = (videoArea.width * frameWidth).roundToInt().coerceAtLeast(1)
-            val areaHeight = (videoArea.height * frameHeight).roundToInt().coerceAtLeast(1)
             add(Presentation.createForWidthAndHeight(areaWidth, areaHeight, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP))
         }
         filter.colorMatrix()?.let { add(it.toRgbMatrix()) }
     }
     val compositionEffects = buildList<Effect> {
+        // 전환은 영상 칸만 바꾼다. 칸을 제자리로 옮기기 전에 두어야 레이아웃과 글자 오버레이가 그대로 남는다.
+        addAll(
+            transitionEffects(
+                clips = clips,
+                transitions = transitions,
+                clipStartsUs = clips.compositionStartsUs(),
+                filter = filter,
+                frameWidth = frameWidth,
+                frameHeight = frameHeight,
+                areaWidth = areaWidth,
+                areaHeight = areaHeight,
+            ),
+        )
         if (!videoArea.isFullFrame) add(AreaPlacement(frameWidth, frameHeight, videoArea))
         val tracks = overlayTracks.filter { it.isNotEmpty() }
         if (tracks.isNotEmpty()) add(OverlayEffect(tracks.map { TimedBitmapOverlay(it) }))
     }
-    val effects = Effects(emptyList(), itemEffects)
+    // 모든 클립이 같은 영상 효과 목록을 쓴다. 목록이 같으면 Media3가 클립마다 셰이더를 다시 만들지 않는다.
     val sequence = EditedMediaItemSequence.Builder(setOf(C.TRACK_TYPE_AUDIO, C.TRACK_TYPE_VIDEO))
-        .addItems(clips.map { it.toEditedMediaItem(effects) })
+        .addItems(clips.map { it.toEditedMediaItem(itemEffects) })
         .build()
     return Composition.Builder(sequence)
         .setEffects(Effects(emptyList(), compositionEffects))
@@ -84,17 +105,17 @@ fun buildMediaComposition(
 }
 
 @OptIn(UnstableApi::class, ExperimentalApi::class)
-private fun Clip.toEditedMediaItem(effects: Effects): EditedMediaItem {
+private fun Clip.toEditedMediaItem(videoEffects: List<Effect>): EditedMediaItem {
     val uri = checkNotNull(sourceUri) { "Clip $id has no source file" }
     return when (type) {
         MediaType.PHOTO -> {
             val mediaItem = MediaItem.Builder()
                 .setUri(uri)
-                .setImageDurationMs(duration.toMillis().coerceAtLeast(1L))
+                .setImageDurationMs(photoDurationMs())
                 .build()
             EditedMediaItem.Builder(mediaItem)
                 .setFrameRate(PHOTO_FRAME_RATE)
-                .setEffects(effects)
+                .setEffects(Effects(emptyList(), videoEffects))
                 .build()
         }
         MediaType.VIDEO -> {
@@ -105,7 +126,7 @@ private fun Clip.toEditedMediaItem(effects: Effects): EditedMediaItem {
             val mediaItem = MediaItem.Builder().setUri(uri).setClippingConfiguration(clipping).build()
             EditedMediaItem.Builder(mediaItem)
                 .setDurationUs((sourceDuration * 1_000_000).roundToLong())
-                .setEffects(effects)
+                .setEffects(Effects(volumeProcessors(), videoEffects))
                 .apply {
                     // 배속을 바꿔도 소리의 높이는 그대로 둔다.
                     if (speed != 1.0) setSpeed(SpeedParameters(ConstantSpeedProvider(speed.toFloat()), true))
@@ -113,6 +134,43 @@ private fun Clip.toEditedMediaItem(effects: Effects): EditedMediaItem {
                 .build()
         }
     }
+}
+
+/** Show time of a photo clip in milliseconds. */
+private fun Clip.photoDurationMs(): Long = duration.toMillis().coerceAtLeast(1L)
+
+/**
+ * Start time of each clip in the composition, in microseconds.
+ *
+ * It uses the same rounding as [toEditedMediaItem], so it is the time where Media3 starts the clip.
+ */
+private fun List<Clip>.compositionStartsUs(): List<Long> {
+    var start = 0L
+    return map { clip ->
+        val clipStart = start
+        start += when (clip.type) {
+            MediaType.PHOTO -> clip.photoDurationMs() * 1000
+            MediaType.VIDEO -> ((clip.outPoint.toMillis() - clip.inPoint.toMillis()) * 1000 / clip.speed).roundToLong()
+        }
+        clipStart
+    }
+}
+
+/**
+ * Audio processors that set the volume of the clip sound. The list is empty at full volume.
+ *
+ * A diagonal matrix multiplies each channel by the volume. The processor keeps the number of channels.
+ */
+@OptIn(UnstableApi::class)
+private fun Clip.volumeProcessors(): List<AudioProcessor> {
+    if (volume >= MAX_VOLUME) return emptyList()
+    val gain = volume.coerceAtLeast(0) / MAX_VOLUME.toFloat()
+    val processor = ChannelMixingAudioProcessor()
+    for (channels in 1..MAX_AUDIO_CHANNELS) {
+        val coefficients = FloatArray(channels * channels) { index -> if (index % (channels + 1) == 0) gain else 0f }
+        processor.putChannelMixingMatrix(ChannelMixingMatrix(channels, channels, coefficients))
+    }
+    return listOf(processor)
 }
 
 /** Plays the whole clip at one speed. */
