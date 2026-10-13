@@ -1,7 +1,9 @@
 package com.company.ui.editor
 
+
 import androidx.compose.ui.text.style.TextAlign
 import com.company.core.domain.model.editor.CaptionStyleType
+import com.company.core.domain.model.editor.TextEntrance
 import com.company.core.domain.model.editor.TextFontType
 import com.company.core.domain.model.editor.TextStyleType
 import kotlin.test.Test

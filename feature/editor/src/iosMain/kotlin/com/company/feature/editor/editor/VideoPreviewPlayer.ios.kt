@@ -10,6 +10,7 @@ import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.FilterType
+import com.company.core.domain.model.editor.TransitionWindow
 import com.company.core.media.PREVIEW_FRAME_HEIGHT
 import com.company.core.media.PREVIEW_FRAME_WIDTH
 import com.company.core.media.buildMediaComposition
@@ -34,6 +35,7 @@ import platform.AVFoundation.pause
 import platform.AVFoundation.play
 import platform.AVFoundation.replaceCurrentItemWithPlayerItem
 import platform.AVFoundation.seekToTime
+import platform.AVFoundation.audioMix
 import platform.AVFoundation.videoComposition
 import platform.CoreGraphics.CGRectMake
 import platform.CoreMedia.CMTimeGetSeconds
@@ -96,14 +98,14 @@ private class IosVideoPreviewPlayer(private val scope: CoroutineScope) : VideoPr
             return if (seconds.isNaN()) targetTime else seconds
         }
 
-    override fun setClips(clips: List<Clip>, filter: FilterType, time: Double) {
+    override fun setClips(clips: List<Clip>, filter: FilterType, transitions: List<TransitionWindow>, time: Double) {
         if (clips.isEmpty()) return
         targetTime = time
         ended = false
         loading = true
         loadJob?.cancel()
         loadJob = scope.launch {
-            val item = buildPlayerItem(clips, filter)
+            val item = buildPlayerItem(clips, filter, transitions)
             loading = false
             if (item == null) {
                 NSLog("Preview: cannot build the player item")
@@ -205,10 +207,17 @@ private class PlayerLayerView(player: AVPlayer) : UIView(frame = CGRectMake(0.0,
 
 /** Makes the player item of the clips with the same composition as the export. */
 @OptIn(ExperimentalForeignApi::class)
-private suspend fun buildPlayerItem(clips: List<Clip>, filter: FilterType): AVPlayerItem? {
-    val composition = buildMediaComposition(clips, filter, PREVIEW_FRAME_WIDTH, PREVIEW_FRAME_HEIGHT) ?: return null
+private suspend fun buildPlayerItem(clips: List<Clip>, filter: FilterType, transitions: List<TransitionWindow>): AVPlayerItem? {
+    val composition = buildMediaComposition(
+        clips = clips,
+        filter = filter,
+        frameWidth = PREVIEW_FRAME_WIDTH,
+        frameHeight = PREVIEW_FRAME_HEIGHT,
+        transitions = transitions,
+    ) ?: return null
     return AVPlayerItem(asset = composition.asset).apply {
         videoComposition = composition.videoComposition
+        composition.audioMix?.let { audioMix = it }
         // 배속을 바꿔도 소리의 높이는 그대로 둔다.
         audioTimePitchAlgorithm = AVAudioTimePitchAlgorithmSpectral
     }

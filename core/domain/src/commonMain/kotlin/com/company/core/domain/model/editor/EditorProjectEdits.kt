@@ -15,8 +15,17 @@ const val MIN_TEXT_SCALE = 0.5
 /** Largest size factor of a text overlay. */
 const val MAX_TEXT_SCALE = 3.0
 
-/** Times closer than this, in seconds, count as the same time when the editor checks text overlaps. */
-private const val TIME_EPSILON = 1e-6
+/** Number of text size steps. */
+const val SIZE_STEP_COUNT = 5
+
+/** Shortest animation length that the user can pick, in milliseconds. */
+const val MIN_ANIMATION_MILLIS = 200
+
+/** Longest animation length that the user can pick, in milliseconds. */
+const val MAX_ANIMATION_MILLIS = 1000
+
+/** Times closer than this, in seconds, count as the same time when the editor checks overlaps. */
+internal const val TIME_EPSILON = 1e-6
 
 /**
  * Clip at a time on the timeline.
@@ -100,11 +109,31 @@ fun EditorProject.duplicateClip(clipId: String): Pair<EditorProject, String>? {
 }
 
 /**
- * Removes a clip.
+ * Removes a clip. The transitions at both edges of the clip and the captions bound to the clip go away.
  *
  * @param clipId ID of the clip.
  */
-fun EditorProject.removeClip(clipId: String): EditorProject = copy(clips = clips.filterNot { it.id == clipId })
+fun EditorProject.removeClip(clipId: String): EditorProject {
+    val index = clips.indexOfFirst { it.id == clipId }
+    if (index < 0) return this
+    val nextId = clips.getOrNull(index + 1)?.id
+    return copy(
+        clips = clips.filterNot { it.id == clipId },
+        transitions = transitions - setOfNotNull(clipId, nextId),
+        // 첫 클립을 지우면 다음 클립이 첫 클립이 되므로 그 클립 앞 전환은 없어진다. 영상 시작 전환은 그대로 둔다.
+        captions = captions.filterNot { it.clipId == clipId },
+    )
+}
+
+/**
+ * Changes the volume of the original sound of a clip.
+ *
+ * @param clipId ID of the clip.
+ * @param volume New volume. The function keeps it from 0 to [MAX_VOLUME].
+ */
+fun EditorProject.setClipVolume(clipId: String, volume: Int): EditorProject = mapClip(clipId) {
+    it.copy(volume = volume.coerceIn(0, MAX_VOLUME))
+}
 
 /**
  * Changes the play speed of a clip. A photo clip keeps its speed.
@@ -124,32 +153,77 @@ fun EditorProject.setClipSpeed(clipId: String, speed: Double): EditorProject = m
 fun EditorProject.addClips(newClips: List<Clip>): EditorProject = copy(clips = clips + newClips)
 
 /**
+ * Look of a text overlay that the text sheet changes.
+ *
+ * @property text Text to show.
+ * @property style Look of the text.
+ * @property font Font of the text, or null for the font of [style].
+ * @property sizeStep Size step from 1 to 5.
+ * @property decorations Decorations of character ranges in [text].
+ */
+data class TextContent(
+    val text: String,
+    val style: TextStyleType,
+    val font: TextFontType? = null,
+    val sizeStep: Int = DEFAULT_SIZE_STEP,
+    val decorations: List<DecorationRange> = emptyList(),
+)
+
+/**
  * Adds a text overlay at [time].
  *
  * The overlay goes to the first row of the text track. When it overlaps a text in that row, it goes to the next row
  * without an overlap. When all rows have an overlap, it goes to a new row.
+ *
+ * @param content Text and look of the overlay.
+ * @param time Current time on the timeline.
+ * @return The changed project and the ID of the new overlay.
+ */
+fun EditorProject.addText(content: TextContent, time: Double): Pair<EditorProject, String> {
+    val total = totalDuration
+    val start = time.coerceIn(0.0, maxOf(0.0, total - 1))
+    val length = maxOf(1.0, minOf(3.0, total - start))
+    val overlay = TextOverlay(
+        id = newEditorId(),
+        text = content.text,
+        start = start,
+        length = length,
+        style = content.style,
+        x = 50.0,
+        y = 40.0,
+        layer = texts.firstFreeLayer(start, start + length),
+        font = content.font,
+        sizeStep = content.sizeStep.coerceIn(1, SIZE_STEP_COUNT),
+        decorations = content.decorations,
+    )
+    return copy(texts = texts + overlay) to overlay.id
+}
+
+/**
+ * Adds a text overlay at [time].
  *
  * @param text Text to show.
  * @param style Look of the text.
  * @param time Current time on the timeline.
  * @param font Font of the text, or null for the font of [style].
  */
-fun EditorProject.addText(text: String, style: TextStyleType, time: Double, font: TextFontType? = null): EditorProject {
-    val total = totalDuration
-    val start = time.coerceIn(0.0, maxOf(0.0, total - 1))
-    val length = maxOf(1.0, minOf(3.0, total - start))
-    val overlay = TextOverlay(
-        id = newEditorId(),
-        text = text,
-        start = start,
-        length = length,
-        style = style,
-        x = 50.0,
-        y = 40.0,
-        layer = firstFreeTextLayer(start, start + length),
-        font = font,
+fun EditorProject.addText(text: String, style: TextStyleType, time: Double, font: TextFontType? = null): EditorProject =
+    addText(TextContent(text = text, style = style, font = font), time).first
+
+/**
+ * Changes the text and the look of a text overlay. The time, the place, and the animations stay.
+ *
+ * @param textId ID of the overlay.
+ * @param content New text and look.
+ */
+fun EditorProject.updateText(textId: String, content: TextContent): EditorProject = mapText(textId) {
+    it.copy(
+        text = content.text,
+        style = content.style,
+        font = content.font,
+        sizeStep = content.sizeStep.coerceIn(1, SIZE_STEP_COUNT),
+        decorations = content.decorations,
     )
-    return copy(texts = texts + overlay)
 }
 
 /**
@@ -161,7 +235,44 @@ fun EditorProject.addText(text: String, style: TextStyleType, time: Double, font
  * @param font New font, or null for the font of [style].
  */
 fun EditorProject.updateText(textId: String, text: String, style: TextStyleType, font: TextFontType? = null): EditorProject =
-    copy(texts = texts.map { if (it.id == textId) it.copy(text = text, style = style, font = font) else it })
+    mapText(textId) { it.copy(text = text, style = style, font = font) }
+
+/**
+ * Changes the entrance or the exit animation of a text overlay.
+ *
+ * @param textId ID of the overlay.
+ * @param entrance New entrance, or null to keep it.
+ * @param exit New exit, or null to keep it.
+ */
+fun EditorProject.setTextAnimation(textId: String, entrance: TextEntrance? = null, exit: TextExit? = null): EditorProject =
+    mapText(textId) { it.copy(entrance = entrance ?: it.entrance, exit = exit ?: it.exit) }
+
+/**
+ * Changes the length of the entrance or the exit animation of a text overlay.
+ *
+ * @param textId ID of the overlay.
+ * @param entranceMillis New entrance length, or null to keep it.
+ * @param exitMillis New exit length, or null to keep it.
+ */
+fun EditorProject.setTextAnimationLength(textId: String, entranceMillis: Int? = null, exitMillis: Int? = null): EditorProject =
+    mapText(textId) {
+        it.copy(
+            entranceMillis = entranceMillis?.coerceIn(MIN_ANIMATION_MILLIS, MAX_ANIMATION_MILLIS) ?: it.entranceMillis,
+            exitMillis = exitMillis?.coerceIn(MIN_ANIMATION_MILLIS, MAX_ANIMATION_MILLIS) ?: it.exitMillis,
+        )
+    }
+
+/**
+ * Removes the animations that the user picked. The text overlay uses the animations of its style again.
+ *
+ * @param textId ID of the overlay.
+ */
+fun EditorProject.resetTextAnimation(textId: String): EditorProject =
+    mapText(textId) { it.copy(entrance = null, entranceMillis = null, exit = null, exitMillis = null) }
+
+/** True when the user picked an animation or an animation length for the text. */
+val TextOverlay.hasCustomAnimation: Boolean
+    get() = entrance != null || entranceMillis != null || exit != null || exitMillis != null
 
 /**
  * Removes a text overlay. A row of the text track that becomes empty goes away, and the rows below it move up.
@@ -225,7 +336,7 @@ fun EditorProject.moveTextTime(textId: String, start: Double, layer: Int? = null
  */
 fun EditorProject.overlapsOtherText(textId: String): Boolean {
     val text = texts.find { it.id == textId } ?: return false
-    return overlapsTextLayer(text.layer, text.start, text.end, exceptId = textId)
+    return texts.overlapsLayer(text.layer, text.start, text.end, exceptId = textId)
 }
 
 /**
@@ -240,37 +351,64 @@ fun EditorProject.duplicateText(textId: String): Pair<EditorProject, String>? {
     if (index < 0) return null
     val original = texts[index]
     val start = original.end.coerceAtMost(totalDuration - original.length).coerceAtLeast(0.0)
-    val copy = original.copy(id = newEditorId(), start = start, layer = firstFreeTextLayer(start, start + original.length))
+    val copy = original.copy(id = newEditorId(), start = start, layer = texts.firstFreeLayer(start, start + original.length))
     return copy(texts = texts.take(index + 1) + copy + texts.drop(index + 1)) to copy.id
 }
 
 /** Number of rows that the text track needs. It is at least 1, so an empty track shows one row. */
 val EditorProject.textLayerCount: Int
-    get() = maxOf(1, (texts.maxOfOrNull { it.layer } ?: 0) + 1)
+    get() = texts.layerCount
+
+/** Number of rows that a track with these items needs. It is at least 1. */
+val List<TrackItem>.layerCount: Int
+    get() = maxOf(1, (maxOfOrNull { it.layer } ?: 0) + 1)
 
 /**
- * Finds the first row of the text track that has no text in a time range.
+ * Finds the first row that has no item in a time range.
  *
  * @param start Start of the range.
  * @param end End of the range.
- * @param exceptId ID of a text to ignore, or null.
+ * @param exceptId ID of an item to ignore, or null.
  * @return The row. It is a new row after the last one when all rows have an overlap.
  */
-private fun EditorProject.firstFreeTextLayer(start: Double, end: Double, exceptId: String? = null): Int {
-    val lastLayer = texts.filter { it.id != exceptId }.maxOfOrNull { it.layer } ?: -1
-    return (0..lastLayer + 1).first { !overlapsTextLayer(it, start, end, exceptId) }
+fun List<TrackItem>.firstFreeLayer(start: Double, end: Double, exceptId: String? = null): Int {
+    val lastLayer = filter { it.id != exceptId }.maxOfOrNull { it.layer } ?: -1
+    return (0..lastLayer + 1).first { !overlapsLayer(it, start, end, exceptId) }
 }
 
-/** Tells if a text in [layer] overlaps the time range. Texts that only touch do not overlap. */
-private fun EditorProject.overlapsTextLayer(layer: Int, start: Double, end: Double, exceptId: String?): Boolean =
-    texts.any { it.id != exceptId && it.layer == layer && it.start < end - TIME_EPSILON && start < it.end - TIME_EPSILON }
+/** Tells if an item in [layer] overlaps the time range. Items that only touch do not overlap. */
+fun List<TrackItem>.overlapsLayer(layer: Int, start: Double, end: Double, exceptId: String? = null): Boolean =
+    any { it.id != exceptId && it.layer == layer && it.start < end - TIME_EPSILON && start < it.end - TIME_EPSILON }
+
+/**
+ * Removes the empty rows. The rows below an empty row move up.
+ *
+ * @param withLayer Makes a copy of an item with a new row.
+ */
+fun <T : TrackItem> List<T>.compactLayers(withLayer: (T, Int) -> T): List<T> {
+    val used = map { it.layer }.distinct().sorted()
+    if (used.withIndex().all { (index, layer) -> index == layer }) return this
+    val newLayer = used.withIndex().associate { (index, layer) -> layer to index }
+    return map { withLayer(it, newLayer.getValue(it.layer)) }
+}
+
+/**
+ * Moves an item that overlaps another item in its row to the first free row, then removes the empty rows.
+ *
+ * @param id ID of the item to check.
+ * @param withLayer Makes a copy of an item with a new row.
+ */
+fun <T : TrackItem> List<T>.relayer(id: String, withLayer: (T, Int) -> T): List<T> {
+    val item = find { it.id == id } ?: return compactLayers(withLayer)
+    if (!overlapsLayer(item.layer, item.start, item.end, exceptId = id)) return compactLayers(withLayer)
+    val layer = firstFreeLayer(item.start, item.end, exceptId = id)
+    return map { if (it.id == id) withLayer(it, layer) else it }.compactLayers(withLayer)
+}
 
 /** Removes the empty rows of the text track. The rows below an empty row move up. */
 fun EditorProject.compactTextLayers(): EditorProject {
-    val used = texts.map { it.layer }.distinct().sorted()
-    if (used.withIndex().all { (index, layer) -> index == layer }) return this
-    val newLayer = used.withIndex().associate { (index, layer) -> layer to index }
-    return copy(texts = texts.map { it.copy(layer = newLayer.getValue(it.layer)) })
+    val compacted = texts.compactLayers { text, layer -> text.copy(layer = layer) }
+    return if (compacted === texts) this else copy(texts = compacted)
 }
 
 private fun EditorProject.mapText(textId: String, transform: (TextOverlay) -> TextOverlay): EditorProject =

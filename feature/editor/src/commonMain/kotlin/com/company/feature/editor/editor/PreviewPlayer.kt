@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.FilterType
+import com.company.core.domain.model.editor.TransitionWindow
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
@@ -20,13 +21,14 @@ internal interface PreviewPlayer {
     val ended: Boolean
 
     /**
-     * Sets the clips and the filter to play.
+     * Sets the clips, the filter, and the transitions to play.
      *
      * @param clips Clips in play order.
      * @param filter Color filter for all clips.
+     * @param transitions Transitions in time order.
      * @param time Position to show after the change.
      */
-    fun setClips(clips: List<Clip>, filter: FilterType, time: Double)
+    fun setClips(clips: List<Clip>, filter: FilterType, transitions: List<TransitionWindow>, time: Double)
 
     /** Starts the playback from the current position. */
     fun play()
@@ -89,7 +91,7 @@ internal class ClockPreviewPlayer : PreviewPlayer {
     override val ended: Boolean
         get() = mark != null && currentTime >= duration
 
-    override fun setClips(clips: List<Clip>, filter: FilterType, time: Double) {
+    override fun setClips(clips: List<Clip>, filter: FilterType, transitions: List<TransitionWindow>, time: Double) {
         duration = clips.sumOf { it.duration }
         seekTo(time)
     }

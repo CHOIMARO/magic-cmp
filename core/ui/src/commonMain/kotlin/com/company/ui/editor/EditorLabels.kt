@@ -1,12 +1,18 @@
 package com.company.ui.editor
 
 import com.company.core.domain.model.editor.CaptionStyleType
+import com.company.core.domain.model.editor.DubbingSpeed
 import com.company.core.domain.model.editor.EditorTemplate
 import com.company.core.domain.model.editor.FilterType
 import com.company.core.domain.model.editor.LayoutType
+import com.company.core.domain.model.editor.PushDirection
+import com.company.core.domain.model.editor.SoundEffectCategory
 import com.company.core.domain.model.editor.TemplateKind
+import com.company.core.domain.model.editor.TextEntrance
+import com.company.core.domain.model.editor.TextExit
 import com.company.core.domain.model.editor.TextFontType
 import com.company.core.domain.model.editor.TextStyleType
+import com.company.core.domain.model.editor.TransitionType
 
 /** Default text of a new title overlay. */
 const val DEFAULT_TITLE_TEXT = "오늘의 기록"
@@ -67,6 +73,76 @@ val TextFontType.displayName: String
         TextFontType.BLACK_HAN_SANS -> "검은고딕"
         TextFontType.DO_HYEON -> "도현"
         TextFontType.JUA -> "주아"
+        TextFontType.GAEGU -> "개구쟁이"
+        TextFontType.DONGLE -> "동글"
+        TextFontType.GUGI -> "구기"
+        TextFontType.SONG_MYUNG -> "송명"
+    }
+
+/** Display name of the entrance animation. */
+val TextEntrance.displayName: String
+    get() = when (this) {
+        TextEntrance.NONE -> "없음"
+        TextEntrance.POP -> "팝"
+        TextEntrance.SLIDE_UP -> "밀어 올리기"
+        TextEntrance.FADE -> "페이드"
+        TextEntrance.FADE_UP -> "떠오르기"
+        TextEntrance.FLICKER -> "깜빡임"
+        TextEntrance.MARKER_SWEEP -> "형광펜 긋기"
+        TextEntrance.WRITE -> "써 내려가기"
+        TextEntrance.STAMP -> "도장 찍기"
+        TextEntrance.BOUNCE -> "통통"
+    }
+
+/** Display name of the exit animation. */
+val TextExit.displayName: String
+    get() = when (this) {
+        TextExit.NONE -> "없음"
+        TextExit.FADE -> "페이드"
+        TextExit.SLIDE_DOWN -> "밀어 내리기"
+        TextExit.SHRINK -> "작아지며"
+        TextExit.FLY_UP -> "위로 날아가기"
+        TextExit.FLICKER -> "깜빡임"
+    }
+
+/** Display name of the transition. */
+val TransitionType.displayName: String
+    get() = when (this) {
+        TransitionType.DISSOLVE -> "디졸브"
+        TransitionType.FADE -> "페이드"
+        TransitionType.PUSH -> "밀기"
+        TransitionType.ZOOM -> "확대"
+        TransitionType.BLUR -> "흐림"
+        TransitionType.FLASH -> "플래시"
+        TransitionType.GLITCH -> "글리치"
+    }
+
+/** Display name of the side that a push transition comes from. */
+val PushDirection.displayName: String
+    get() = when (this) {
+        PushDirection.LEFT -> "왼쪽에서"
+        PushDirection.RIGHT -> "오른쪽에서"
+        PushDirection.UP -> "위에서"
+        PushDirection.DOWN -> "아래에서"
+    }
+
+/** Display name of the sound effect category. */
+val SoundEffectCategory.displayName: String
+    get() = when (this) {
+        SoundEffectCategory.HIGHLIGHT -> "강조"
+        SoundEffectCategory.REACTION -> "리액션"
+        SoundEffectCategory.TRANSITION -> "전환"
+        SoundEffectCategory.TENSION -> "놀람·긴장"
+        SoundEffectCategory.COMIC -> "코믹·실패"
+        SoundEffectCategory.DAILY -> "일상·사물"
+    }
+
+/** Display name of the dubbing speed. */
+val DubbingSpeed.displayName: String
+    get() = when (this) {
+        DubbingSpeed.SLOW -> "느리게"
+        DubbingSpeed.NORMAL -> "보통"
+        DubbingSpeed.FAST -> "빠르게"
     }
 
 /** Display name of the caption style. */
@@ -123,6 +199,18 @@ val EditorTemplate.description: String
         is EditorTemplate.Text -> "제목이나 강조 문구에 쓰기 좋아요. 넣은 뒤 화면에서 끌어서 옮길 수 있어요."
         is EditorTemplate.Caption -> "자동 자막이 이 스타일로 나와요. 말하는 영상에 잘 어울려요."
     }
+
+/**
+ * Formats seconds as "m:ss.d" with tenths of a second. The timeline shows it while the user drags it.
+ *
+ * @param seconds Time in seconds. Negative values show as 0:00.0.
+ */
+fun formatTimeTenths(seconds: Double): String {
+    val tenths = (seconds.coerceAtLeast(0.0) * 10).toLong()
+    val minutes = tenths / 600
+    val rest = (tenths / 10) % 60
+    return "$minutes:${rest.toString().padStart(2, '0')}.${tenths % 10}"
+}
 
 /**
  * Formats seconds as "m:ss".

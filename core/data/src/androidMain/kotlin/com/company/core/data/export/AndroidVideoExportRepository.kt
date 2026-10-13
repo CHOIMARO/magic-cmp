@@ -65,6 +65,7 @@ internal class AndroidVideoExportRepository(private val context: Context) : Vide
                 frameHeight = request.height,
                 videoArea = request.videoArea,
                 overlayTracks = request.overlayTracks,
+                transitions = request.transitions,
             )
             transformer.start(composition, output.path)
             val progressJob = launch {

@@ -1,9 +1,10 @@
 package com.company.core.domain.repository
 
 import com.company.core.domain.model.editor.MusicTrack
+import com.company.core.domain.model.editor.SoundEffect
 import com.company.core.domain.model.editor.SourceMedia
 
-/** Gives the photos, the videos, and the music that the user can add to a project. */
+/** Gives the photos, the videos, the music, and the sound effects that the user can add to a project. */
 interface MediaLibraryRepository {
     /**
      * Reads the details of the photos and videos that the user picked in the system picker.
@@ -17,4 +18,7 @@ interface MediaLibraryRepository {
 
     /** Returns the background music tracks. */
     fun getMusicTracks(): List<MusicTrack>
+
+    /** Returns the sound effects. */
+    fun getSoundEffects(): List<SoundEffect>
 }

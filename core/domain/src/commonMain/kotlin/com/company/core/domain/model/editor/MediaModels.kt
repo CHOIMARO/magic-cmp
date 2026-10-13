@@ -67,3 +67,48 @@ data class EditorSettings(
     val templateNews: Boolean = false,
     val watermark: Boolean = false,
 )
+
+/**
+ * Voice that reads a dubbing.
+ *
+ * @property id Unique ID of the voice.
+ * @property name Name of the voice.
+ * @property description Short description, for example "여성 · 맑고 밝은 목소리".
+ * @property hue Hue of the avatar.
+ */
+data class DubbingVoice(
+    val id: String,
+    val name: String,
+    val description: String,
+    val hue: Int,
+)
+
+/**
+ * Sound effect in the catalog.
+ *
+ * @property id Unique ID of the effect.
+ * @property category Category of the effect.
+ * @property name Name of the effect.
+ * @property length Length in seconds, from 0.1 to 5.
+ */
+data class SoundEffect(
+    val id: String,
+    val category: SoundEffectCategory,
+    val name: String,
+    val length: Double,
+)
+
+/** State of the voice that the user records ("내 목소리"). */
+sealed interface MyVoiceStatus {
+    /** None : The user has no voice. */
+    data object None : MyVoiceStatus
+
+    /** Making(percent) : The voice is in production. [percent] goes from 0 to 100. */
+    data class Making(val percent: Int) : MyVoiceStatus
+
+    /** Ready : The voice is ready for dubbings. */
+    data object Ready : MyVoiceStatus
+}
+
+/** ID of the user's own voice in [Dubbing.voiceId]. */
+const val MY_VOICE_ID = "me"

@@ -34,8 +34,14 @@ enum class LayoutType(val clipCount: Int) {
 /** Look of a text overlay. */
 enum class TextStyleType { BOLD, BOX, OUTLINE, SERIF, NEON, MARKER, TAG, HAND, IMPACT, RETRO, CUTE, MINIMAL }
 
-/** Font of a text overlay. All fonts use the SIL Open Font License 1.1. */
-enum class TextFontType {
+/**
+ * Font of a text overlay. All fonts use the SIL Open Font License 1.1.
+ *
+ * @property downloadable True when the app does not include the font file. The app downloads the file the first
+ *   time that the user picks the font.
+ * @property isNew True to show a "NEW" mark in the font list.
+ */
+enum class TextFontType(val downloadable: Boolean = false, val isNew: Boolean = false) {
     /** Pretendard. Most text styles use it. */
     PRETENDARD,
 
@@ -53,6 +59,152 @@ enum class TextFontType {
 
     /** Jua (주아), a round display font. */
     JUA,
+
+    /** Gaegu (개구쟁이), a playful handwriting font. */
+    GAEGU(downloadable = true, isNew = true),
+
+    /** Dongle (동글), a narrow round font. */
+    DONGLE(downloadable = true, isNew = true),
+
+    /** Gugi (구기), a heavy display font. */
+    GUGI(downloadable = true, isNew = true),
+
+    /** Song Myung (송명), a serif font. */
+    SONG_MYUNG(downloadable = true),
+}
+
+/** How a text comes on screen. */
+enum class TextEntrance {
+    /** No animation. The text shows at once ("없음"). */
+    NONE,
+
+    /** Grows from 60% with a small overshoot ("팝"). */
+    POP,
+
+    /** Moves up into place ("밀어 올리기"). */
+    SLIDE_UP,
+
+    /** Fades in ("페이드"). */
+    FADE,
+
+    /** Fades in and moves up a short distance ("떠오르기"). */
+    FADE_UP,
+
+    /** Blinks a few times ("깜빡임"). */
+    FLICKER,
+
+    /** The background draws from left to right ("형광펜 긋기"). */
+    MARKER_SWEEP,
+
+    /** The text shows from left to right, as if a pen writes it ("써 내려가기"). */
+    WRITE,
+
+    /** Shrinks from a large size into place, as a stamp ("도장 찍기"). */
+    STAMP,
+
+    /** Drops from above and bounces into place ("통통"). */
+    BOUNCE,
+}
+
+/** How a text goes off screen. */
+enum class TextExit {
+    /** No animation. The text goes away at once ("없음"). */
+    NONE,
+
+    /** Fades out ("페이드"). It is the default. */
+    FADE,
+
+    /** Fades out and moves down ("밀어 내리기"). */
+    SLIDE_DOWN,
+
+    /** Fades out and becomes smaller ("작아지며"). */
+    SHRINK,
+
+    /** Fades out and moves up fast ("위로 날아가기"). */
+    FLY_UP,
+
+    /** Blinks a few times and goes away ("깜빡임"). */
+    FLICKER,
+}
+
+/**
+ * Transition between two clips, or at the start of the video.
+ *
+ * @property canOpen True when the video start can use the transition.
+ */
+enum class TransitionType(val canOpen: Boolean) {
+    /** The next scene shows through the previous scene ("디졸브"). */
+    DISSOLVE(canOpen = false),
+
+    /** The scene goes to black, and the next scene comes from black ("페이드"). */
+    FADE(canOpen = true),
+
+    /** The next scene pushes the previous scene out ("밀기"). */
+    PUSH(canOpen = false),
+
+    /** The scene zooms in, and the next scene zooms out into place ("확대"). */
+    ZOOM(canOpen = true),
+
+    /** The scene blurs, and the next scene becomes sharp ("흐림"). */
+    BLUR(canOpen = true),
+
+    /** A white flash changes the scene ("플래시"). */
+    FLASH(canOpen = true),
+
+    /** The scene shakes and breaks up while it changes ("글리치"). */
+    GLITCH(canOpen = false),
+}
+
+/** Side that the next scene comes from in a [TransitionType.PUSH] transition. */
+enum class PushDirection {
+    /** LEFT : From the left edge. */
+    LEFT,
+
+    /** RIGHT : From the right edge. It is the default. */
+    RIGHT,
+
+    /** UP : From the top edge. */
+    UP,
+
+    /** DOWN : From the bottom edge. */
+    DOWN,
+}
+
+/**
+ * Reading speed of a dubbing.
+ *
+ * @property factor Speed factor. 1 is the normal speed.
+ */
+enum class DubbingSpeed(val factor: Double) {
+    /** SLOW : Slow reading ("느리게"). */
+    SLOW(0.8),
+
+    /** NORMAL : Normal reading ("보통"). */
+    NORMAL(1.0),
+
+    /** FAST : Fast reading ("빠르게"). */
+    FAST(1.25),
+}
+
+/** Category of a sound effect. */
+enum class SoundEffectCategory {
+    /** HIGHLIGHT : Sounds that make a moment stand out ("강조"). */
+    HIGHLIGHT,
+
+    /** REACTION : Claps, laughs, and cheers ("리액션"). */
+    REACTION,
+
+    /** TRANSITION : Whooshes for a scene change ("전환"). */
+    TRANSITION,
+
+    /** TENSION : Sounds of surprise and tension ("놀람·긴장"). */
+    TENSION,
+
+    /** COMIC : Sounds of a funny failure ("코믹·실패"). */
+    COMIC,
+
+    /** DAILY : Sounds of daily objects ("일상·사물"). */
+    DAILY,
 }
 
 /** Look of the automatic captions. */

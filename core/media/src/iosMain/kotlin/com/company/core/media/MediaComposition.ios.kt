@@ -5,6 +5,7 @@ import com.company.core.domain.model.editor.ExportOverlay
 import com.company.core.domain.model.editor.FilterType
 import com.company.core.domain.model.editor.FrameArea
 import com.company.core.domain.model.editor.MediaType
+import com.company.core.domain.model.editor.TransitionWindow
 import com.company.core.domain.model.editor.colorMatrix
 import kotlin.coroutines.resume
 import kotlinx.cinterop.CValue
@@ -20,6 +21,7 @@ import kotlinx.cinterop.value
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.AVFoundation.AVAssetTrack
+import platform.AVFoundation.AVAudioMix
 import platform.AVFoundation.AVAssetWriter
 import platform.AVFoundation.AVAssetWriterInput
 import platform.AVFoundation.AVAssetWriterInputPixelBufferAdaptor
@@ -89,9 +91,14 @@ private const val TIMESCALE = 600
  * Composition of the clips for AVFoundation.
  *
  * @property asset Video and audio tracks of all clips.
- * @property videoComposition Draws each frame: upright, filled, filtered, and with the overlays.
+ * @property videoComposition Draws each frame: upright, filled, filtered, with the transitions, and with the overlays.
+ * @property audioMix Volume of the sound of each clip, or null when all clips use the full volume.
  */
-class MediaComposition(val asset: AVMutableComposition, val videoComposition: AVMutableVideoComposition)
+class MediaComposition(
+    val asset: AVMutableComposition,
+    val videoComposition: AVMutableVideoComposition,
+    val audioMix: AVAudioMix? = null,
+)
 
 /**
  * Builds the composition of the clips. The preview player and the export use it.
@@ -108,6 +115,7 @@ class MediaComposition(val asset: AVMutableComposition, val videoComposition: AV
  * @param frameHeight Height of the output frame in pixels.
  * @param videoArea Area of the frame that shows the video.
  * @param overlayTracks Images on top of the video. Each track holds images in time order. The first track is at the bottom.
+ * @param transitions Transitions of the video, in time order. They change only the video area. See [transitionLook].
  * @return The composition, or null when a clip has no file or AVFoundation cannot make the video composition.
  */
 @OptIn(ExperimentalForeignApi::class)
@@ -118,6 +126,7 @@ suspend fun buildMediaComposition(
     frameHeight: Int,
     videoArea: FrameArea = FrameArea.FULL,
     overlayTracks: List<List<ExportOverlay>> = emptyList(),
+    transitions: List<TransitionWindow> = emptyList(),
 ): MediaComposition? {
     val composition = AVMutableComposition()
     val videoTrack = composition.addMutableTrackWithMediaType(AVMediaTypeVideo, kCMPersistentTrackID_Invalid) ?: return null

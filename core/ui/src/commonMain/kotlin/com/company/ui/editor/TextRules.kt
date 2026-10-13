@@ -1,6 +1,8 @@
 package com.company.ui.editor
 
 import androidx.compose.runtime.Immutable
+import com.company.core.domain.model.editor.TextEntrance
+import com.company.core.domain.model.editor.TextExit
 import com.company.core.domain.model.editor.TextFontType
 import kotlin.math.floor
 import kotlin.math.pow
@@ -31,6 +33,15 @@ private const val FADE_UP_DISTANCE_PX = 40f
 /** Height of the bounce entrance, in spec pixels. */
 private const val BOUNCE_HEIGHT_PX = 160f
 
+/** Distance of the slide-down exit, in spec pixels. */
+private const val SLIDE_DOWN_DISTANCE_PX = 40f
+
+/** Distance of the fly-up exit, in spec pixels. */
+private const val FLY_UP_DISTANCE_PX = 120f
+
+/** Size that the shrink exit takes away, as a factor of the size. */
+private const val SHRINK_AMOUNT = 0.6f
+
 /** Start size of the stamp entrance, as a factor of the final size. */
 private const val STAMP_START_SCALE = 1.9f
 
@@ -43,45 +54,21 @@ private const val PREVIEW_PAUSE_MILLIS = 300L
 /** Opacity steps of the flicker entrance. */
 private val FlickerSteps = floatArrayOf(0f, 0.9f, 0.1f, 0.8f, 0.3f, 1f, 0.6f, 1f)
 
-/** How a text comes on screen. */
-enum class TextEntrance {
-    /** Grows from 60% with a small overshoot ("팝"). */
-    POP,
-
-    /** Moves up into place ("밀어 올리기"). */
-    SLIDE_UP,
-
-    /** Fades in ("페이드"). */
-    FADE,
-
-    /** Blinks a few times ("깜빡임"). */
-    FLICKER,
-
-    /** The background draws from left to right ("형광펜 긋기"). */
-    MARKER_SWEEP,
-
-    /** Fades in and moves up a short distance ("떠오르기"). */
-    FADE_UP,
-
-    /** The text shows from left to right, as if a pen writes it ("써 내려가기"). */
-    WRITE,
-
-    /** Shrinks from a large size into place, as a stamp ("도장 찍기"). */
-    STAMP,
-
-    /** Drops from above and bounces into place ("통통"). */
-    BOUNCE,
-}
-
 /**
- * Entrance and exit of a text. The exit is always a fade.
+ * Entrance and exit of a text.
  *
  * @property entrance How the text comes on screen.
  * @property entranceMillis Length of the entrance.
- * @property exitMillis Length of the fade at the end.
+ * @property exitMillis Length of the exit.
+ * @property exit How the text goes off screen.
  */
 @Immutable
-data class TextAnimation(val entrance: TextEntrance, val entranceMillis: Int, val exitMillis: Int) {
+data class TextAnimation(
+    val entrance: TextEntrance,
+    val entranceMillis: Int,
+    val exitMillis: Int,
+    val exit: TextExit = TextExit.FADE,
+) {
     /** Length of the entrance in seconds. */
     val entranceSeconds: Double
         get() = entranceMillis / 1000.0
@@ -89,6 +76,41 @@ data class TextAnimation(val entrance: TextEntrance, val entranceMillis: Int, va
     /** Length of the exit in seconds. */
     val exitSeconds: Double
         get() = exitMillis / 1000.0
+}
+
+/** Length of the exit of a title when the user picks no length. */
+const val DEFAULT_TITLE_EXIT_MILLIS = 200
+
+/**
+ * Applies the animation that the user picked for one text.
+ *
+ * A null value keeps the value of the style. The default exit is a fade. "없음" has no length. When the entrance and
+ * the exit together are longer than the text, both become shorter in the same proportion.
+ *
+ * @param entrance Entrance that the user picked, or null.
+ * @param entranceMillis Entrance length that the user picked, or null.
+ * @param exit Exit that the user picked, or null.
+ * @param exitMillis Exit length that the user picked, or null.
+ * @param lengthSeconds Time of the text on screen.
+ */
+fun TextAnimation.withChoices(
+    entrance: TextEntrance?,
+    entranceMillis: Int?,
+    exit: TextExit?,
+    exitMillis: Int?,
+    lengthSeconds: Double,
+): TextAnimation {
+    val newEntrance = entrance ?: this.entrance
+    val newExit = exit ?: TextExit.FADE
+    var enterMs = if (newEntrance == TextEntrance.NONE) 0.0 else (entranceMillis ?: this.entranceMillis).toDouble()
+    var exitMs = if (newExit == TextExit.NONE) 0.0 else (exitMillis ?: DEFAULT_TITLE_EXIT_MILLIS).toDouble()
+    val limit = lengthSeconds * 1000
+    if (enterMs + exitMs > limit && enterMs + exitMs > 0.0) {
+        val ratio = limit / (enterMs + exitMs)
+        enterMs *= ratio
+        exitMs *= ratio
+    }
+    return TextAnimation(newEntrance, enterMs.toInt(), exitMs.toInt(), newExit)
 }
 
 /** How a caption shows the word that the speaker says now. */
@@ -131,8 +153,9 @@ data class TextFrame(
  * @return The look. It is [TextFrame.Static] between the entrance and the exit.
  */
 fun TextAnimation.frameAt(elapsed: Double, remaining: Double): TextFrame {
-    val p = (elapsed / entranceSeconds).coerceIn(0.0, 1.0).toFloat()
+    val p = if (entranceMillis <= 0) 1f else (elapsed / entranceSeconds).coerceIn(0.0, 1.0).toFloat()
     var frame = when (entrance) {
+        TextEntrance.NONE -> TextFrame.Static
         TextEntrance.POP -> TextFrame(alpha = minOf(1f, p * 2.5f), scale = 0.6f + 0.4f * easeOutBack(p))
         TextEntrance.SLIDE_UP -> TextFrame(alpha = minOf(1f, p * 1.5f), offsetY = (1f - easeOutCubic(p)) * SLIDE_UP_DISTANCE_PX * DP_PER_SPEC_PX)
         TextEntrance.FADE -> TextFrame(alpha = easeInOutCubic(p))
@@ -143,9 +166,21 @@ fun TextAnimation.frameAt(elapsed: Double, remaining: Double): TextFrame {
         TextEntrance.STAMP -> TextFrame(alpha = minOf(1f, p * 2f), scale = STAMP_START_SCALE - (STAMP_START_SCALE - 1f) * easeOutCubic(p))
         TextEntrance.BOUNCE -> TextFrame(alpha = minOf(1f, p * 3f), offsetY = -(1f - easeOutBounce(p)) * BOUNCE_HEIGHT_PX * DP_PER_SPEC_PX)
     }
-    val exit = ((exitSeconds - remaining) / exitSeconds).coerceIn(0.0, 1.0).toFloat()
-    if (exit > 0f) frame = frame.copy(alpha = frame.alpha * (1f - easeInCubic(exit)))
+    val progress = if (exitMillis <= 0) 0f else ((exitSeconds - remaining) / exitSeconds).coerceIn(0.0, 1.0).toFloat()
+    if (progress > 0f) frame = frame.exitFrame(exit, progress)
     return frame
+}
+
+/** Adds the exit at [progress] from 0 to 1 to the look of the text. */
+private fun TextFrame.exitFrame(exit: TextExit, progress: Float): TextFrame = when (exit) {
+    TextExit.NONE -> this
+    TextExit.FADE -> copy(alpha = alpha * (1f - easeInCubic(progress)))
+    TextExit.SLIDE_DOWN -> copy(alpha = alpha * (1f - progress), offsetY = offsetY + easeInCubic(progress) * SLIDE_DOWN_DISTANCE_PX * DP_PER_SPEC_PX)
+    TextExit.SHRINK -> copy(alpha = alpha * (1f - easeInCubic(progress)), scale = scale * (1f - SHRINK_AMOUNT * easeInCubic(progress)))
+    TextExit.FLY_UP -> copy(alpha = alpha * (1f - progress), offsetY = offsetY - easeInCubic(progress) * FLY_UP_DISTANCE_PX * DP_PER_SPEC_PX)
+    TextExit.FLICKER -> copy(
+        alpha = alpha * if (progress >= 1f) 0f else FlickerSteps[FlickerSteps.lastIndex - (progress * FlickerSteps.size).toInt()],
+    )
 }
 
 /**
@@ -223,17 +258,18 @@ data class TextLines(val lines: List<List<String>>, val fontScale: Float)
  */
 internal fun TextLook.charactersPerLine(): Int {
     val boxWidth = boxWidthRatio * STAGE_WIDTH_DP - paddingHorizontal * 2
-    val letterWidth = fontSize * font.glyphWidthRatio + letterSpacingEm * fontSize
+    val letterWidth = fontSize * font.glyphWidthRatio * widthFactor + letterSpacingEm * fontSize
     return maxOf(1, floor(boxWidth / letterWidth * CHARS_PER_LINE_MARGIN).toInt())
 }
 
 /** Average letter width of the font, as a part of the font size. The values come from the spec. */
 internal val TextFontType.glyphWidthRatio: Float
     get() = when (this) {
-        TextFontType.PRETENDARD, TextFontType.GOWUN_BATANG, TextFontType.JUA -> 0.95f
-        TextFontType.NANUM_PEN -> 0.62f
+        TextFontType.PRETENDARD, TextFontType.GOWUN_BATANG, TextFontType.JUA, TextFontType.GUGI, TextFontType.SONG_MYUNG -> 0.95f
+        TextFontType.NANUM_PEN, TextFontType.DONGLE -> 0.62f
         TextFontType.BLACK_HAN_SANS -> 0.98f
         TextFontType.DO_HYEON -> 0.85f
+        TextFontType.GAEGU -> 0.8f
     }
 
 /**

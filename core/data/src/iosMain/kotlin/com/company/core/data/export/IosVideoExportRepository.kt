@@ -22,6 +22,7 @@ import platform.AVFoundation.AVAssetExportSessionStatusCompleted
 import platform.AVFoundation.AVAudioTimePitchAlgorithmSpectral
 import platform.AVFoundation.AVFileTypeMPEG4
 import platform.AVFoundation.audioTimePitchAlgorithm
+import platform.AVFoundation.audioMix
 import platform.AVFoundation.videoComposition
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSTemporaryDirectory
@@ -50,12 +51,14 @@ internal class IosVideoExportRepository : VideoExportRepository {
             frameHeight = request.height,
             videoArea = request.videoArea,
             overlayTracks = request.overlayTracks,
+            transitions = request.transitions,
         ) ?: error("Cannot build the composition")
         val output = NSURL.fileURLWithPath(NSTemporaryDirectory() + exportFileName(request.name))
         val session = AVAssetExportSession(asset = composition.asset, presetName = AVAssetExportPresetHighestQuality).apply {
             outputURL = output
             outputFileType = AVFileTypeMPEG4
             videoComposition = composition.videoComposition
+            composition.audioMix?.let { audioMix = it }
             // 배속을 바꿔도 소리의 높이는 그대로 둔다.
             audioTimePitchAlgorithm = AVAudioTimePitchAlgorithmSpectral
             shouldOptimizeForNetworkUse = true

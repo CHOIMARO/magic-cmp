@@ -9,10 +9,11 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.company.core.domain.model.editor.transitionWindows
 import kotlin.math.abs
 import kotlinx.coroutines.delay
 
-/** Wait after a clip or filter change before the player rebuilds its content. A trim drag changes the clips many times. */
+/** Wait after a clip, filter, or transition change before the player rebuilds its content. A trim drag changes the clips many times. */
 private const val CONTENT_DELAY_MILLIS = 120L
 
 /** Smallest position difference, in seconds, that makes the player seek. */
@@ -32,6 +33,9 @@ private const val SEEK_TOLERANCE = 0.001
 internal fun rememberEditorPlayback(state: EditorState, onIntent: (EditorIntent) -> Unit): VideoPreviewPlayer? {
     val clips = state.project.clips
     val filter = state.project.filter
+    val transitions = remember(state.project.clips, state.project.transitions, state.project.openingTransition) {
+        state.project.transitionWindows()
+    }
     val hasFiles = clips.isNotEmpty() && clips.all { it.sourceUri != null }
     val videoPlayer = if (hasFiles) rememberVideoPreviewPlayer() else null
     val player: PreviewPlayer = videoPlayer ?: remember { ClockPreviewPlayer() }
@@ -39,10 +43,10 @@ internal fun rememberEditorPlayback(state: EditorState, onIntent: (EditorIntent)
     val latestOnIntent by rememberUpdatedState(onIntent)
     val loaded = remember(player) { mutableStateOf(false) }
 
-    // 클립이나 필터가 바뀌면 재생할 내용을 다시 만든다. 연속으로 바뀌면 마지막 변경만 반영한다.
-    LaunchedEffect(player, clips, filter) {
+    // 클립, 필터, 전환이 바뀌면 재생할 내용을 다시 만든다. 연속으로 바뀌면 마지막 변경만 반영한다.
+    LaunchedEffect(player, clips, filter, transitions) {
         if (loaded.value) delay(CONTENT_DELAY_MILLIS)
-        player.setClips(clips, filter, latestState.time)
+        player.setClips(clips, filter, transitions, latestState.time)
         loaded.value = true
         if (latestState.playing) player.play()
     }

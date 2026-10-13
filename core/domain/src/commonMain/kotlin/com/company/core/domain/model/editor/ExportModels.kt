@@ -42,6 +42,7 @@ class ExportOverlay(val start: Double, val end: Double, val png: ByteArray)
  * @property videoArea Area of the frame that shows the video.
  * @property overlayTracks Images on top of the video. Each track holds images in time order, and a time
  * without an image shows nothing of that track. The first track is at the bottom.
+ * @property transitions Transitions of the video, in time order.
  */
 data class ExportRequest(
     val name: String,
@@ -51,6 +52,7 @@ data class ExportRequest(
     val height: Int,
     val videoArea: FrameArea = FrameArea.FULL,
     val overlayTracks: List<List<ExportOverlay>> = emptyList(),
+    val transitions: List<TransitionWindow> = emptyList(),
 )
 
 /** State of a running export. */

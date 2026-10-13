@@ -5,6 +5,7 @@ import com.company.core.base.BaseViewModel
 import com.company.core.base.Intent
 import com.company.core.base.SideEffect
 import com.company.core.base.State
+import com.company.core.domain.model.editor.transitionWindows
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.ExportOverlay
 import com.company.core.domain.model.editor.ExportRequest
@@ -227,6 +228,7 @@ class ExportViewModel(
             height = resolution.height,
             videoArea = project.layout.spec.cells.first().toFrameArea(),
             overlayTracks = overlayTracks,
+            transitions = project.transitionWindows(),
         )
         reduce { copy(overlayRequest = null, progress = OVERLAY_PERCENT) }
         exportJob?.cancel()

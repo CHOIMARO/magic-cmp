@@ -26,6 +26,7 @@ import com.company.core.domain.model.editor.ExportOverlay
 import com.company.core.domain.model.editor.FilterType
 import com.company.core.domain.model.editor.FrameArea
 import com.company.core.domain.model.editor.MediaType
+import com.company.core.domain.model.editor.TransitionWindow
 import com.company.core.domain.model.editor.colorMatrix
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -46,6 +47,7 @@ private const val PHOTO_FRAME_RATE = 30
  * @param frameHeight Height of the output frame in pixels.
  * @param videoArea Area of the frame that shows the video.
  * @param overlayTracks Images on top of the video. Each track holds images in time order. The first track is at the bottom.
+ * @param transitions Transitions of the video, in time order. They change only the video area. See [transitionLook].
  * @return The composition. The audio track has silence where a clip has no sound.
  */
 @OptIn(UnstableApi::class, ExperimentalApi::class)
@@ -56,6 +58,7 @@ fun buildMediaComposition(
     frameHeight: Int,
     videoArea: FrameArea = FrameArea.FULL,
     overlayTracks: List<List<ExportOverlay>> = emptyList(),
+    transitions: List<TransitionWindow> = emptyList(),
 ): Composition {
     val itemEffects = buildList<Effect> {
         add(Presentation.createForWidthAndHeight(frameWidth, frameHeight, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP))
