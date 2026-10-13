@@ -1,0 +1,14 @@
+OkDanDan (Ok단단체)
+Copyright 2025. OKTICON (OkFont). All rights reserved.
+
+Source: https://www.okticon.com/freefont/ (OkFont 무료폰트 라이센스)
+
+Summary of the license (from the source page):
+- You may use the font for printing, web pages, packaging, video, embedding in programs, and BI/CI.
+- You may make and sell derived works that use the font.
+- You must not sell the font files (.otf, .ttf), and you must not upload the font files for redistribution.
+  Share only the official download link.
+- You must not use the font to train AI models, and you must not make similar fonts or copy its style.
+- The license can change. See the official OKTICON channels for the latest terms.
+
+The app includes the font file without changes, only to draw text in the app.

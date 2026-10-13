@@ -60,6 +60,24 @@ enum class TextFontType(val downloadable: Boolean = false, val isNew: Boolean = 
     /** Jua (주아), a round display font. */
     JUA,
 
+    /** BM Kkubulim (꾸불림체), a wavy handwriting font of Woowa Brothers. */
+    KKUBULIM(isNew = true),
+
+    /** Griun Myoeun Heullim (그리운 묘은흘림체), a cursive handwriting font. */
+    MYOEUN_HEULLIM(isNew = true),
+
+    /** Griun Gellyroll (그리운 겔리롤), a gel pen handwriting font. */
+    GELLYROLL(isNew = true),
+
+    /** Mona12 Text KR (Mona12), a 12-pixel bitmap style font. */
+    MONA12(isNew = true),
+
+    /** Neujoh (느좋체), a narrow gothic font that comes from Pretendard. */
+    NEUJOH(isNew = true),
+
+    /** OkDanDan (Ok단단체), a heavy display font. */
+    OK_DANDAN(isNew = true),
+
     /** Gaegu (개구쟁이), a playful handwriting font. */
     GAEGU(downloadable = true, isNew = true),
 

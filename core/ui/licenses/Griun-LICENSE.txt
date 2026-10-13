@@ -1,0 +1,16 @@
+Griun fonts (그리운 폰트)
+- Griun Myoeun Heullim (그리운 묘은흘림체)
+  Copyright © TypeE. Corp. & Kim Hyo Eun. All rights reserved.
+  Source: https://www.griun.co.kr/fonts/myoeunheullim
+- Griun Gellyroll (그리운 겔리롤)
+  Copyright 2024 © TypeE. Corp. All rights reserved.
+  Source: https://www.griun.co.kr/fonts/gellyroll
+
+Terms of service: https://stirring-nape-11b.notion.site/c25ad048dc5d485d8eb509752910868f
+
+Summary of the license (from the source pages):
+- You may use the fonts freely in all usage scopes, including embedding in programs.
+- You must not alter, modify, or sell the font files.
+  Modification of the font files requires prior written permission from TypeE. Corp.
+
+The app includes the font files without changes.

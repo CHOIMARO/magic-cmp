@@ -665,9 +665,10 @@ fun CaptionText(
 internal val TextFontType.boldWeight: FontWeight?
     get() = when (this) {
         TextFontType.PRETENDARD -> FontWeight.Black
-        TextFontType.GOWUN_BATANG, TextFontType.GAEGU, TextFontType.DONGLE -> FontWeight.Bold
+        TextFontType.GOWUN_BATANG, TextFontType.GAEGU, TextFontType.DONGLE, TextFontType.NEUJOH -> FontWeight.Bold
         TextFontType.NANUM_PEN, TextFontType.BLACK_HAN_SANS, TextFontType.DO_HYEON, TextFontType.JUA,
-        TextFontType.GUGI, TextFontType.SONG_MYUNG -> null
+        TextFontType.GUGI, TextFontType.SONG_MYUNG, TextFontType.KKUBULIM, TextFontType.MYOEUN_HEULLIM,
+        TextFontType.GELLYROLL, TextFontType.MONA12, TextFontType.OK_DANDAN -> null
     }
 
 /** Splits a text into words at spaces. */

@@ -1,0 +1,16 @@
+BM kkubulim (꾸불림체)
+Copyright © Woowa Brothers Corporation. All rights reserved.
+Woowa Brothers Corporation holds the intellectual property rights of BM kkubulim.
+
+Source: https://www.woowahan.com/fonts
+License: 배달의민족 글꼴 라이선스 (Baemin font license)
+https://www.woowahan.com/license.html
+
+Summary of the license (from the source page):
+- You may use the font for printing, web pages, packaging, video, embedding, and BI/CI.
+- You may modify, copy, and redistribute the font, also with other software.
+  Keep this copyright and license notice with the font.
+- You must not sell the font files.
+
+Credit text that the source recommends:
+이 앱에는 우아한형제들에서 제공한 배달의민족 폰트가 적용되어 있습니다.

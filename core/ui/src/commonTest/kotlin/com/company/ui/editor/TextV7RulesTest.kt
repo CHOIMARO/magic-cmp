@@ -5,6 +5,7 @@ import com.company.core.domain.model.editor.Decoration
 import com.company.core.domain.model.editor.DecorationRange
 import com.company.core.domain.model.editor.TextEntrance
 import com.company.core.domain.model.editor.TextExit
+import com.company.core.domain.model.editor.TextFontType
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.TextStyleType
 import kotlin.test.Test
@@ -63,6 +64,16 @@ class TextV7RulesTest {
         )
         assertEquals(TextExit.FLY_UP, overlay.look().animation.exit)
         assertEquals(600, overlay.look().animation.exitMillis)
+    }
+
+    @Test
+    fun everyFont_hasALineLimit_andNarrowFontsFitMoreLetters() {
+        TextFontType.entries.forEach { font ->
+            assertTrue(TextStyleType.BOLD.look(font = font).maxCharsPerLine >= 1, font.name)
+        }
+        val pretendard = TextStyleType.BOLD.look().maxCharsPerLine
+        assertTrue(TextStyleType.BOLD.look(font = TextFontType.NEUJOH).maxCharsPerLine > pretendard)
+        assertTrue(TextStyleType.BOLD.look(font = TextFontType.MONA12).maxCharsPerLine < pretendard)
     }
 
     @Test
