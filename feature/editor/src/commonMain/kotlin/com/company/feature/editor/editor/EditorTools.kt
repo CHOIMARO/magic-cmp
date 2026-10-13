@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -60,6 +61,9 @@ private val ScrollToolWidth = 70.dp
 
 /** Smallest width of one tool in the selection tool row. */
 private val SelectionToolMinWidth = 68.dp
+
+/** Height of a tool row. It is the touch height of a tool. */
+private val ToolRowHeight = 70.dp
 
 /** Width of the "완료" tool. */
 private val DoneToolWidth = 64.dp
@@ -228,7 +232,9 @@ private fun SelectionTools(onIntent: (EditorIntent) -> Unit, tools: List<ToolSpe
 @Composable
 private fun ScrollingTools(tools: @Composable RowScope.() -> Unit) {
     val scroll = rememberScrollState()
-    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 0.dp)) {
+    // 높이를 도구 높이로 정한다. 정하지 않으면 페이드의 fillMaxHeight가 화면에 남은 높이를 모두 차지해서
+    // 미리보기 칸의 높이가 0이 된다.
+    Box(modifier = Modifier.fillMaxWidth().height(ToolRowHeight)) {
         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scroll), verticalAlignment = Alignment.Top, content = tools)
         EdgeFade(scroll = scroll, start = true, modifier = Modifier.align(Alignment.CenterStart).width(36.dp))
         EdgeFade(scroll = scroll, start = false, modifier = Modifier.align(Alignment.CenterEnd).width(48.dp))
@@ -248,7 +254,6 @@ private fun EdgeFade(scroll: ScrollState, start: Boolean, modifier: Modifier) {
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .heightIn(min = 70.dp)
             .alpha(if (visible) 1f else 0f)
             .background(Brush.horizontalGradient(if (start) colors else colors.reversed())),
     )
