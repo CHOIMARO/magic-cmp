@@ -5,7 +5,7 @@ import androidx.compose.runtime.Composable
 /**
  * Handles the system back action while [enabled] is true.
  *
- * Android uses the Activity back dispatcher. iOS has no system back button, so it does nothing.
+ * Android uses the Activity back dispatcher. iOS uses the swipe from the start edge of the screen.
  *
  * @param enabled Set to true to handle the back action.
  * @param onBack Action on back.

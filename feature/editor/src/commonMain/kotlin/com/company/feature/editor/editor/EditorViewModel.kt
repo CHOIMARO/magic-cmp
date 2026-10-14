@@ -334,8 +334,13 @@ class EditorViewModel(
             }
             EditorIntent.Back -> {
                 pause()
+                reduce { copy(leaveDialog = true) }
+            }
+            EditorIntent.ConfirmLeave -> {
+                reduce { copy(leaveDialog = false) }
                 postSideEffect { EditorSideEffect.Close }
             }
+            EditorIntent.DismissLeave -> reduce { copy(leaveDialog = false) }
         }
     }
 

@@ -323,6 +323,7 @@ sealed interface DialogAction {
  *   when the user picks an animation.
  * @property clipboard Copied text or caption, or null.
  * @property dialog Open popup, or null.
+ * @property leaveDialog True while the popup that asks before the editor closes shows.
  * @property watermark True to show the "magic" watermark on the stage.
  */
 data class EditorState(
@@ -357,6 +358,7 @@ data class EditorState(
     val animationReplay: Int = 0,
     val clipboard: ElementClipboard? = null,
     val dialog: EditorDialog? = null,
+    val leaveDialog: Boolean = false,
     val watermark: Boolean = false,
 ) : State() {
     /** Length of the project in seconds. */
@@ -697,8 +699,14 @@ sealed class EditorIntent : Intent() {
     /** Export : Opens the export screen. */
     data object Export : EditorIntent()
 
-    /** Back : Leaves the editor. */
+    /** Back : Asks the user before the editor closes. The back button and the system back action send it. */
     data object Back : EditorIntent()
+
+    /** ConfirmLeave : Closes the editor. The user confirmed the leave popup. */
+    data object ConfirmLeave : EditorIntent()
+
+    /** DismissLeave : Closes the leave popup. The user stays in the editor. */
+    data object DismissLeave : EditorIntent()
 }
 
 /** One-time events of the editor screen. */

@@ -38,8 +38,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.MagicButton
 import com.company.core.designsystem.component.MagicButtonStyle
+import com.company.core.designsystem.component.MagicDialog
 import com.company.core.designsystem.component.MagicIconButton
 import com.company.core.designsystem.component.MagicModalBottomSheet
+import com.company.core.designsystem.component.SystemBackHandler
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
@@ -63,6 +65,8 @@ internal fun EditorScreen(
     video: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val stageFit = remember { StageFit() }
+    // 시스템 뒤로가기와 iOS 가장자리 스와이프도 뒤로 버튼처럼 나가기 전에 묻는다. 열린 시트와 팝업은 뒤로가기를 먼저 받는다.
+    SystemBackHandler(enabled = true) { onIntent(EditorIntent.Back) }
     Box(modifier = Modifier.fillMaxSize().background(MagicColors.Background)) {
         Column(modifier = Modifier.fillMaxSize().navigationBarsPadding()) {
             EditorTopBar(state = state, onIntent = onIntent)
@@ -123,6 +127,17 @@ internal fun EditorScreen(
                 confirmLabel = dialog.confirmLabel,
                 onConfirm = { onIntent(EditorIntent.ConfirmDialog) },
                 onDismiss = { onIntent(EditorIntent.DismissDialog) },
+            )
+        }
+        if (state.leaveDialog) {
+            MagicDialog(
+                title = "편집을 그만둘까요?",
+                message = "지금 나가면 편집한 내용이 사라져요",
+                confirmLabel = "나가기",
+                onConfirm = { onIntent(EditorIntent.ConfirmLeave) },
+                cancelLabel = "취소",
+                onCancel = { onIntent(EditorIntent.DismissLeave) },
+                onDismissRequest = { onIntent(EditorIntent.DismissLeave) },
             )
         }
     }
