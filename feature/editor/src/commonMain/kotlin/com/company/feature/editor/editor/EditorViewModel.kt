@@ -7,6 +7,7 @@ import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.MY_VOICE_ID
 import com.company.core.domain.model.editor.MyVoiceStatus
 import com.company.core.domain.model.editor.compactTextLayers
+import com.company.core.domain.model.editor.cutTextAtEnd
 import com.company.core.domain.model.editor.duplicateClip
 import com.company.core.domain.model.editor.duplicateText
 import com.company.core.domain.model.editor.finishAudioMove
@@ -359,21 +360,18 @@ class EditorViewModel(
     // =====================================================================
 
     private fun startDrag(target: TimelineDragTarget, snapSeconds: Double) {
-        val project = currentState.project
-        val origin = when (target) {
-            is TimelineDragTarget.ClipEdge -> project.clips.find { it.id == target.clipId }
-                ?.let { DragOrigin(start = it.inPoint, end = it.outPoint, layer = 0) }
-            is TimelineDragTarget.TextEdge -> project.texts.find { it.id == target.textId }
-                ?.let { DragOrigin(start = it.start, end = it.end, layer = it.layer) }
-            is TimelineDragTarget.TextMove -> project.texts.find { it.id == target.textId }
-                ?.let { DragOrigin(start = it.start, end = it.end, layer = it.layer) }
-            is TimelineDragTarget.CaptionEdge -> project.placedCaptions.find { it.id == target.captionId }
-                ?.let { DragOrigin(start = it.start, end = it.end, layer = 0) }
-            is TimelineDragTarget.AudioMove -> project.itemsOf(target.track).find { it.id == target.id }
-                ?.let { DragOrigin(start = it.start, end = it.end, layer = it.layer) }
-        } ?: return
+        if (currentState.project.dragOrigin(target) == null) return
         pause()
         projectRepository.saveCheckpoint()
+        // 타임라인은 글자를 프로젝트 끝까지만 보여 준다. 보이는 막대에서 끌기를 시작하도록 먼저 자른다.
+        val textId = when (target) {
+            is TimelineDragTarget.TextEdge -> target.textId
+            is TimelineDragTarget.TextMove -> target.textId
+            else -> null
+        }
+        if (textId != null) projectRepository.update { it.cutTextAtEnd(textId) }
+        val project = projectRepository.project.value
+        val origin = project.dragOrigin(target) ?: return
         dragOrigin = origin
         dragStartTime = currentState.time
         dragFingerDelta = 0.0
@@ -491,6 +489,20 @@ class EditorViewModel(
      * @property layer Row of a text overlay or an audio item. It is 0 for a clip and a caption.
      */
     private data class DragOrigin(val start: Double, val end: Double, val layer: Int)
+
+    /** Place of the dragged item now, or null when the item is not in the project. */
+    private fun EditorProject.dragOrigin(target: TimelineDragTarget): DragOrigin? = when (target) {
+        is TimelineDragTarget.ClipEdge -> clips.find { it.id == target.clipId }
+            ?.let { DragOrigin(start = it.inPoint, end = it.outPoint, layer = 0) }
+        is TimelineDragTarget.TextEdge -> texts.find { it.id == target.textId }
+            ?.let { DragOrigin(start = it.start, end = it.end, layer = it.layer) }
+        is TimelineDragTarget.TextMove -> texts.find { it.id == target.textId }
+            ?.let { DragOrigin(start = it.start, end = it.end, layer = it.layer) }
+        is TimelineDragTarget.CaptionEdge -> placedCaptions.find { it.id == target.captionId }
+            ?.let { DragOrigin(start = it.start, end = it.end, layer = 0) }
+        is TimelineDragTarget.AudioMove -> itemsOf(target.track).find { it.id == target.id }
+            ?.let { DragOrigin(start = it.start, end = it.end, layer = it.layer) }
+    }
 
     // =====================================================================
     // Clip editing

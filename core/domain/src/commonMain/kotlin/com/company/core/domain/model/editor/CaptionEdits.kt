@@ -37,26 +37,36 @@ fun EditorProject.clipBoundaries(): List<Double> {
  *
  * A caption bound to a clip gets the time of the clip. A caption with a clip offset starts that far after the clip
  * start, and the clip end cuts it. A caption of a clip that is not in the project is left out.
+ *
+ * The project end cuts all captions, and a caption that starts at the end or later is left out. The stored times do
+ * not change, so a caption gets its length back when the clips get longer again.
  */
 val EditorProject.placedCaptions: List<CaptionSegment>
     get() {
-        if (captions.none { it.clipId != null }) return captions
+        val total = totalDuration
+        if (captions.all { it.clipId == null && it.end <= total }) return captions
         val starts = clipBoundaries()
         val indexes = clips.withIndex().associate { (index, clip) -> clip.id to index }
         return captions.mapNotNull { caption ->
-            val clipId = caption.clipId ?: return@mapNotNull caption
-            val index = indexes[clipId] ?: return@mapNotNull null
-            val clipStart = starts[index]
-            val clipLength = clips[index].duration
-            val offset = caption.clipOffset
-            if (offset == null) {
-                caption.copy(start = clipStart, length = clipLength)
+            val clipId = caption.clipId
+            val placed = if (clipId == null) {
+                caption
             } else {
-                // 클립이 줄어 시작 거리가 클립보다 길면 클립 시작으로 당긴다.
-                val from = if (offset >= clipLength) 0.0 else offset
-                val length = minOf(caption.clipLength ?: clipLength, clipLength - from)
-                if (length < MIN_PLACED_CAPTION_LENGTH) null else caption.copy(start = clipStart + from, length = length)
+                val index = indexes[clipId] ?: return@mapNotNull null
+                val clipStart = starts[index]
+                val clipLength = clips[index].duration
+                val offset = caption.clipOffset
+                if (offset == null) {
+                    caption.copy(start = clipStart, length = clipLength)
+                } else {
+                    // 클립이 줄어 시작 거리가 클립보다 길면 클립 시작으로 당긴다.
+                    val from = if (offset >= clipLength) 0.0 else offset
+                    caption.copy(start = clipStart + from, length = minOf(caption.clipLength ?: clipLength, clipLength - from))
+                }
             }
+            // 클립이 줄어 프로젝트가 짧아지면 프로젝트 끝에서 자른다. 타임라인은 프로젝트 끝까지만 보인다.
+            val length = minOf(placed.length, total - placed.start)
+            if (length < MIN_PLACED_CAPTION_LENGTH) null else placed.copy(length = length)
         }
     }
 

@@ -16,6 +16,7 @@ import com.company.core.domain.model.editor.addText
 import com.company.core.domain.model.editor.applyTemplate
 import com.company.core.domain.model.editor.clipAt
 import com.company.core.domain.model.editor.compactTextLayers
+import com.company.core.domain.model.editor.cutTextAtEnd
 import com.company.core.domain.model.editor.duplicateClip
 import com.company.core.domain.model.editor.duplicateText
 import com.company.core.domain.model.editor.moveText
@@ -44,6 +45,21 @@ class EditorProjectEditsTest {
     )
 
     private val project = EditorProject(name = "p", clips = listOf(clip("a", 4.0), clip("b", 2.0, speed = 2.0)))
+
+    @Test
+    fun cutTextAtEnd_cutsOnlyATextThatGoesPastTheEnd() {
+        // 프로젝트 길이는 5초다.
+        val withTexts = project.copy(
+            texts = listOf(
+                TextOverlay("past", "hi", 3.0, 4.0, TextStyleType.BOLD, 50.0, 50.0),
+                TextOverlay("inside", "hi", 0.0, 2.0, TextStyleType.BOLD, 50.0, 50.0),
+                TextOverlay("after", "hi", 6.0, 1.0, TextStyleType.BOLD, 50.0, 50.0, layer = 1),
+            ),
+        )
+        assertEquals(2.0, withTexts.cutTextAtEnd("past").texts.first { it.id == "past" }.length, 1e-9)
+        assertEquals(withTexts, withTexts.cutTextAtEnd("inside"))
+        assertEquals(withTexts, withTexts.cutTextAtEnd("after"))
+    }
 
     @Test
     fun totalDuration_usesClipSpeed() {

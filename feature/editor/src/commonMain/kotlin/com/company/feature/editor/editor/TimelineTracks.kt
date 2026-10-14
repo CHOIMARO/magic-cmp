@@ -164,6 +164,18 @@ private val TransitionType.icon: ImageVector
 // Caption track
 // =====================================================================
 
+/** Shortest part of an item before the project end that the timeline still shows, in seconds. */
+private const val MIN_SHOWN_SECONDS = 0.05
+
+/**
+ * Length of the part of an item before the project end. The timeline cuts an item at the project end, like the music
+ * bar, because the timeline does not scroll past the end. The stored time does not change.
+ *
+ * @param total Length of the project.
+ * @return The shown length, or null when the item starts at the end or later.
+ */
+internal fun TrackItem.shownLength(total: Double): Double? = (minOf(end, total) - start).takeIf { it >= MIN_SHOWN_SECONDS }
+
 /**
  * Caption track (F04): one bar for each caption. A tap selects a bar, and a double tap opens the caption in the text
  * sheet. The selected bar shows handles that change its start and end. A drag on a bar scrolls the timeline (D28).
@@ -264,10 +276,12 @@ internal fun AudioTrackRows(
     val hue = if (track == AudioTrack.DUBBING) DUBBING_HUE else SOUND_EFFECT_HUE
     Box(modifier = Modifier.fillMaxWidth().height(rowPitch * items.layerCount - AudioRowSpacing)) {
         items.forEach { item ->
-            key(item.id) {
+            val shownLength = item.shownLength(project.totalDuration)
+            // 프로젝트 끝 뒤에서 시작하는 항목은 그리지 않는다.
+            if (shownLength != null) key(item.id) {
                 val selection = if (track == AudioTrack.DUBBING) TrackSelection.Dubbing(item.id) else TrackSelection.SoundEffect(item.id)
                 val selected = state.selectedTrackItem == selection
-                val width = maxOf(6.dp, secondWidth * item.length.toFloat() - TimelineItemGap)
+                val width = maxOf(6.dp, secondWidth * shownLength.toFloat() - TimelineItemGap)
                 val dubbing = project.dubbings.find { it.id == item.id }
                 val overflow = dubbing?.let { project.dubbingOverflow(it) } ?: 0.0
                 val label = dubbing?.text ?: project.soundEffects.find { it.id == item.id }?.name.orEmpty()

@@ -312,6 +312,20 @@ fun EditorProject.trimTextEnd(textId: String, end: Double): EditorProject = mapT
 }
 
 /**
+ * Cuts a text overlay at the project end. The timeline shows a text only up to the project end, so the edit tools
+ * call this before they change the text. A text inside the project, or a text that starts at the end or later,
+ * does not change.
+ *
+ * @param textId ID of the overlay.
+ */
+fun EditorProject.cutTextAtEnd(textId: String): EditorProject {
+    val total = totalDuration
+    val text = texts.find { it.id == textId } ?: return this
+    if (text.end <= total || text.start >= total) return this
+    return mapText(textId) { it.copy(length = (total - it.start).coerceAtLeast(MIN_TEXT_LENGTH)) }
+}
+
+/**
  * Moves a text overlay in time, and to another row if [layer] is not null. The length stays.
  *
  * The function does not check overlaps. Use [overlapsOtherText] to check the new place, and call [compactTextLayers]

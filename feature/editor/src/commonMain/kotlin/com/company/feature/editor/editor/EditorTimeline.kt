@@ -420,10 +420,12 @@ private fun TextTrack(
     // 줄마다 따로 그리지 않고 한 상자에 줄 높이만큼 내려 그린다. 줄이 바뀌어도 막대를 다시 만들지 않는다.
     Box(modifier = Modifier.fillMaxWidth().height(rowPitch * state.project.textLayerCount - TrackSpacing)) {
         state.project.texts.forEach { overlay ->
-            key(overlay.id) {
+            val shownLength = overlay.shownLength(state.project.totalDuration)
+            // 프로젝트 끝 뒤에서 시작하는 글자는 그리지 않는다. 끝을 넘는 글자는 끝에서 잘라 그린다.
+            if (shownLength != null) key(overlay.id) {
                 val top = rowPitch * overlay.layer
                 val left = HandleInset + secondWidth * overlay.start.toFloat()
-                val width = maxOf(8.dp, secondWidth * overlay.length.toFloat() - TimelineItemGap)
+                val width = maxOf(8.dp, secondWidth * shownLength.toFloat() - TimelineItemGap)
                 val selected = overlay.id == state.selectedTextId
                 val moving = (state.activeDrag as? TimelineDragTarget.TextMove)?.textId == overlay.id
                 TextBar(
