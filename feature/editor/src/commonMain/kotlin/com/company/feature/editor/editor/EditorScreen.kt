@@ -96,10 +96,10 @@ internal fun EditorScreen(
         val lastSheet = remember { LastSheet() }
         state.sheet?.let { lastSheet.value = it }
         val previewSheet = lastSheet.value in PreviewSheets
+        // 손잡이가 없는 시트는 끌기나 바깥 터치로 닫히지 않는다. 고치던 내용을 실수로 잃지 않도록 버튼으로만 닫는다.
         MagicModalBottomSheet(
             target = state.sheet,
             onDismissRequest = { onIntent(EditorIntent.CloseSheet) },
-            showDragHandle = true,
             scrimColor = if (previewSheet) Color.Transparent else Color.Black.copy(alpha = 0.3f),
             onCoveredHeightChange = { height -> stageFit.coveredHeight = if (lastSheet.value in PreviewSheets) height else 0 },
         ) { sheet, requestDismiss ->
