@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.VideoLibrary
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -60,6 +61,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.MAX_TEXT_SCALE
@@ -279,19 +281,22 @@ private val SelectionFramePadding = 6.dp
 /** Visible size of the handle at the corner of the selection frame. */
 private val TransformHandleSize = 18.dp
 
-/** Touch size of the handle. It is larger than the visible handle. */
-private val TransformHandleTouchSize = 40.dp
+/** Visible size of the delete button at the corner of the selection frame. */
+private val FrameDeleteButtonSize = 24.dp
+
+/** Touch size of the handle and the delete button. It is larger than the visible parts. */
+private val FrameButtonTouchSize = 40.dp
 
 /** An angle this near to 0, 90, 180, or 270 degrees snaps to it, so a text easily goes back to straight. */
 private const val ROTATION_SNAP_DEGREES = 5f
 
 /**
  * Text overlay that the user can drag. A tap selects it, and a double tap opens the text sheet.
- * The selected text shows a frame with a handle that changes its size and its angle.
+ * The selected text shows a frame with a delete button and a handle that changes its size and its angle.
  *
  * @param overlay Text overlay to show.
  * @param frame Animation state of the text.
- * @param selected True to show the selection frame and the handle.
+ * @param selected True to show the selection frame, the delete button, and the handle.
  * @param stageWidth Width of the stage in pixels.
  * @param stageHeight Height of the stage in pixels.
  * @param onIntent Called with each user action.
@@ -361,6 +366,7 @@ private fun DraggableOverlay(
                 onTransform = { newScale, newRotation ->
                     onIntent(EditorIntent.TransformText(overlay.id, newScale.toDouble(), newRotation.toDouble()))
                 },
+                onDelete = { onIntent(EditorIntent.RemoveText) },
             )
         }
     }
@@ -396,7 +402,8 @@ private fun snapRotation(degrees: Float): Float {
 }
 
 /**
- * Frame around the selected text, with a handle at the bottom right corner.
+ * Frame around the selected text, with a delete button at the top left corner and a handle at the bottom right corner.
+ * The two corners turn with the text, but the button and the handle stay upright.
  *
  * A drag of the handle away from the center of the text makes the text larger, and toward the center makes it
  * smaller. A drag around the center turns the text. The frame and the handle keep their size at all text sizes.
@@ -406,6 +413,7 @@ private fun snapRotation(degrees: Float): Float {
  * @param rotation Angle of the text in degrees.
  * @param onTransformStart Called when a drag of the handle starts.
  * @param onTransform Called with the new size factor and the new angle while the handle moves.
+ * @param onDelete Called when the user taps the delete button.
  */
 @Composable
 private fun BoxScope.TextTransformFrame(
@@ -414,6 +422,7 @@ private fun BoxScope.TextTransformFrame(
     rotation: Float,
     onTransformStart: () -> Unit,
     onTransform: (scale: Float, rotation: Float) -> Unit,
+    onDelete: () -> Unit,
 ) {
     val latestScale by rememberUpdatedState(scale)
     val latestRotation by rememberUpdatedState(rotation)
@@ -422,6 +431,8 @@ private fun BoxScope.TextTransformFrame(
     // 글자 가운데에서 본 프레임 오른쪽 아래 모서리. 키운 상자 바깥에 여백을 더하고, 글자 각도만큼 돌린다.
     val corner = Offset(textSize.width * scale / 2f + framePadding, textSize.height * scale / 2f + framePadding)
     val handleCenter = center + corner.rotatedBy(rotation)
+    // 삭제 버튼은 손잡이와 마주 보는 왼쪽 위 모서리에 둔다.
+    val deleteCenter = center - corner.rotatedBy(rotation)
     val frame = remember { LayoutHolder() }
     val handle = remember { LayoutHolder() }
     Box(
@@ -443,10 +454,10 @@ private fun BoxScope.TextTransformFrame(
     Box(
         modifier = Modifier
             .offset {
-                val half = TransformHandleTouchSize.toPx() / 2f
+                val half = FrameButtonTouchSize.toPx() / 2f
                 IntOffset((handleCenter.x - half).roundToInt(), (handleCenter.y - half).roundToInt())
             }
-            .size(TransformHandleTouchSize)
+            .size(FrameButtonTouchSize)
             .onGloballyPositioned { handle.coordinates = it }
             .pointerInput(Unit) {
                 // 손잡이는 끄는 동안 함께 움직이므로, 화면 기준 위치로 글자 가운데에서 손가락까지의 방향과 거리를 잰다.
@@ -488,6 +499,23 @@ private fun BoxScope.TextTransformFrame(
                 .background(Color.White)
                 .border(2.dp, MagicColors.Accent, CircleShape),
         )
+    }
+    Box(
+        modifier = Modifier
+            .offset {
+                val half = FrameButtonTouchSize.toPx() / 2f
+                IntOffset((deleteCenter.x - half).roundToInt(), (deleteCenter.y - half).roundToInt())
+            }
+            .size(FrameButtonTouchSize)
+            .pressClickable(onClick = onDelete),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier.size(FrameDeleteButtonSize).clip(CircleShape).background(MagicColors.DangerIcon),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Rounded.Delete, contentDescription = "삭제", tint = MagicColors.Background, modifier = Modifier.size(15.dp))
+        }
     }
 }
 
