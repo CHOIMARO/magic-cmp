@@ -92,6 +92,9 @@ kotlin {
                 // Add Android-specific dependencies here. Note that this source set depends on
                 // commonMain by default and will correctly pull the Android artifacts of any KMP
                 // dependencies declared in commonMain.
+
+                // 썸네일과 타임라인 프레임을 하드웨어 디코더로 읽는다.
+                implementation(libs.androidx.media3.inspector.frame)
             }
         }
 
