@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,6 +25,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.LongState
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameMillis
@@ -30,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
@@ -66,6 +71,24 @@ import kotlin.math.roundToInt
 
 /** Horizontal padding of the editor sheets. */
 internal val SheetPadding = 18.dp
+
+/** Bottom padding of the editor sheets. */
+internal val SheetBottomPadding = 22.dp
+
+/** Bottom padding of the editor sheets while the keyboard is open. The free space above the keyboard is small. */
+internal val SheetKeyboardBottomPadding = 10.dp
+
+/**
+ * Tells if the keyboard of the window is open. Call it in the sheet content, because the sheet is a separate window.
+ *
+ * @return State that is true while the keyboard is open or moves.
+ */
+@Composable
+internal fun rememberKeyboardOpen(): State<Boolean> {
+    val keyboard = WindowInsets.ime
+    val density = LocalDensity.current
+    return remember(keyboard, density) { derivedStateOf { keyboard.getBottom(density) > 0 } }
+}
 
 private val SpeedOptions = listOf(0.5, 1.0, 1.5, 2.0, 3.0)
 

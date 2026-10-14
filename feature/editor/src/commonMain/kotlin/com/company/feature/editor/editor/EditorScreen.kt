@@ -21,6 +21,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,8 +103,14 @@ internal fun EditorScreen(
             scrimColor = if (previewSheet) Color.Transparent else Color.Black.copy(alpha = 0.3f),
             onCoveredHeightChange = { height -> stageFit.coveredHeight = if (lastSheet.value in PreviewSheets) height else 0 },
         ) { sheet, requestDismiss ->
+            val keyboardOpen by rememberKeyboardOpen()
             Column(
-                modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 22.dp),
+                modifier = Modifier.padding(
+                    start = 18.dp,
+                    end = 18.dp,
+                    top = 16.dp,
+                    bottom = if (keyboardOpen) SheetKeyboardBottomPadding else SheetBottomPadding,
+                ),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 EditorSheetContent(sheet = sheet, state = state, onIntent = onIntent, onClose = requestDismiss)
