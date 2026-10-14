@@ -7,14 +7,24 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,8 +42,10 @@ import androidx.compose.material.icons.rounded.Gradient
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.LongState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -41,18 +53,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.FixedGrid
@@ -91,8 +105,11 @@ private const val SAMPLE_TEXT = "가나다"
 /** Height of each tab in the text sheet, in dp. */
 private const val TEXT_TAB_HEIGHT = 38
 
-/** Height of the scrolling part under the tabs. The stage above the sheet stays visible with the keyboard. */
+/** Height of the scrolling part under the tabs. */
 private val TextSheetBodyHeight = 220.dp
+
+/** Width of a card in the template strip. It is near the width of a card in the template grid. */
+private val TemplateStripCardWidth = 76.dp
 
 /** Main colors of the color and background palettes: pastel colors and white and black. */
 internal val DecorationPalette: List<Int> = listOf(
@@ -103,8 +120,13 @@ internal val DecorationPalette: List<Int> = listOf(
 private val SizeStepDiameters = listOf(14.dp, 19.dp, 24.dp, 30.dp, 36.dp)
 
 /**
- * Text sheet. The text field, the save button, and the tabs stay at the top so that the keyboard does not cover them.
- * A caption draft shows only the decoration tab.
+ * Text sheet. It opens without the keyboard, so the user sees the stage while the user picks a style.
+ *
+ * - Without the keyboard, the sheet shows the text field row, the tabs, and the tab page.
+ * - With the keyboard, the keyboard goes over the tab page. Only the text field row and a template strip stay above
+ *   the keyboard. When the keyboard closes, the sheet shows the tabs again.
+ *
+ * A caption draft shows only the decoration tab, and no template strip.
  *
  * @param state Editor state.
  * @param onIntent Called with each user action.
@@ -117,6 +139,12 @@ internal fun TextSheet(state: EditorState, onIntent: (EditorIntent) -> Unit, onC
     val lastDraft = remember { LastTextDraft() }
     state.textDraft?.let { lastDraft.value = it }
     val draft = lastDraft.value ?: return
+    // 시트는 별도 창이므로 이 창의 키보드 인셋을 본다.
+    val keyboard = WindowInsets.ime
+    val density = LocalDensity.current
+    val keyboardOpen by remember(keyboard, density) { derivedStateOf { keyboard.getBottom(density) > 0 } }
+    // 키보드 없이 그린 탭 영역의 높이. 키보드가 열리는 동안 시트 윗변을 이 높이에 맞춰 둔다.
+    var tabAreaHeight by remember { mutableIntStateOf(0) }
 
     SheetHeader(
         onClose = onClose,
@@ -131,6 +159,40 @@ internal fun TextSheet(state: EditorState, onIntent: (EditorIntent) -> Unit, onC
     ) {
         TextDraftField(draft = draft, onIntent = onIntent, modifier = Modifier.weight(1f))
     }
+    // 입력한 글자를 카드에 그대로 보여 준다. 비어 있으면 예시 글자를 쓴다.
+    val sampleText = draft.text.trim().ifEmpty { SAMPLE_TEXT }
+    if (keyboardOpen) {
+        val keyboardAboveBars = WindowInsets.ime.exclude(WindowInsets.systemBars.union(WindowInsets.displayCutout))
+        Box(modifier = Modifier.fillMaxWidth().keepSheetTop(keyboard = keyboardAboveBars, height = { tabAreaHeight })) {
+            if (!draft.isCaption) TemplateStrip(draft = draft, text = sampleText, onIntent = onIntent)
+        }
+    } else {
+        Column(
+            modifier = Modifier.onSizeChanged { size -> tabAreaHeight = size.height },
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            TextSheetTabs(draft = draft, onIntent = onIntent)
+            Box(modifier = Modifier.fillMaxWidth().height(TextSheetBodyHeight).bleedHorizontal(SheetPadding)) {
+                Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = SheetPadding)) {
+                    when (draft.tab) {
+                        TextSheetTab.TEMPLATE -> TextTemplatePage(draft = draft, text = sampleText, onIntent = onIntent)
+                        TextSheetTab.FONT -> TextFontPage(draft = draft, downloading = state.fontDownloading, onIntent = onIntent)
+                        TextSheetTab.DECORATION -> DecorationPage(draft = draft, recentColors = state.recentColors, onIntent = onIntent)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tabs of the text sheet, and the delete button of a saved text or a caption.
+ *
+ * @param draft Draft of the sheet.
+ * @param onIntent Called with each user action.
+ */
+@Composable
+private fun TextSheetTabs(draft: TextDraft, onIntent: (EditorIntent) -> Unit) {
     val tabs = if (draft.isCaption) listOf(TextSheetTab.DECORATION) else TextSheetTab.entries
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         SegmentedControl(
@@ -154,17 +216,20 @@ internal fun TextSheet(state: EditorState, onIntent: (EditorIntent) -> Unit, onC
             )
         }
     }
-    // 입력한 글자를 카드에 그대로 보여 준다. 비어 있으면 예시 글자를 쓴다.
-    val sampleText = draft.text.trim().ifEmpty { SAMPLE_TEXT }
-    Box(modifier = Modifier.fillMaxWidth().height(TextSheetBodyHeight).bleedHorizontal(SheetPadding)) {
-        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = SheetPadding)) {
-            when (draft.tab) {
-                TextSheetTab.TEMPLATE -> TextTemplatePage(draft = draft, text = sampleText, onIntent = onIntent)
-                TextSheetTab.FONT -> TextFontPage(draft = draft, downloading = state.fontDownloading, onIntent = onIntent)
-                TextSheetTab.DECORATION -> DecorationPage(draft = draft, recentColors = state.recentColors, onIntent = onIntent)
-            }
-        }
-    }
+}
+
+/**
+ * Keeps the sheet top in place while the keyboard rises over the tab area. After that, the content moves up with
+ * the keyboard. The M3 sheet moves up by the full keyboard height, so the free space under the content gets smaller
+ * by the same distance.
+ *
+ * @param keyboard Keyboard height above the system bars.
+ * @param height Height of the tab area without the keyboard, in pixels.
+ */
+private fun Modifier.keepSheetTop(keyboard: WindowInsets, height: () -> Int): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    val keptHeight = maxOf(placeable.height, height() - keyboard.getBottom(this))
+    layout(placeable.width, constraints.constrainHeight(keptHeight)) { placeable.place(0, 0) }
 }
 
 /** Label of the tab. */
@@ -176,7 +241,7 @@ private val TextSheetTab.label: String
     }
 
 /**
- * Text field of the text sheet. It gets the focus when the sheet opens, so the keyboard shows. It sends the selected
+ * Text field of the text sheet. The keyboard shows only when the user taps the field. The field sends the selected
  * characters with each change, so the decorations can change only them.
  *
  * @param draft Draft of the sheet.
@@ -185,9 +250,7 @@ private val TextSheetTab.label: String
  */
 @Composable
 private fun TextDraftField(draft: TextDraft, onIntent: (EditorIntent) -> Unit, modifier: Modifier = Modifier) {
-    val focusRequester = remember { FocusRequester() }
     var field by remember { mutableStateOf(TextFieldValue(draft.text, TextRange(draft.text.length))) }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
     BasicTextField(
         value = field,
         onValueChange = { value ->
@@ -197,8 +260,7 @@ private fun TextDraftField(draft: TextDraft, onIntent: (EditorIntent) -> Unit, m
         modifier = modifier
             .height(44.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(MagicColors.Background)
-            .focusRequester(focusRequester),
+            .background(MagicColors.Background),
         singleLine = true,
         textStyle = TextStyle(
             color = MagicColors.OnSurface,
@@ -239,14 +301,69 @@ private fun TextDraftField(draft: TextDraft, onIntent: (EditorIntent) -> Unit, m
 private fun TextTemplatePage(draft: TextDraft, text: String, onIntent: (EditorIntent) -> Unit) {
     val clock = rememberTextPreviewClock(running = true)
     FixedGrid(items = TextStyleType.entries, columns = 4, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { style ->
-        TextSheetCard(
-            label = style.displayName,
-            selected = draft.style == style,
-            onClick = { onIntent(EditorIntent.ChangeDraftStyle(style)) },
-        ) {
-            val look = style.look(STYLE_SAMPLE_SCALE, draft.font)
-            StyleSample(text = text, look = look, frame = look.animation.previewFrameAt(clock.longValue), scale = STYLE_SAMPLE_SCALE)
+        TemplateCard(style = style, draft = draft, text = text, clock = clock, onIntent = onIntent)
+    }
+}
+
+/**
+ * One row of template cards above the keyboard. The user can change the template while the user types.
+ *
+ * @param draft Text that the user types.
+ * @param text Text in the cards.
+ * @param onIntent Called with each user action.
+ */
+@Composable
+private fun TemplateStrip(draft: TextDraft, text: String, onIntent: (EditorIntent) -> Unit) {
+    val clock = rememberTextPreviewClock(running = true)
+    val styles = TextStyleType.entries
+    // 고른 템플릿과 그 앞 카드가 보이는 위치에서 시작한다.
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = (styles.indexOf(draft.style) - 1).coerceAtLeast(0))
+    LazyRow(
+        state = listState,
+        modifier = Modifier.fillMaxWidth().bleedHorizontal(SheetPadding),
+        contentPadding = PaddingValues(horizontal = SheetPadding),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(styles) { style ->
+            TemplateCard(
+                style = style,
+                draft = draft,
+                text = text,
+                clock = clock,
+                onIntent = onIntent,
+                modifier = Modifier.width(TemplateStripCardWidth),
+            )
         }
+    }
+}
+
+/**
+ * Card of one template. It plays the animation of the style in a loop.
+ *
+ * @param style Style of the card.
+ * @param draft Text that the user types.
+ * @param text Text in the card.
+ * @param clock Clock of the card animations.
+ * @param onIntent Called with each user action.
+ * @param modifier Modifier for the card.
+ */
+@Composable
+private fun TemplateCard(
+    style: TextStyleType,
+    draft: TextDraft,
+    text: String,
+    clock: LongState,
+    onIntent: (EditorIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TextSheetCard(
+        label = style.displayName,
+        selected = draft.style == style,
+        onClick = { onIntent(EditorIntent.ChangeDraftStyle(style)) },
+        modifier = modifier,
+    ) {
+        val look = style.look(STYLE_SAMPLE_SCALE, draft.font)
+        StyleSample(text = text, look = look, frame = look.animation.previewFrameAt(clock.longValue), scale = STYLE_SAMPLE_SCALE)
     }
 }
 
@@ -324,11 +441,18 @@ private fun NewBadge() {
  * @param label Name under the preview.
  * @param selected True to draw the selection border.
  * @param onClick Action on click.
+ * @param modifier Modifier for the card.
  * @param preview Content of the preview box.
  */
 @Composable
-internal fun TextSheetCard(label: String, selected: Boolean, onClick: () -> Unit, preview: @Composable BoxScope.() -> Unit) {
-    Column(modifier = Modifier.pressClickable(onClick = onClick), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+internal fun TextSheetCard(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    preview: @Composable BoxScope.() -> Unit,
+) {
+    Column(modifier = modifier.pressClickable(onClick = onClick), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         val shape = RoundedCornerShape(14.dp)
         StripeBox(
             hue = 250f,

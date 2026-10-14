@@ -22,6 +22,7 @@ import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
@@ -42,7 +43,10 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -111,6 +115,8 @@ private val SheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
  * @param contentColor Default color of the content.
  * @param scrimColor Color of the scrim behind the sheet.
  * @param shape Shape of the sheet.
+ * @param onCoveredHeightChange Called each time the sheet moves, with the height in pixels from the sheet top to the
+ *   window bottom. The height includes the keyboard under the sheet. The last call gives 0, when the sheet closes.
  * @param content Content of the sheet. `requestDismiss` closes the sheet with the animation and then calls
  *   [onDismissRequest].
  */
@@ -129,6 +135,7 @@ fun MagicModalBottomSheet(
     contentColor: Color = MagicColors.OnSurface,
     scrimColor: Color = Color.Black.copy(alpha = 0.4f),
     shape: Shape = SheetShape,
+    onCoveredHeightChange: ((Int) -> Unit)? = null,
     content: @Composable ColumnScope.(requestDismiss: () -> Unit) -> Unit,
 ) {
     val exitController = rememberSheetExitController(sheetState)
@@ -148,6 +155,7 @@ fun MagicModalBottomSheet(
         contentColor = contentColor,
         scrimColor = scrimColor,
         shape = shape,
+        onCoveredHeightChange = onCoveredHeightChange,
     ) {
         content(requestDismiss)
     }
@@ -182,6 +190,7 @@ fun <T : Any> MagicModalBottomSheet(
     contentColor: Color = MagicColors.OnSurface,
     scrimColor: Color = Color.Black.copy(alpha = 0.4f),
     shape: Shape = SheetShape,
+    onCoveredHeightChange: ((Int) -> Unit)? = null,
     content: @Composable ColumnScope.(target: T, requestDismiss: () -> Unit) -> Unit,
 ) {
     val exitController = rememberSheetExitController(sheetState)
@@ -219,6 +228,7 @@ fun <T : Any> MagicModalBottomSheet(
             contentColor = contentColor,
             scrimColor = scrimColor,
             shape = shape,
+            onCoveredHeightChange = onCoveredHeightChange,
         ) {
             content(shownTarget, requestDismiss)
         }
@@ -269,6 +279,7 @@ private fun MagicModalBottomSheetContainer(
     contentColor: Color,
     scrimColor: Color,
     shape: Shape,
+    onCoveredHeightChange: ((Int) -> Unit)?,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -348,11 +359,23 @@ private fun MagicModalBottomSheetContainer(
             onBackRequest?.invoke()
         }
 
+        val currentOnCoveredHeightChange by rememberUpdatedState(onCoveredHeightChange)
+        DisposableEffect(Unit) {
+            onDispose { currentOnCoveredHeightChange?.invoke(0) }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 // 퇴장 이동 거리(시트가 화면 밖으로 나가는 데 필요한 거리)로 사용한다.
                 .onSizeChanged { size -> exitController.contentHeightPx = size.height }
+                // 시트 윗변(손잡이 포함)부터 창 아래까지의 높이를 알린다. 열림·끌기·퇴장·키보드 이동이 모두 위치에 반영된다.
+                .onGloballyPositioned { coordinates ->
+                    val listener = currentOnCoveredHeightChange ?: return@onGloballyPositioned
+                    val sheetTop = coordinates.positionInRoot().y - exitController.dragHandleHeightPx
+                    val windowHeight = coordinates.findRootCoordinates().size.height
+                    listener((windowHeight - sheetTop).roundToInt().coerceAtLeast(0))
+                }
                 .nestedScroll(swipeController)
                 // 스크롤 컨테이너가 없는 콘텐츠용. 자식 스크롤이 제스처를 소비하면 이 드래그는 동작하지 않는다.
                 .draggable(

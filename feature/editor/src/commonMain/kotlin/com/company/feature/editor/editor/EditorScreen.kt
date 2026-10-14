@@ -25,6 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -59,11 +61,16 @@ internal fun EditorScreen(
     onIntent: (EditorIntent) -> Unit,
     video: (@Composable (Modifier) -> Unit)? = null,
 ) {
+    val stageFit = remember { StageFit() }
     Box(modifier = Modifier.fillMaxSize().background(MagicColors.Background)) {
         Column(modifier = Modifier.fillMaxSize().navigationBarsPadding()) {
             EditorTopBar(state = state, onIntent = onIntent)
             Box(
-                modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .onGloballyPositioned(stageFit::updateArea)
+                    .padding(vertical = 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 EditorStage(
@@ -72,7 +79,10 @@ internal fun EditorScreen(
                     modifier = Modifier
                         .fillMaxHeight()
                         .heightIn(max = 400.dp)
-                        .aspectRatio(9f / 16f, matchHeightConstraintsFirst = true),
+                        .aspectRatio(9f / 16f, matchHeightConstraintsFirst = true)
+                        // 미리보기 시트가 열려 있으면 무대를 시트 위 빈 곳에 맞춰 줄여 그린다.
+                        .onGloballyPositioned(stageFit::updateStage)
+                        .graphicsLayer { stageFit.applyTo(this) },
                     video = video,
                 )
             }
@@ -81,15 +91,16 @@ internal fun EditorScreen(
             EditorTools(state = state, onIntent = onIntent)
         }
 
-        // 미리보기가 보이도록 메인 시트보다 옅은 scrim을 쓴다. 글자·애니메이션 시트는 무대에서 바로 확인하도록 scrim이 없다.
+        // 미리보기가 보이도록 메인 시트보다 옅은 scrim을 쓴다. 미리보기 시트는 무대에서 바로 확인하도록 scrim이 없다.
         val lastSheet = remember { LastSheet() }
         state.sheet?.let { lastSheet.value = it }
-        val clearScrim = lastSheet.value == EditorSheet.TEXT || lastSheet.value == EditorSheet.ANIMATION
+        val previewSheet = lastSheet.value in PreviewSheets
         MagicModalBottomSheet(
             target = state.sheet,
             onDismissRequest = { onIntent(EditorIntent.CloseSheet) },
             showDragHandle = true,
-            scrimColor = if (clearScrim) Color.Transparent else Color.Black.copy(alpha = 0.3f),
+            scrimColor = if (previewSheet) Color.Transparent else Color.Black.copy(alpha = 0.3f),
+            onCoveredHeightChange = { height -> stageFit.coveredHeight = if (lastSheet.value in PreviewSheets) height else 0 },
         ) { sheet, requestDismiss ->
             Column(
                 modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 22.dp),
@@ -109,6 +120,9 @@ internal fun EditorScreen(
         }
     }
 }
+
+/** Sheets that show their result on the stage. They have no scrim, and the stage gets smaller to stay above them. */
+private val PreviewSheets = setOf(EditorSheet.TEXT, EditorSheet.ANIMATION)
 
 /** Last open sheet. The sheet keeps its scrim during the close animation. */
 private class LastSheet {
