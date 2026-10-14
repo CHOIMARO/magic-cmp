@@ -39,24 +39,6 @@ import com.company.core.designsystem.theme.MagicTheme
 import com.company.ui.editor.rgbColor
 
 /**
- * Popup that asks the user before a change. It shows on top of the sheets.
- *
- * @param title Title of the popup.
- * @param message Text under the title.
- * @param confirmLabel Label of the confirm button.
- * @param onConfirm Action of the confirm button.
- * @param onDismiss Action of the cancel button and of a tap outside.
- */
-@Composable
-internal fun EditorConfirmDialog(title: String, message: String, confirmLabel: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    DialogCard(onDismiss = onDismiss) {
-        Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp)
-        Text(text = message, fontSize = 14.sp, lineHeight = 21.sp, color = MagicColors.OnSurface70)
-        DialogButtons(confirmLabel = confirmLabel, onConfirm = onConfirm, onDismiss = onDismiss)
-    }
-}
-
-/**
  * Color picker of the color decoration: hue, saturation, and brightness sliders, and a HEX field.
  *
  * @param initial Start color as 0xRRGGBB.

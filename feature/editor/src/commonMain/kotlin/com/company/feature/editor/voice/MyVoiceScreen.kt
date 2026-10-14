@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.MagicButton
 import com.company.core.designsystem.component.MagicButtonDefaults
 import com.company.core.designsystem.component.MagicButtonStyle
+import com.company.core.designsystem.component.MagicDialog
 import com.company.core.designsystem.component.MagicIconButton
 import com.company.core.designsystem.component.MagicSpinner
 import com.company.core.designsystem.component.pressClickable
@@ -63,7 +64,6 @@ import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.core.designsystem.theme.oklch
 import com.company.core.domain.model.editor.MyVoiceStatus
-import com.company.feature.editor.editor.EditorConfirmDialog
 import com.company.ui.editor.formatTime
 import kotlin.math.abs
 import kotlin.math.sin
@@ -125,12 +125,14 @@ internal fun MyVoiceScreen(state: MyVoiceState, onIntent: (MyVoiceIntent) -> Uni
         BottomButtons(state, onIntent)
     }
     if (state.confirmDelete) {
-        EditorConfirmDialog(
+        MagicDialog(
             title = "내 목소리를 지울까요?",
             message = "만든 목소리와 녹음 파일을 함께 지워요. 이미 넣은 더빙은 그대로 남아요",
             confirmLabel = "지우기",
             onConfirm = { onIntent(MyVoiceIntent.ConfirmDelete) },
-            onDismiss = { onIntent(MyVoiceIntent.DismissDelete) },
+            cancelLabel = "취소",
+            onCancel = { onIntent(MyVoiceIntent.DismissDelete) },
+            onDismissRequest = { onIntent(MyVoiceIntent.DismissDelete) },
         )
     }
 }

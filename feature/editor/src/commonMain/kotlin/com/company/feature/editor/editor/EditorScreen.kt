@@ -121,12 +121,14 @@ internal fun EditorScreen(
             }
         }
         state.dialog?.let { dialog ->
-            EditorConfirmDialog(
+            MagicDialog(
                 title = dialog.title,
                 message = dialog.message,
                 confirmLabel = dialog.confirmLabel,
                 onConfirm = { onIntent(EditorIntent.ConfirmDialog) },
-                onDismiss = { onIntent(EditorIntent.DismissDialog) },
+                cancelLabel = "취소",
+                onCancel = { onIntent(EditorIntent.DismissDialog) },
+                onDismissRequest = { onIntent(EditorIntent.DismissDialog) },
             )
         }
         if (state.leaveDialog) {
