@@ -1,5 +1,6 @@
 package com.company.ui.editor
 
+import androidx.compose.runtime.Composable
 import com.company.core.domain.model.editor.CaptionStyleType
 import com.company.core.domain.model.editor.DubbingSpeed
 import com.company.core.domain.model.editor.EditorTemplate
@@ -13,186 +14,218 @@ import com.company.core.domain.model.editor.TextExit
 import com.company.core.domain.model.editor.TextFontType
 import com.company.core.domain.model.editor.TextStyleType
 import com.company.core.domain.model.editor.TransitionType
+import com.company.ui.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 /** Default text of a new title overlay. */
 const val DEFAULT_TITLE_TEXT = "오늘의 기록"
 
 /** Display name of the layout. */
 val LayoutType.displayName: String
-    get() = when (this) {
-        LayoutType.FULL -> "전체 화면"
-        LayoutType.SPLIT_VERTICAL -> "위아래 분할"
-        LayoutType.SPLIT_HORIZONTAL -> "좌우 분할"
-        LayoutType.PICTURE_IN_PICTURE -> "화면 속 화면"
-        LayoutType.BEFORE_AFTER -> "전후 비교"
-        LayoutType.GRID_THREE -> "3단 분할"
-        LayoutType.POLAROID -> "폴라로이드"
-        LayoutType.CINEMA -> "시네마"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            LayoutType.FULL -> Res.string.layout_full
+            LayoutType.SPLIT_VERTICAL -> Res.string.layout_split_vertical
+            LayoutType.SPLIT_HORIZONTAL -> Res.string.layout_split_horizontal
+            LayoutType.PICTURE_IN_PICTURE -> Res.string.layout_picture_in_picture
+            LayoutType.BEFORE_AFTER -> Res.string.layout_before_after
+            LayoutType.GRID_THREE -> Res.string.layout_grid_three
+            LayoutType.POLAROID -> Res.string.layout_polaroid
+            LayoutType.CINEMA -> Res.string.layout_cinema
+        }
+    )
 
 /** Short note under the layout name, for example "클립 2개". */
 val LayoutType.subLabel: String
-    get() = if (this == LayoutType.FULL) "기본" else "클립 ${clipCount}개"
+    @Composable get() = if (this == LayoutType.FULL) {
+        stringResource(Res.string.layout_sub_default)
+    } else {
+        stringResource(Res.string.layout_sub_clips, clipCount)
+    }
 
 /** Description of the layout in the template sheet. */
 val LayoutType.description: String
-    get() = when (this) {
-        LayoutType.FULL -> "영상 하나를 화면 가득 채워요."
-        LayoutType.SPLIT_VERTICAL -> "두 장면을 위아래로 보여줘요. 리액션이나 비교 영상에 좋아요."
-        LayoutType.SPLIT_HORIZONTAL -> "두 장면을 나란히 놓아요. 같은 순간 다른 시점을 보여주기 좋아요."
-        LayoutType.PICTURE_IN_PICTURE -> "큰 화면 위에 작은 화면을 띄워요. 설명하거나 리뷰할 때 좋아요."
-        LayoutType.BEFORE_AFTER -> "전과 후를 나란히 보여줘요. 정리·메이크업·인테리어에 딱이에요."
-        LayoutType.GRID_THREE -> "세 장면을 한 화면에 쌓아요. 하루 요약이나 과정 영상에 좋아요."
-        LayoutType.POLAROID -> "사진 액자처럼 여백을 둬요. 아래쪽에 글자를 넣기 좋아요."
-        LayoutType.CINEMA -> "위아래에 검은 띠를 둬서 영화처럼 보여요."
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            LayoutType.FULL -> Res.string.layout_desc_full
+            LayoutType.SPLIT_VERTICAL -> Res.string.layout_desc_split_vertical
+            LayoutType.SPLIT_HORIZONTAL -> Res.string.layout_desc_split_horizontal
+            LayoutType.PICTURE_IN_PICTURE -> Res.string.layout_desc_picture_in_picture
+            LayoutType.BEFORE_AFTER -> Res.string.layout_desc_before_after
+            LayoutType.GRID_THREE -> Res.string.layout_desc_grid_three
+            LayoutType.POLAROID -> Res.string.layout_desc_polaroid
+            LayoutType.CINEMA -> Res.string.layout_desc_cinema
+        }
+    )
 
 /** Display name of the text style. */
 val TextStyleType.displayName: String
-    get() = when (this) {
-        TextStyleType.BOLD -> "굵게"
-        TextStyleType.BOX -> "박스"
-        TextStyleType.OUTLINE -> "테두리"
-        TextStyleType.SERIF -> "감성 세리프"
-        TextStyleType.NEON -> "네온"
-        TextStyleType.MARKER -> "형광펜"
-        TextStyleType.TAG -> "라벨"
-        TextStyleType.HAND -> "손글씨"
-        TextStyleType.IMPACT -> "예능"
-        TextStyleType.RETRO -> "레트로"
-        TextStyleType.CUTE -> "말랑"
-        TextStyleType.MINIMAL -> "미니멀"
-        TextStyleType.SHOUT -> "버럭"
-        TextStyleType.FLAME -> "불꽃"
-        TextStyleType.SPARK -> "반짝"
-        TextStyleType.DASH -> "질주"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            TextStyleType.BOLD -> Res.string.text_style_bold
+            TextStyleType.BOX -> Res.string.text_style_box
+            TextStyleType.OUTLINE -> Res.string.text_style_outline
+            TextStyleType.SERIF -> Res.string.text_style_serif
+            TextStyleType.NEON -> Res.string.text_style_neon
+            TextStyleType.MARKER -> Res.string.text_style_marker
+            TextStyleType.TAG -> Res.string.text_style_tag
+            TextStyleType.HAND -> Res.string.text_style_hand
+            TextStyleType.IMPACT -> Res.string.text_style_impact
+            TextStyleType.RETRO -> Res.string.text_style_retro
+            TextStyleType.CUTE -> Res.string.text_style_cute
+            TextStyleType.MINIMAL -> Res.string.text_style_minimal
+            TextStyleType.SHOUT -> Res.string.text_style_shout
+            TextStyleType.FLAME -> Res.string.text_style_flame
+            TextStyleType.SPARK -> Res.string.text_style_spark
+            TextStyleType.DASH -> Res.string.text_style_dash
+        }
+    )
 
 /** Display name of the font. */
 val TextFontType.displayName: String
-    get() = when (this) {
-        TextFontType.PRETENDARD -> "프리텐다드"
-        TextFontType.GOWUN_BATANG -> "고운바탕"
-        TextFontType.NANUM_PEN -> "나눔손글씨 펜"
-        TextFontType.BLACK_HAN_SANS -> "검은고딕"
-        TextFontType.DO_HYEON -> "도현"
-        TextFontType.JUA -> "주아"
-        TextFontType.KKUBULIM -> "꾸불림체"
-        TextFontType.MYOEUN_HEULLIM -> "묘은흘림체"
-        TextFontType.GELLYROLL -> "겔리롤"
-        TextFontType.MONA12 -> "Mona12"
-        TextFontType.NEUJOH -> "느좋체"
-        TextFontType.OK_DANDAN -> "Ok단단체"
-        TextFontType.STRONG_ARMY -> "강한육군체"
-        TextFontType.KUKDETOPOKKI -> "국대떡볶이체"
-        TextFontType.ESAMANRU -> "이사만루체"
-        TextFontType.OK_GUNG -> "읏궁체"
-        TextFontType.GAEGU -> "개구쟁이"
-        TextFontType.DONGLE -> "동글"
-        TextFontType.GUGI -> "구기"
-        TextFontType.SONG_MYUNG -> "송명"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            TextFontType.PRETENDARD -> Res.string.font_pretendard
+            TextFontType.GOWUN_BATANG -> Res.string.font_gowun_batang
+            TextFontType.NANUM_PEN -> Res.string.font_nanum_pen
+            TextFontType.BLACK_HAN_SANS -> Res.string.font_black_han_sans
+            TextFontType.DO_HYEON -> Res.string.font_do_hyeon
+            TextFontType.JUA -> Res.string.font_jua
+            TextFontType.KKUBULIM -> Res.string.font_kkubulim
+            TextFontType.MYOEUN_HEULLIM -> Res.string.font_myoeun_heullim
+            TextFontType.GELLYROLL -> Res.string.font_gellyroll
+            TextFontType.MONA12 -> Res.string.font_mona12
+            TextFontType.NEUJOH -> Res.string.font_neujoh
+            TextFontType.OK_DANDAN -> Res.string.font_ok_dandan
+            TextFontType.STRONG_ARMY -> Res.string.font_strong_army
+            TextFontType.KUKDETOPOKKI -> Res.string.font_kukdetopokki
+            TextFontType.ESAMANRU -> Res.string.font_esamanru
+            TextFontType.OK_GUNG -> Res.string.font_ok_gung
+            TextFontType.GAEGU -> Res.string.font_gaegu
+            TextFontType.DONGLE -> Res.string.font_dongle
+            TextFontType.GUGI -> Res.string.font_gugi
+            TextFontType.SONG_MYUNG -> Res.string.font_song_myung
+        }
+    )
 
 /** Display name of the entrance animation. */
 val TextEntrance.displayName: String
-    get() = when (this) {
-        TextEntrance.NONE -> "없음"
-        TextEntrance.POP -> "팝"
-        TextEntrance.SLIDE_UP -> "밀어 올리기"
-        TextEntrance.FADE -> "페이드"
-        TextEntrance.FADE_UP -> "떠오르기"
-        TextEntrance.FLICKER -> "깜빡임"
-        TextEntrance.MARKER_SWEEP -> "형광펜 긋기"
-        TextEntrance.WRITE -> "써 내려가기"
-        TextEntrance.STAMP -> "도장 찍기"
-        TextEntrance.BOUNCE -> "통통"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            TextEntrance.NONE -> Res.string.entrance_none
+            TextEntrance.POP -> Res.string.entrance_pop
+            TextEntrance.SLIDE_UP -> Res.string.entrance_slide_up
+            TextEntrance.FADE -> Res.string.entrance_fade
+            TextEntrance.FADE_UP -> Res.string.entrance_fade_up
+            TextEntrance.FLICKER -> Res.string.entrance_flicker
+            TextEntrance.MARKER_SWEEP -> Res.string.entrance_marker_sweep
+            TextEntrance.WRITE -> Res.string.entrance_write
+            TextEntrance.STAMP -> Res.string.entrance_stamp
+            TextEntrance.BOUNCE -> Res.string.entrance_bounce
+        }
+    )
 
 /** Display name of the exit animation. */
 val TextExit.displayName: String
-    get() = when (this) {
-        TextExit.NONE -> "없음"
-        TextExit.FADE -> "페이드"
-        TextExit.SLIDE_DOWN -> "밀어 내리기"
-        TextExit.SHRINK -> "작아지며"
-        TextExit.FLY_UP -> "위로 날아가기"
-        TextExit.FLICKER -> "깜빡임"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            TextExit.NONE -> Res.string.exit_none
+            TextExit.FADE -> Res.string.exit_fade
+            TextExit.SLIDE_DOWN -> Res.string.exit_slide_down
+            TextExit.SHRINK -> Res.string.exit_shrink
+            TextExit.FLY_UP -> Res.string.exit_fly_up
+            TextExit.FLICKER -> Res.string.exit_flicker
+        }
+    )
 
 /** Display name of the transition. */
 val TransitionType.displayName: String
-    get() = when (this) {
-        TransitionType.DISSOLVE -> "디졸브"
-        TransitionType.FADE -> "페이드"
-        TransitionType.PUSH -> "밀기"
-        TransitionType.ZOOM -> "확대"
-        TransitionType.BLUR -> "흐림"
-        TransitionType.FLASH -> "플래시"
-        TransitionType.GLITCH -> "글리치"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            TransitionType.DISSOLVE -> Res.string.transition_dissolve
+            TransitionType.FADE -> Res.string.transition_fade
+            TransitionType.PUSH -> Res.string.transition_push
+            TransitionType.ZOOM -> Res.string.transition_zoom
+            TransitionType.BLUR -> Res.string.transition_blur
+            TransitionType.FLASH -> Res.string.transition_flash
+            TransitionType.GLITCH -> Res.string.transition_glitch
+        }
+    )
 
 /** Display name of the side that a push transition comes from. */
 val PushDirection.displayName: String
-    get() = when (this) {
-        PushDirection.LEFT -> "왼쪽에서"
-        PushDirection.RIGHT -> "오른쪽에서"
-        PushDirection.UP -> "위에서"
-        PushDirection.DOWN -> "아래에서"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            PushDirection.LEFT -> Res.string.push_from_left
+            PushDirection.RIGHT -> Res.string.push_from_right
+            PushDirection.UP -> Res.string.push_from_up
+            PushDirection.DOWN -> Res.string.push_from_down
+        }
+    )
 
 /** Display name of the sound effect category. */
 val SoundEffectCategory.displayName: String
-    get() = when (this) {
-        SoundEffectCategory.HIGHLIGHT -> "강조"
-        SoundEffectCategory.REACTION -> "리액션"
-        SoundEffectCategory.TRANSITION -> "전환"
-        SoundEffectCategory.TENSION -> "놀람·긴장"
-        SoundEffectCategory.COMIC -> "코믹·실패"
-        SoundEffectCategory.DAILY -> "일상·사물"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            SoundEffectCategory.HIGHLIGHT -> Res.string.sound_category_highlight
+            SoundEffectCategory.REACTION -> Res.string.sound_category_reaction
+            SoundEffectCategory.TRANSITION -> Res.string.sound_category_transition
+            SoundEffectCategory.TENSION -> Res.string.sound_category_tension
+            SoundEffectCategory.COMIC -> Res.string.sound_category_comic
+            SoundEffectCategory.DAILY -> Res.string.sound_category_daily
+        }
+    )
 
 /** Display name of the dubbing speed. */
 val DubbingSpeed.displayName: String
-    get() = when (this) {
-        DubbingSpeed.SLOW -> "느리게"
-        DubbingSpeed.NORMAL -> "보통"
-        DubbingSpeed.FAST -> "빠르게"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            DubbingSpeed.SLOW -> Res.string.dubbing_speed_slow
+            DubbingSpeed.NORMAL -> Res.string.dubbing_speed_normal
+            DubbingSpeed.FAST -> Res.string.dubbing_speed_fast
+        }
+    )
 
 /** Display name of the caption style. */
 val CaptionStyleType.displayName: String
-    get() = when (this) {
-        CaptionStyleType.BASIC -> "기본"
-        CaptionStyleType.POP -> "강조"
-        CaptionStyleType.BOX -> "박스"
-        CaptionStyleType.MINIMAL -> "미니멀"
-        CaptionStyleType.SERIF -> "세리프"
-        CaptionStyleType.BIG -> "크게"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            CaptionStyleType.BASIC -> Res.string.caption_style_basic
+            CaptionStyleType.POP -> Res.string.caption_style_pop
+            CaptionStyleType.BOX -> Res.string.caption_style_box
+            CaptionStyleType.MINIMAL -> Res.string.caption_style_minimal
+            CaptionStyleType.SERIF -> Res.string.caption_style_serif
+            CaptionStyleType.BIG -> Res.string.caption_style_big
+        }
+    )
 
 /** Display name of the filter. */
 val FilterType.displayName: String
-    get() = when (this) {
-        FilterType.NONE -> "원본"
-        FilterType.WARM -> "노을"
-        FilterType.FADE -> "필름"
-        FilterType.COOL -> "청량"
-        FilterType.PUNCH -> "쨍하게"
-        FilterType.CINE -> "영화처럼"
-        FilterType.MONO -> "흑백"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            FilterType.NONE -> Res.string.filter_none
+            FilterType.WARM -> Res.string.filter_warm
+            FilterType.FADE -> Res.string.filter_fade
+            FilterType.COOL -> Res.string.filter_cool
+            FilterType.PUNCH -> Res.string.filter_punch
+            FilterType.CINE -> Res.string.filter_cine
+            FilterType.MONO -> Res.string.filter_mono
+        }
+    )
 
 /** Label of the template kind in the template sheet. */
 val TemplateKind.sheetLabel: String
-    get() = when (this) {
-        TemplateKind.LAYOUT -> "레이아웃 템플릿"
-        TemplateKind.TEXT -> "글자 템플릿"
-        TemplateKind.CAPTION -> "자막 템플릿"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            TemplateKind.LAYOUT -> Res.string.template_kind_layout
+            TemplateKind.TEXT -> Res.string.template_kind_text
+            TemplateKind.CAPTION -> Res.string.template_kind_caption
+        }
+    )
 
 /** Display name of the template. */
 val EditorTemplate.displayName: String
-    get() = when (this) {
+    @Composable get() = when (this) {
         is EditorTemplate.Layout -> layout.displayName
         is EditorTemplate.Text -> style.displayName
         is EditorTemplate.Caption -> style.displayName
@@ -200,18 +233,18 @@ val EditorTemplate.displayName: String
 
 /** Short note under the template name in the template grid. */
 val EditorTemplate.subLabel: String
-    get() = when (this) {
-        is EditorTemplate.Layout -> "레이아웃 · ${layout.subLabel}"
-        is EditorTemplate.Text -> "글자"
-        is EditorTemplate.Caption -> "자막"
+    @Composable get() = when (this) {
+        is EditorTemplate.Layout -> stringResource(Res.string.template_sub_layout, layout.subLabel)
+        is EditorTemplate.Text -> stringResource(Res.string.template_sub_text)
+        is EditorTemplate.Caption -> stringResource(Res.string.template_sub_caption)
     }
 
 /** Description of the template in the template sheet. */
 val EditorTemplate.description: String
-    get() = when (this) {
+    @Composable get() = when (this) {
         is EditorTemplate.Layout -> layout.description
-        is EditorTemplate.Text -> "제목이나 강조 문구에 쓰기 좋아요. 넣은 뒤 화면에서 끌어서 옮길 수 있어요."
-        is EditorTemplate.Caption -> "자동 자막이 이 스타일로 나와요. 말하는 영상에 잘 어울려요."
+        is EditorTemplate.Text -> stringResource(Res.string.template_desc_text)
+        is EditorTemplate.Caption -> stringResource(Res.string.template_desc_caption)
     }
 
 /**

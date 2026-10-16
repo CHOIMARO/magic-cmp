@@ -28,8 +28,15 @@ import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.StripeBox
 import com.company.core.domain.model.editor.EditorTemplate
 import com.company.core.domain.model.editor.LayoutType
+import com.company.ui.resources.Res
+import com.company.ui.resources.caption_sample
+import com.company.ui.resources.default_title_text
+import com.company.ui.resources.layout_label_after
+import com.company.ui.resources.layout_label_before
 import kotlin.math.max
 import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * One video area of a layout. Positions are in percent of the stage.
@@ -54,12 +61,12 @@ data class LayoutCell(
 /**
  * Text label on a layout, for example "전" and "후".
  *
- * @property text Label text.
+ * @property text String resource of the label text.
  * @property left Left edge in percent.
  * @property top Top edge in percent.
  */
 @Immutable
-data class LayoutLabel(val text: String, val left: Float, val top: Float)
+data class LayoutLabel(val text: StringResource, val left: Float, val top: Float)
 
 /**
  * Geometry of a [LayoutType].
@@ -86,7 +93,7 @@ val LayoutType.spec: LayoutSpec
         )
         LayoutType.BEFORE_AFTER -> LayoutSpec(
             cells = listOf(LayoutCell(0f, 0f, 49.6f, 100f), LayoutCell(50.4f, 0f, 49.6f, 100f)),
-            labels = listOf(LayoutLabel("전", 4f, 3f), LayoutLabel("후", 54.4f, 3f)),
+            labels = listOf(LayoutLabel(Res.string.layout_label_before, 4f, 3f), LayoutLabel(Res.string.layout_label_after, 54.4f, 3f)),
         )
         LayoutType.GRID_THREE -> LayoutSpec(
             listOf(LayoutCell(0f, 0f, 100f, 33f), LayoutCell(0f, 33.5f, 100f, 33f), LayoutCell(0f, 67f, 100f, 33f))
@@ -148,7 +155,7 @@ fun LayoutCells(
         }
         spec.labels.forEach { label ->
             Text(
-                text = label.text,
+                text = stringResource(label.text),
                 modifier = Modifier
                     .offset(x = stageWidth * (label.left / 100f), y = stageHeight * (label.top / 100f))
                     .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(labelRadius))
@@ -166,9 +173,6 @@ private val LayoutPreviewHues = listOf(35, 200, 150)
 
 /** Hue of the sample cell in a text preview. */
 private const val TEXT_PREVIEW_HUE = 250
-
-/** Words of the sample caption in a caption preview. */
-private val CaptionSampleWords = listOf("자막이", "이렇게", "나와요")
 
 /** Hue of the sample cell in a caption preview. */
 private const val CAPTION_PREVIEW_HUE = 160
@@ -209,17 +213,18 @@ fun TemplatePreview(
         if (!showSample) return@Box
         when (template) {
             is EditorTemplate.Text -> OverlayText(
-                text = DEFAULT_TITLE_TEXT,
+                text = stringResource(Res.string.default_title_text),
                 look = template.style.look(scale),
                 modifier = Modifier.centeredAt(xPercent = 50f, yPercent = 40f),
             )
             is EditorTemplate.Caption -> {
                 val look = template.style.look(scale)
+                val sampleWords = stringResource(Res.string.caption_sample).splitWords()
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     // 정지 화면이라 마지막 단어를 지금 말하는 단어로 보여 준다. 단어씩 나타나는 자막도 모든 단어가 보인다.
                     CaptionText(
-                        words = CaptionSampleWords,
-                        currentWord = CaptionSampleWords.lastIndex,
+                        words = sampleWords,
+                        currentWord = sampleWords.lastIndex,
                         look = look.copy(cornerRadius = captionRadius),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)

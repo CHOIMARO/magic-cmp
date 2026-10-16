@@ -162,6 +162,7 @@ internal fun GalleryScreen(
 }
 
 /** Guide text under the header. */
+@Composable
 private fun galleryHint(state: GalleryState): String {
     val layout = (state.template as? EditorTemplate.Layout)?.layout
     return when {
