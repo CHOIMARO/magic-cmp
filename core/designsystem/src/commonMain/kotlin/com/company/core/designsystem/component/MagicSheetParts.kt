@@ -38,7 +38,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicColors
+import com.company.core.designsystem.resources.Res
+import com.company.core.designsystem.resources.sheet_close
+import com.company.core.designsystem.resources.sheet_hide_keyboard
 import com.company.core.designsystem.theme.MagicPreview
+import org.jetbrains.compose.resources.stringResource
 
 /** Small bar at the top of a bottom sheet. */
 @Composable
@@ -59,7 +63,7 @@ fun SheetHandle(modifier: Modifier = Modifier) {
  * @param closeLabel Label of the close button.
  */
 @Composable
-fun SheetHeader(title: String, onClose: () -> Unit, closeLabel: String = "닫기") {
+fun SheetHeader(title: String, onClose: () -> Unit, closeLabel: String = stringResource(Res.string.sheet_close)) {
     SheetHeader(onClose = onClose, closeLabel = closeLabel) {
         Text(text = title, modifier = Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
@@ -80,7 +84,7 @@ fun SheetHeader(title: String, onClose: () -> Unit, closeLabel: String = "닫기
 @Composable
 fun SheetHeader(
     onClose: () -> Unit,
-    closeLabel: String = "닫기",
+    closeLabel: String = stringResource(Res.string.sheet_close),
     action: (@Composable () -> Unit)? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
@@ -132,7 +136,7 @@ fun SheetHeader(
             if (keyboardOpen) {
                 Icon(
                     imageVector = Icons.Rounded.KeyboardHide,
-                    contentDescription = "키보드 내리기",
+                    contentDescription = stringResource(Res.string.sheet_hide_keyboard),
                     modifier = Modifier.size(20.dp),
                 )
             }

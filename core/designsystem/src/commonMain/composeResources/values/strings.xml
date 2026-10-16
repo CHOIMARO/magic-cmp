@@ -1,0 +1,5 @@
+<resources>
+    <!-- 시트 머리글 -->
+    <string name="sheet_close">닫기</string>
+    <string name="sheet_hide_keyboard">키보드 내리기</string>
+</resources>
