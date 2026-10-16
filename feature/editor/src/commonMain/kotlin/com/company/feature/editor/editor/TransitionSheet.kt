@@ -53,11 +53,18 @@ import com.company.core.media.SceneLook
 import com.company.core.media.TransitionLook
 import com.company.core.media.openingLook
 import com.company.core.media.transitionLook
+import com.company.feature.editor.resources.Res
+import com.company.feature.editor.resources.none
+import com.company.feature.editor.resources.transition_apply_all
+import com.company.feature.editor.resources.transition_direction
+import com.company.feature.editor.resources.transition_intro_boundary
+import com.company.feature.editor.resources.transition_intro_opening
 import com.company.ui.editor.displayName
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.tan
+import org.jetbrains.compose.resources.stringResource
 
 /** Length of one loop of a transition card, in milliseconds. */
 private const val CARD_LOOP_MILLIS = 1700L
@@ -69,23 +76,24 @@ private const val CARD_FROM_HUE = 35f
 private const val CARD_TO_HUE = 200f
 
 /** Guide under the title of the transition sheet. */
+@Composable
 internal fun transitionIntro(state: EditorState): String? = when (val slot = state.transitionSlot) {
     null -> null
-    TransitionSlot.Opening -> "영상이 시작될 때 첫 장면이 나타나는 방식이에요"
+    TransitionSlot.Opening -> stringResource(Res.string.transition_intro_opening)
     is TransitionSlot.Boundary -> {
         val index = state.project.clips.indexOfFirst { it.id == slot.clipId }
         if (index < 1) {
             null
         } else {
             val seconds = (state.project.transitionLength(index) * 10).toInt() / 10.0
-            "${index}번째와 ${index + 1}번째 클립 사이 · ${seconds}초 · 전체 길이는 그대로예요"
+            stringResource(Res.string.transition_intro_boundary, index, index + 1, seconds.toString())
         }
     }
 }
 
 /**
  * Transition sheet (F08): a card for each transition with a short preview in a loop, the side of the push, and
- * "모든 구간에 적용".
+ * stringResource(Res.string.transition_apply_all).
  *
  * @param state Editor state.
  * @param onIntent Called with each user action.
@@ -122,7 +130,7 @@ internal fun TransitionSheet(state: EditorState, onIntent: (EditorIntent) -> Uni
                 TransitionScenes(look = look, fromHue = CARD_FROM_HUE, toHue = CARD_TO_HUE, modifier = Modifier.matchParentSize())
             }
             Text(
-                text = type?.displayName ?: "없음",
+                text = type?.displayName ?: stringResource(Res.string.none),
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
                 fontSize = 12.sp,
@@ -134,7 +142,7 @@ internal fun TransitionSheet(state: EditorState, onIntent: (EditorIntent) -> Uni
     }
     if (current?.type == TransitionType.PUSH) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(text = "방향", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
+            Text(text = stringResource(Res.string.transition_direction), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
             Row(
                 modifier = Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(MagicColors.Background).padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -163,7 +171,7 @@ internal fun TransitionSheet(state: EditorState, onIntent: (EditorIntent) -> Uni
     }
     if (!opening && state.project.clips.size > 2) {
         MagicButton(
-            text = "모든 구간에 적용",
+            text = stringResource(Res.string.transition_apply_all),
             onClick = { onIntent(EditorIntent.ApplyTransitionToAll) },
             modifier = Modifier.fillMaxWidth(),
             style = MagicButtonStyle.SECONDARY,

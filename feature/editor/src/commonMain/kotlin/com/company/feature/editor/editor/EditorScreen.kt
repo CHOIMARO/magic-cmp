@@ -47,8 +47,10 @@ import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.feature.editor.preview.EditorPreviewData
+import com.company.feature.editor.resources.*
 import com.company.ui.editor.formatTime
 import com.company.ui.editor.formatTimeTenths
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Editor screen. It only draws [state] and sends user actions to [onIntent].
@@ -126,18 +128,18 @@ internal fun EditorScreen(
                 message = dialog.message,
                 confirmLabel = dialog.confirmLabel,
                 onConfirm = { onIntent(EditorIntent.ConfirmDialog) },
-                cancelLabel = "취소",
+                cancelLabel = stringResource(Res.string.cancel),
                 onCancel = { onIntent(EditorIntent.DismissDialog) },
                 onDismissRequest = { onIntent(EditorIntent.DismissDialog) },
             )
         }
         if (state.leaveDialog) {
             MagicDialog(
-                title = "편집을 그만둘까요?",
-                message = "지금 나가면 편집한 내용이 사라져요",
-                confirmLabel = "나가기",
+                title = stringResource(Res.string.editor_leave_title),
+                message = stringResource(Res.string.editor_leave_message),
+                confirmLabel = stringResource(Res.string.editor_leave_confirm),
                 onConfirm = { onIntent(EditorIntent.ConfirmLeave) },
-                cancelLabel = "취소",
+                cancelLabel = stringResource(Res.string.cancel),
                 onCancel = { onIntent(EditorIntent.DismissLeave) },
                 onDismissRequest = { onIntent(EditorIntent.DismissLeave) },
             )
@@ -162,7 +164,7 @@ private fun EditorTopBar(state: EditorState, onIntent: (EditorIntent) -> Unit) {
     ) {
         MagicIconButton(
             icon = Icons.AutoMirrored.Rounded.ArrowBack,
-            contentDescription = "뒤로",
+            contentDescription = stringResource(Res.string.back),
             onClick = { onIntent(EditorIntent.Back) },
             iconSize = 26.dp,
         )
@@ -176,12 +178,12 @@ private fun EditorTopBar(state: EditorState, onIntent: (EditorIntent) -> Unit) {
         )
         MagicIconButton(
             icon = Icons.AutoMirrored.Rounded.Undo,
-            contentDescription = "되돌리기",
+            contentDescription = stringResource(Res.string.editor_undo),
             onClick = { onIntent(EditorIntent.Undo) },
             enabled = state.canUndo,
         )
         MagicButton(
-            text = "완성",
+            text = stringResource(Res.string.editor_finish),
             onClick = { onIntent(EditorIntent.Export) },
             style = MagicButtonStyle.PRIMARY_SMALL,
         )
@@ -197,7 +199,7 @@ private fun PlaybackRow(state: EditorState, onIntent: (EditorIntent) -> Unit) {
     ) {
         MagicIconButton(
             icon = if (state.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-            contentDescription = if (state.playing) "일시정지" else "재생",
+            contentDescription = stringResource(if (state.playing) Res.string.pause else Res.string.play),
             onClick = { onIntent(EditorIntent.TogglePlay) },
             size = 40.dp,
             iconSize = 30.dp,

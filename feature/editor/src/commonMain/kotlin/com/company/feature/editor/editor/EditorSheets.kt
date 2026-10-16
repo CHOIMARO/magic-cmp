@@ -61,6 +61,7 @@ import com.company.core.domain.model.editor.TextStyleType
 import com.company.core.domain.model.editor.TransitionSlot
 import com.company.core.domain.model.editor.clipAt
 import com.company.feature.editor.preview.EditorPreviewData
+import com.company.feature.editor.resources.*
 import com.company.ui.editor.OverlayText
 import com.company.ui.editor.TemplatePreview
 import com.company.ui.editor.TextFrame
@@ -68,6 +69,7 @@ import com.company.ui.editor.TextLook
 import com.company.ui.editor.displayName
 import com.company.ui.editor.toColorFilter
 import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.stringResource
 
 /** Horizontal padding of the editor sheets. */
 internal val SheetPadding = 18.dp
@@ -133,29 +135,31 @@ internal fun ColumnScope.EditorSheetContent(
 }
 
 /** Title of the sheet, or null for the text sheet. The text sheet shows its text field in place of the title. */
+@Composable
 private fun EditorSheet.title(state: EditorState): String? = when (this) {
     EditorSheet.TEXT -> null
-    EditorSheet.MUSIC -> "음악"
-    EditorSheet.FILTER -> "필터"
-    EditorSheet.SPEED -> "속도"
-    EditorSheet.CAPTIONS -> if (state.captionScript != null) "글로 자막 만들기" else "자막"
-    EditorSheet.LAYOUT -> "레이아웃"
-    EditorSheet.ANIMATION -> "애니메이션"
-    EditorSheet.PASTE -> "붙여넣기"
-    EditorSheet.SOUND_EFFECT -> "효과음"
-    EditorSheet.DUBBING -> "더빙"
-    EditorSheet.TRANSITION -> "화면 전환"
-    EditorSheet.VOLUME -> "볼륨"
+    EditorSheet.MUSIC -> stringResource(Res.string.menu_music)
+    EditorSheet.FILTER -> stringResource(Res.string.menu_filter)
+    EditorSheet.SPEED -> stringResource(Res.string.menu_speed)
+    EditorSheet.CAPTIONS -> stringResource(if (state.captionScript != null) Res.string.sheet_title_caption_script else Res.string.menu_caption)
+    EditorSheet.LAYOUT -> stringResource(Res.string.menu_layout)
+    EditorSheet.ANIMATION -> stringResource(Res.string.menu_animation)
+    EditorSheet.PASTE -> stringResource(Res.string.menu_paste)
+    EditorSheet.SOUND_EFFECT -> stringResource(Res.string.menu_sound_effect)
+    EditorSheet.DUBBING -> stringResource(Res.string.menu_dubbing)
+    EditorSheet.TRANSITION -> stringResource(Res.string.sheet_title_transition)
+    EditorSheet.VOLUME -> stringResource(Res.string.menu_volume)
 }
 
 /** Short guide under the title, or null. */
+@Composable
 private fun EditorSheet.intro(state: EditorState): String? = when (this) {
-    EditorSheet.LAYOUT -> "화면을 나누거나 액자처럼 꾸며요"
+    EditorSheet.LAYOUT -> stringResource(Res.string.sheet_intro_layout)
     EditorSheet.TRANSITION -> transitionIntro(state)
     EditorSheet.VOLUME -> when (state.volumeTarget?.kind) {
-        VolumeKind.CLIP -> "이 클립의 원본 소리 크기예요"
-        VolumeKind.DUBBING -> "이 더빙의 소리 크기예요"
-        VolumeKind.SOUND_EFFECT -> "이 효과음의 소리 크기예요"
+        VolumeKind.CLIP -> stringResource(Res.string.sheet_intro_volume_clip)
+        VolumeKind.DUBBING -> stringResource(Res.string.sheet_intro_volume_dubbing)
+        VolumeKind.SOUND_EFFECT -> stringResource(Res.string.sheet_intro_volume_effect)
         null -> null
     }
     else -> null
@@ -252,7 +256,7 @@ private fun FilterSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
 private fun SpeedSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
     val clip = state.selectedClip
     SegmentedControl(
-        options = SpeedOptions.map { SegmentOption("${it.toSpeedLabel()}배") },
+        options = SpeedOptions.map { SegmentOption(stringResource(Res.string.speed_factor, it.toSpeedLabel())) },
         selectedIndex = SpeedOptions.indexOf(clip?.speed),
         onSelect = { onIntent(EditorIntent.PickSpeed(SpeedOptions[it])) },
         containerColor = MagicColors.Background,
@@ -261,7 +265,7 @@ private fun SpeedSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
     )
     if (clip != null) {
         Text(
-            text = "이 클립 길이: ${(clip.duration * 10).roundToInt() / 10.0}초",
+            text = stringResource(Res.string.speed_clip_length, ((clip.duration * 10).roundToInt() / 10.0).toString()),
             fontSize = 13.sp,
             color = MagicColors.OnSurface55,
         )

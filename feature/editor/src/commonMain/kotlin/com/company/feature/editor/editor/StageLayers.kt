@@ -31,12 +31,15 @@ import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.currentWordIndex
 import com.company.core.domain.model.editor.placedCaptions
+import com.company.feature.editor.resources.Res
+import com.company.feature.editor.resources.stage_caption_placeholder
 import com.company.ui.editor.CaptionText
 import com.company.ui.editor.LayoutCells
 import com.company.ui.editor.TextFrame
 import com.company.ui.editor.frameAt
-import com.company.ui.editor.spec
 import com.company.ui.editor.look
+import com.company.ui.editor.spec
+import org.jetbrains.compose.resources.stringResource
 
 /** Background of the stage outside the layout cells. */
 internal val StageBackground = Color(0xFF111111)
@@ -137,9 +140,10 @@ internal data class CaptionPreview(val id: String, val text: String, val decorat
 internal fun StageCaption(project: EditorProject, time: Double, animate: Boolean, preview: CaptionPreview? = null) {
     val captions = project.placedCaptions
     val placed = preview?.let { p -> captions.find { it.id == p.id } } ?: captions.visibleAt(time) ?: return
+    val captionPlaceholder = stringResource(Res.string.stage_caption_placeholder)
     val segment = if (preview != null && preview.id == placed.id) {
         // 비운 입력은 '자막'으로 보여 준다.
-        placed.copy(text = preview.text.ifBlank { "자막" }, decorations = if (preview.text.isBlank()) emptyList() else preview.decorations)
+        placed.copy(text = preview.text.ifBlank { captionPlaceholder }, decorations = if (preview.text.isBlank()) emptyList() else preview.decorations)
     } else {
         placed
     }

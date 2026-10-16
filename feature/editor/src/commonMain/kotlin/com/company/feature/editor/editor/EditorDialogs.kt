@@ -36,7 +36,15 @@ import androidx.compose.ui.window.DialogProperties
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicTheme
+import com.company.feature.editor.resources.Res
+import com.company.feature.editor.resources.cancel
+import com.company.feature.editor.resources.color_dialog_brightness
+import com.company.feature.editor.resources.color_dialog_hue
+import com.company.feature.editor.resources.color_dialog_pick
+import com.company.feature.editor.resources.color_dialog_saturation
+import com.company.feature.editor.resources.color_dialog_title
 import com.company.ui.editor.rgbColor
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Color picker of the color decoration: hue, saturation, and brightness sliders, and a HEX field.
@@ -55,7 +63,7 @@ internal fun CustomColorDialog(initial: Int, onPick: (Int) -> Unit, onDismiss: (
     val rgb = color.toArgb() and 0xFFFFFF
     var hex by remember { mutableStateOf(rgb.toHex()) }
     DialogCard(onDismiss = onDismiss) {
-        Text(text = "색 직접 고르기", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(text = stringResource(Res.string.color_dialog_title), fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(color).border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape))
             BasicTextField(
@@ -81,19 +89,19 @@ internal fun CustomColorDialog(initial: Int, onPick: (Int) -> Unit, onDismiss: (
                 cursorBrush = SolidColor(MagicColors.Accent),
             )
         }
-        ColorSlider(label = "색", value = hue, range = 0f..359f) {
+        ColorSlider(label = stringResource(Res.string.color_dialog_hue), value = hue, range = 0f..359f) {
             hue = it
             hex = Color.hsv(hue, saturation, value).toArgb().and(0xFFFFFF).toHex()
         }
-        ColorSlider(label = "선명도", value = saturation, range = 0f..1f) {
+        ColorSlider(label = stringResource(Res.string.color_dialog_saturation), value = saturation, range = 0f..1f) {
             saturation = it
             hex = Color.hsv(hue, saturation, value).toArgb().and(0xFFFFFF).toHex()
         }
-        ColorSlider(label = "밝기", value = value, range = 0f..1f) {
+        ColorSlider(label = stringResource(Res.string.color_dialog_brightness), value = value, range = 0f..1f) {
             value = it
             hex = Color.hsv(hue, saturation, value).toArgb().and(0xFFFFFF).toHex()
         }
-        DialogButtons(confirmLabel = "고르기", onConfirm = { onPick(rgb) }, onDismiss = onDismiss)
+        DialogButtons(confirmLabel = stringResource(Res.string.color_dialog_pick), onConfirm = { onPick(rgb) }, onDismiss = onDismiss)
     }
 }
 
@@ -134,7 +142,7 @@ private fun DialogButtons(confirmLabel: String, onConfirm: () -> Unit, onDismiss
             modifier = Modifier.height(44.dp).pressClickable(onClick = onDismiss).clip(CircleShape).padding(horizontal = 18.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = "취소", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface80)
+            Text(text = stringResource(Res.string.cancel), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface80)
         }
         Box(
             modifier = Modifier.height(44.dp).pressClickable(onClick = onConfirm).clip(CircleShape).background(MagicColors.Accent).padding(horizontal = 20.dp),

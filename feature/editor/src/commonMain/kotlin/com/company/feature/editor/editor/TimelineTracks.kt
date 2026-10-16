@@ -65,7 +65,11 @@ import com.company.core.domain.model.editor.clipBoundaries
 import com.company.core.domain.model.editor.dubbingOverflow
 import com.company.core.domain.model.editor.layerCount
 import com.company.core.domain.model.editor.placedCaptions
+import com.company.feature.editor.resources.Res
+import com.company.feature.editor.resources.transition_after_clip
+import com.company.feature.editor.resources.transition_opening_button
 import kotlinx.coroutines.withTimeoutOrNull
+import org.jetbrains.compose.resources.stringResource
 
 /** Hue of the caption bars. */
 private const val CAPTION_HUE = 95f
@@ -140,7 +144,7 @@ internal fun TransitionButtons(state: EditorState, onIntent: (EditorIntent) -> U
             }
             Icon(
                 icon,
-                contentDescription = if (index == 0) "시작 전환" else "${index}번째 클립 뒤 전환",
+                contentDescription = if (index == 0) stringResource(Res.string.transition_opening_button) else stringResource(Res.string.transition_after_clip, index),
                 tint = MagicColors.OnAccent,
                 modifier = Modifier.size(16.dp),
             )

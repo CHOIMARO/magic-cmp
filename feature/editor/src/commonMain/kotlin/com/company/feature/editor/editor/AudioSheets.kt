@@ -67,9 +67,11 @@ import com.company.core.domain.model.editor.MY_VOICE_ID
 import com.company.core.domain.model.editor.MyVoiceStatus
 import com.company.core.domain.model.editor.SoundEffect
 import com.company.core.domain.model.editor.SoundEffectCategory
+import com.company.feature.editor.resources.*
 import com.company.ui.editor.displayName
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.stringResource
 
 /** Length of a voice sample preview, in milliseconds. */
 private const val VOICE_SAMPLE_MILLIS = 1600L
@@ -129,7 +131,7 @@ internal fun DubbingSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
             cursorBrush = SolidColor(MagicColors.Accent),
             decorationBox = { inner ->
                 Box {
-                    if (draft.text.isEmpty()) Text(text = "읽어 줄 문구를 입력하세요", fontSize = 15.sp, color = MagicColors.OnSurface40)
+                    if (draft.text.isEmpty()) Text(text = stringResource(Res.string.dubbing_hint), fontSize = 15.sp, color = MagicColors.OnSurface40)
                     inner()
                 }
             },
@@ -138,10 +140,10 @@ internal fun DubbingSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 9.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(text = if (draft.captionId != null) "자막에서 가져왔어요" else "", fontSize = 11.5.sp, color = CaptionHintColor)
+            Text(text = if (draft.captionId != null) stringResource(Res.string.dubbing_from_caption) else "", fontSize = 11.5.sp, color = CaptionHintColor)
             val count = draft.text.length
             Text(
-                text = if (count >= MAX_DUBBING_CHARACTERS) "${MAX_DUBBING_CHARACTERS}자까지 쓸 수 있어요" else "$count/$MAX_DUBBING_CHARACTERS",
+                text = if (count >= MAX_DUBBING_CHARACTERS) stringResource(Res.string.dubbing_max_chars, MAX_DUBBING_CHARACTERS) else "$count/$MAX_DUBBING_CHARACTERS",
                 fontSize = 11.5.sp,
                 color = if (count >= MAX_DUBBING_CHARACTERS) CounterWarningColor else MagicColors.OnSurface40,
             )
@@ -181,11 +183,11 @@ internal fun DubbingSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
             key = draft.text to draft.speed,
         )
         MagicButton(
-            text = if (draft.editId != null) "더빙 바꾸기" else "더빙 넣기",
+            text = stringResource(if (draft.editId != null) Res.string.dubbing_replace else Res.string.dubbing_insert),
             onClick = { onIntent(EditorIntent.InsertDubbing) },
             modifier = Modifier.weight(1f),
             enabled = canInsert || draft.busy,
-            loading = if (draft.busy) MagicButtonLoading.Spinner("더빙 만드는 중") else null,
+            loading = if (draft.busy) MagicButtonLoading.Spinner(stringResource(Res.string.dubbing_making)) else null,
         )
     }
 }
@@ -198,8 +200,8 @@ internal fun DubbingSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
 private fun MyVoiceRow(status: MyVoiceStatus, selected: Boolean, playing: Boolean, onIntent: (EditorIntent) -> Unit, onPlay: () -> Unit) {
     if (status == MyVoiceStatus.Ready) {
         VoiceRow(
-            name = "내 목소리",
-            description = "내가 등록한 목소리",
+            name = stringResource(Res.string.voice_mine),
+            description = stringResource(Res.string.voice_mine_description),
             avatar = { VoiceAvatar(color = MagicColors.Accent) { Icon(Icons.Rounded.Person, contentDescription = null, tint = MagicColors.OnAccent, modifier = Modifier.size(20.dp)) } },
             selected = selected,
             playing = playing,
@@ -224,9 +226,9 @@ private fun MyVoiceRow(status: MyVoiceStatus, selected: Boolean, playing: Boolea
             Icon(if (making != null) Icons.Rounded.HourglassTop else Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(20.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = if (making != null) "내 목소리 만드는 중" else "내 목소리 만들기", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(text = stringResource(if (making != null) Res.string.voice_mine_making else Res.string.voice_mine_make), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             Text(
-                text = if (making != null) "${making.percent}% · 다 되면 알려 드릴게요" else "짧게 녹음하면 내 목소리로 더빙해요",
+                text = if (making != null) stringResource(Res.string.voice_mine_progress, making.percent) else stringResource(Res.string.voice_mine_make_hint),
                 modifier = Modifier.padding(top = 1.dp),
                 fontSize = 12.sp,
                 color = MagicColors.OnSurface55,
@@ -275,7 +277,7 @@ private fun VoiceRow(
         Box(modifier = Modifier.size(40.dp).pressClickable(onClick = onPlay), contentAlignment = Alignment.Center) {
             Icon(
                 if (playing) Icons.Rounded.StopCircle else Icons.Rounded.PlayCircle,
-                contentDescription = "샘플 듣기",
+                contentDescription = stringResource(Res.string.voice_sample_listen),
                 tint = if (playing) MagicColors.Accent else MagicColors.OnSurface.copy(alpha = 0.75f),
                 modifier = Modifier.size(28.dp),
             )
@@ -291,7 +293,7 @@ private fun VoiceAvatar(color: Color, content: @Composable () -> Unit) {
 }
 
 /**
- * "미리 듣기" button of the dubbing sheet. It fills from the left while the preview plays.
+ * stringResource(Res.string.listen_preview) button of the dubbing sheet. It fills from the left while the preview plays.
  *
  * @param seconds Estimated length of the dubbing.
  * @param enabled Set to false when the text is empty.
@@ -325,7 +327,7 @@ private fun DubbingPreviewButton(seconds: Double, enabled: Boolean, key: Any) {
         ) {
             val content = if (enabled) MagicColors.OnSurface else MagicColors.OnSurface.copy(alpha = 0.35f)
             Icon(if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow, contentDescription = null, tint = content, modifier = Modifier.size(22.dp))
-            Text(text = "미리 듣기", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = content)
+            Text(text = stringResource(Res.string.listen_preview), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = content)
         }
     }
 }
@@ -348,7 +350,7 @@ internal fun SoundEffectSheet(state: EditorState, onIntent: (EditorIntent) -> Un
         modifier = Modifier.fillMaxWidth().bleedHorizontal(SheetPadding).horizontalScroll(rememberScrollState()).padding(horizontal = SheetPadding),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        MagicChip(label = "최근", selected = category == null, onClick = {
+        MagicChip(label = stringResource(Res.string.sound_recent), selected = category == null, onClick = {
             playing = null
             onIntent(EditorIntent.PickSoundEffectCategory(null))
         })
@@ -370,7 +372,7 @@ internal fun SoundEffectSheet(state: EditorState, onIntent: (EditorIntent) -> Un
     ) {
         if (effects.isEmpty()) {
             Text(
-                text = "아직 쓴 효과음이 없어요",
+                text = stringResource(Res.string.sound_empty_recent),
                 modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
                 fontSize = 14.sp,
                 color = MagicColors.OnSurface50,
@@ -388,7 +390,7 @@ internal fun SoundEffectSheet(state: EditorState, onIntent: (EditorIntent) -> Un
         }
     }
     Text(
-        text = "눌러서 들어 보고, 넣기를 누르면 재생선 위치에 들어가요",
+        text = stringResource(Res.string.sound_hint),
         modifier = Modifier.fillMaxWidth(),
         fontSize = 12.sp,
         color = MagicColors.OnSurface45,
@@ -429,7 +431,7 @@ private fun SoundEffectRow(effect: SoundEffect, playing: Boolean, onPlay: () -> 
         Column(modifier = Modifier.weight(1f)) {
             Text(text = effect.name, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             Text(
-                text = if (playing) "재생 중" else "${(effect.length * 10).roundToInt() / 10.0}초 · ${effect.category.displayName}",
+                text = if (playing) stringResource(Res.string.sound_playing) else stringResource(Res.string.sound_meta, ((effect.length * 10).roundToInt() / 10.0).toString(), effect.category.displayName),
                 modifier = Modifier.padding(top = 1.dp),
                 fontSize = 12.sp,
                 color = MagicColors.OnSurface55,
@@ -444,7 +446,7 @@ private fun SoundEffectRow(effect: SoundEffect, playing: Boolean, onPlay: () -> 
                 .padding(horizontal = 16.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = "넣기", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MagicColors.Background)
+            Text(text = stringResource(Res.string.insert), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MagicColors.Background)
         }
     }
 }

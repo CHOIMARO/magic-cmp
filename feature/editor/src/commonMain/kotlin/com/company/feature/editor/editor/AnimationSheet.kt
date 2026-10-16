@@ -48,12 +48,14 @@ import com.company.core.domain.model.editor.TextEntrance
 import com.company.core.domain.model.editor.TextExit
 import com.company.core.domain.model.editor.hasCustomAnimation
 import com.company.core.domain.model.editor.pasteOptions
+import com.company.feature.editor.resources.*
 import com.company.ui.editor.DEFAULT_TITLE_EXIT_MILLIS
 import com.company.ui.editor.TextAnimation
 import com.company.ui.editor.displayName
 import com.company.ui.editor.frameAt
 import com.company.ui.editor.look
 import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.stringResource
 
 /** Time that a card shows the text before its exit, in milliseconds. */
 private const val EXIT_HOLD_MILLIS = 900L
@@ -87,7 +89,7 @@ internal fun AnimationSheet(state: EditorState, onIntent: (EditorIntent) -> Unit
 
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         SegmentedControl(
-            options = listOf(SegmentOption("등장"), SegmentOption("퇴장")),
+            options = listOf(SegmentOption(stringResource(Res.string.animation_entrance)), SegmentOption(stringResource(Res.string.animation_exit))),
             selectedIndex = state.animationTab.ordinal,
             onSelect = { onIntent(EditorIntent.SelectAnimationTab(AnimationTab.entries[it])) },
             modifier = Modifier.weight(1f),
@@ -104,7 +106,7 @@ internal fun AnimationSheet(state: EditorState, onIntent: (EditorIntent) -> Unit
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "기본값",
+                text = stringResource(Res.string.animation_default),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = if (text.hasCustomAnimation) MagicColors.OnSurface else MagicColors.OnSurface.copy(alpha = 0.3f),
@@ -141,7 +143,7 @@ internal fun AnimationSheet(state: EditorState, onIntent: (EditorIntent) -> Unit
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(text = "길이", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
+        Text(text = stringResource(Res.string.animation_length), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
         val steps = (millis / 100f).roundToInt().coerceIn(MIN_ANIMATION_MILLIS / 100, MAX_ANIMATION_MILLIS / 100)
         SheetSlider(
             value = steps.toFloat(),
@@ -154,7 +156,7 @@ internal fun AnimationSheet(state: EditorState, onIntent: (EditorIntent) -> Unit
             },
             modifier = Modifier.weight(1f),
         )
-        Text(text = "${steps / 10.0}초", modifier = Modifier.width(40.dp), fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End)
+        Text(text = stringResource(Res.string.seconds, (steps / 10.0).toString()), modifier = Modifier.width(40.dp), fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End)
     }
 }
 
@@ -174,8 +176,8 @@ internal fun PasteSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
     val options = state.project.pasteOptions(clipboard, state.time) ?: return
     val element = clipboard.element
     val (icon, label) = when (element) {
-        is CopiedElement.Text -> Icons.Rounded.Title to "글자 ‘${element.overlay.text}’"
-        is CopiedElement.Caption -> Icons.Rounded.Subtitles to "자막 ‘${element.text}’"
+        is CopiedElement.Text -> Icons.Rounded.Title to stringResource(Res.string.paste_text, element.overlay.text)
+        is CopiedElement.Caption -> Icons.Rounded.Subtitles to stringResource(Res.string.paste_caption, element.text)
     }
     Row(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MagicColors.Background).padding(horizontal = 12.dp, vertical = 10.dp),
@@ -185,7 +187,7 @@ internal fun PasteSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
         Icon(icon, contentDescription = null, tint = MagicColors.AccentSoft, modifier = Modifier.size(20.dp))
         Text(text = label, modifier = Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
-            text = if (clipboard.coversClip) "구간 전체" else "${(clipboard.length * 10).roundToInt() / 10.0}초",
+            text = if (clipboard.coversClip) stringResource(Res.string.paste_whole_clip) else stringResource(Res.string.seconds, ((clipboard.length * 10).roundToInt() / 10.0).toString()),
             fontSize = 12.sp,
             color = MagicColors.OnSurface50,
         )
@@ -195,27 +197,31 @@ internal fun PasteSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         PasteOption(
             icon = Icons.AutoMirrored.Rounded.ArrowForward,
-            title = "다음 구간",
-            subtitle = options.next.firstOrNull()?.let { "${it + 1}번째 구간 · 다시 누르면 그다음 구간에 이어 붙어요" } ?: "다음 구간이 없어요",
+            title = stringResource(Res.string.paste_next),
+            subtitle = options.next.firstOrNull()?.let { stringResource(Res.string.paste_next_index, it + 1) } ?: stringResource(Res.string.paste_next_none),
             enabled = options.next.isNotEmpty(),
             // 다음 구간이 없을 때 누르면 그 이유를 토스트로 알린다.
             clickableWhenDisabled = true,
         ) { onIntent(EditorIntent.Paste(PasteTarget.NEXT)) }
         PasteOption(
             icon = Icons.Rounded.MyLocation,
-            title = "지금 구간",
-            subtitle = "${options.currentIndex + 1}번째 구간 · 재생선이 있는 곳",
+            title = stringResource(Res.string.paste_current),
+            subtitle = stringResource(Res.string.paste_current_index, options.currentIndex + 1),
             enabled = options.current.isNotEmpty(),
         ) { onIntent(EditorIntent.Paste(PasteTarget.CURRENT)) }
         PasteOption(
             icon = Icons.Rounded.SelectAll,
-            title = "모든 구간",
-            subtitle = if (clipCount < 2) "구간이 하나뿐이에요" else "${if (sourceInProject) "원본 구간을 뺀 " else ""}${options.all.size}개 구간",
+            title = stringResource(Res.string.paste_every),
+            subtitle = when {
+                    clipCount < 2 -> stringResource(Res.string.paste_single_clip)
+                    sourceInProject -> stringResource(Res.string.paste_every_except_source, options.all.size)
+                    else -> stringResource(Res.string.paste_every_count, options.all.size)
+                },
             enabled = options.all.isNotEmpty(),
         ) { onIntent(EditorIntent.Paste(PasteTarget.ALL)) }
     }
     Text(
-        text = "복사한 것과 같은 위치·같은 크기·같은 꾸미기로 들어가요",
+        text = stringResource(Res.string.paste_note),
         modifier = Modifier.fillMaxWidth(),
         textAlign = TextAlign.Center,
         fontSize = 12.sp,

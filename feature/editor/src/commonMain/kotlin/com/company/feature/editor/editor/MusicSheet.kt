@@ -59,10 +59,12 @@ import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.domain.model.editor.MusicRange
 import com.company.core.domain.model.editor.MusicTrack
+import com.company.feature.editor.resources.*
 import com.company.ui.editor.formatTime
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import org.jetbrains.compose.resources.stringResource
 
 /** Number of bars of the waveform. */
 private const val WAVE_BARS = 56
@@ -92,7 +94,7 @@ internal fun MusicSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
             .padding(horizontal = SheetPadding),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        MagicChip(label = "전체", selected = draft.mood == null, onClick = { onIntent(EditorIntent.PickMusicMood(null)) })
+        MagicChip(label = stringResource(Res.string.all), selected = draft.mood == null, onClick = { onIntent(EditorIntent.PickMusicMood(null)) })
         moods.forEach { mood ->
             MagicChip(label = mood, selected = draft.mood == mood, onClick = { onIntent(EditorIntent.PickMusicMood(mood)) })
         }
@@ -105,7 +107,7 @@ internal fun MusicSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        MusicRow(title = "음악 없음", subtitle = "원본 소리만", hue = null, selected = draft.musicId == null, playing = false) {
+        MusicRow(title = stringResource(Res.string.music_none), subtitle = stringResource(Res.string.music_none_note), hue = null, selected = draft.musicId == null, playing = false) {
             onIntent(EditorIntent.TapMusicTrack(null))
         }
         state.musicTracks.filter { draft.mood == null || it.mood == draft.mood }.forEach { item ->
@@ -114,8 +116,8 @@ internal fun MusicSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
             MusicRow(
                 title = item.title,
                 subtitle = when {
-                    playing -> "미리 듣는 중 · 다시 누르면 멈춰요"
-                    else -> "${item.mood} · ${formatTime(item.durationSeconds.toDouble())}" + if (state.project.musicId == item.id) " · 사용 중" else ""
+                    playing -> stringResource(Res.string.music_previewing)
+                    else -> "${item.mood} · ${formatTime(item.durationSeconds.toDouble())}" + if (state.project.musicId == item.id) " · " + stringResource(Res.string.music_in_use) else ""
                 },
                 hue = item.thumbnailHue,
                 selected = selected,
@@ -130,9 +132,9 @@ internal fun MusicSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
     val hasMusic = state.project.musicId != null
     MagicButton(
         text = when {
-            draft.musicId == null -> if (hasMusic) "음악 빼기" else "음악을 골라 주세요"
-            hasMusic -> "이 구간으로 바꾸기"
-            else -> "이 구간 넣기"
+            draft.musicId == null -> stringResource(if (hasMusic) Res.string.music_remove else Res.string.music_pick)
+            hasMusic -> stringResource(Res.string.music_replace_range)
+            else -> stringResource(Res.string.music_insert_range)
         },
         onClick = { onIntent(EditorIntent.ApplyMusic) },
         modifier = Modifier.fillMaxWidth(),
@@ -145,7 +147,7 @@ internal fun MusicSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
  *
  * @param title Title of the track.
  * @param subtitle Mood and length, or the preview state.
- * @param hue Hue of the cover, or null for "음악 없음".
+ * @param hue Hue of the cover, or null for stringResource(Res.string.music_none).
  * @param selected True for the selected row.
  * @param playing True while the preview plays.
  * @param onClick Action on click.
@@ -215,9 +217,9 @@ private fun MusicRangeSection(track: MusicTrack, range: MusicRange, draft: Music
     val seconds = track.durationSeconds.toDouble()
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(text = "쓸 구간", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
+            Text(text = stringResource(Res.string.music_range), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
             Text(
-                text = "${formatTime(range.start)} ~ ${formatTime(range.end)} · ${range.length.roundToInt()}초",
+                text = stringResource(Res.string.music_range_value, formatTime(range.start), formatTime(range.end), range.length.roundToInt()),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -225,9 +227,9 @@ private fun MusicRangeSection(track: MusicTrack, range: MusicRange, draft: Music
         Waveform(track = track, range = range, previewing = draft.previewing, previewStart = draft.previewStart, onIntent = onIntent)
         Text(
             text = when {
-                range.length > projectSeconds + 0.05 -> "영상보다 길어서 영상 끝에서 잘려요"
-                range.length < projectSeconds - 0.05 -> "구간이 끝나면 음악 없이 이어져요"
-                else -> "영상 길이와 딱 맞아요"
+                range.length > projectSeconds + 0.05 -> stringResource(Res.string.music_range_cut)
+                range.length < projectSeconds - 0.05 -> stringResource(Res.string.music_range_short)
+                else -> stringResource(Res.string.music_range_fit)
             },
             fontSize = 12.sp,
             color = MagicColors.OnSurface50,
@@ -258,7 +260,7 @@ private fun MusicRangeSection(track: MusicTrack, range: MusicRange, draft: Music
             ) {
                 val content = if (draft.fade) MagicColors.Background else MagicColors.OnSurface70
                 Icon(if (draft.fade) Icons.Rounded.Check else Icons.Rounded.Add, contentDescription = null, tint = content, modifier = Modifier.size(16.dp))
-                Text(text = "페이드", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = content)
+                Text(text = stringResource(Res.string.music_fade), fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = content)
             }
         }
     }

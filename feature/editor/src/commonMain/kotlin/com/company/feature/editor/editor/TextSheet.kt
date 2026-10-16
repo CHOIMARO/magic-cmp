@@ -90,6 +90,7 @@ import com.company.core.domain.model.editor.SIZE_STEP_COUNT
 import com.company.core.domain.model.editor.TextFontType
 import com.company.core.domain.model.editor.TextStyleType
 import com.company.core.domain.model.editor.valuesIn
+import com.company.feature.editor.resources.*
 import com.company.ui.editor.TextFrame
 import com.company.ui.editor.displayName
 import com.company.ui.editor.fontFamily
@@ -97,12 +98,14 @@ import com.company.ui.editor.isAvailable
 import com.company.ui.editor.look
 import com.company.ui.editor.previewFrameAt
 import com.company.ui.editor.rgbColor
+import org.jetbrains.compose.resources.stringResource
 
 /** Size factor of the sample text in a style card. */
 internal const val STYLE_SAMPLE_SCALE = 0.66f
 
 /** Text in the cards of the text sheet while the text field is empty. */
-private const val SAMPLE_TEXT = "가나다"
+private val SampleText: String
+    @Composable get() = stringResource(Res.string.text_sheet_sample)
 
 /** Height of each tab in the text sheet, in dp. */
 private const val TEXT_TAB_HEIGHT = 38
@@ -160,7 +163,7 @@ internal fun TextSheet(state: EditorState, onIntent: (EditorIntent) -> Unit, onC
             onClose = onClose,
             action = {
                 MagicButton(
-                    text = if (draft.id != null || draft.isCaption) "저장" else "넣기",
+                    text = stringResource(if (draft.id != null || draft.isCaption) Res.string.save else Res.string.insert),
                     onClick = { onIntent(EditorIntent.SaveText) },
                     style = MagicButtonStyle.PRIMARY_SMALL,
                     height = SheetHeaderButtonHeight,
@@ -170,7 +173,7 @@ internal fun TextSheet(state: EditorState, onIntent: (EditorIntent) -> Unit, onC
             TextDraftField(draft = draft, onIntent = onIntent, modifier = Modifier.weight(1f))
         }
         // 입력한 글자를 카드에 그대로 보여 준다. 비어 있으면 예시 글자를 쓴다.
-        val sampleText = draft.text.trim().ifEmpty { SAMPLE_TEXT }
+        val sampleText = draft.text.trim().ifEmpty { SampleText }
         if (keyboardOpen) {
             val keyboardAboveBars = WindowInsets.sheetIme.exclude(WindowInsets.systemBars.union(WindowInsets.displayCutout))
             Column(
@@ -235,7 +238,7 @@ private fun TextSheetTabs(draft: TextDraft, onIntent: (EditorIntent) -> Unit) {
         if (draft.id != null || draft.isCaption) {
             MagicIconButton(
                 icon = Icons.Outlined.Delete,
-                contentDescription = "삭제",
+                contentDescription = stringResource(Res.string.delete),
                 onClick = { onIntent(EditorIntent.DeleteText) },
                 style = MagicIconButtonStyle.DANGER,
                 // 탭 높이(항목 높이 + 위아래 여백 4dp)와 맞춘다.
@@ -286,11 +289,13 @@ private fun Modifier.keepSheetTop(keyboard: WindowInsets, height: () -> Int, ext
 
 /** Label of the tab. */
 private val TextSheetTab.label: String
-    get() = when (this) {
-        TextSheetTab.TEMPLATE -> "템플릿"
-        TextSheetTab.FONT -> "글꼴"
-        TextSheetTab.DECORATION -> "꾸미기"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            TextSheetTab.TEMPLATE -> Res.string.text_sheet_tab_template
+            TextSheetTab.FONT -> Res.string.text_sheet_tab_font
+            TextSheetTab.DECORATION -> Res.string.text_sheet_tab_decoration
+        }
+    )
 
 /**
  * Text field of the text sheet. The keyboard shows only when the user taps the field. The field sends the selected
@@ -325,7 +330,7 @@ private fun TextDraftField(draft: TextDraft, onIntent: (EditorIntent) -> Unit, m
             Box(modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp), contentAlignment = Alignment.CenterStart) {
                 if (field.text.isEmpty()) {
                     Text(
-                        text = if (draft.isCaption) "자막 문구를 입력하세요" else "글자를 입력하세요",
+                        text = stringResource(if (draft.isCaption) Res.string.text_sheet_hint_caption else Res.string.text_sheet_hint_text),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MagicColors.OnSurface40,
@@ -421,7 +426,7 @@ private fun FontStrip(draft: TextDraft, text: String, downloading: TextFontType?
                         if (downloading == font) {
                             MagicSpinner(color = MagicColors.Accent, trackColor = MagicColors.SurfaceHighest, size = 14.dp, strokeWidth = 2.dp)
                         } else {
-                            Icon(Icons.Rounded.Download, contentDescription = "내려받기", tint = MagicColors.OnSurface, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Rounded.Download, contentDescription = stringResource(Res.string.download), tint = MagicColors.OnSurface, modifier = Modifier.size(14.dp))
                         }
                     }
                 }
@@ -529,8 +534,8 @@ private fun TextFontPage(draft: TextDraft, downloading: TextFontType?, onIntent:
                 Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) {
                     when {
                         downloading == font -> MagicSpinner(color = MagicColors.Accent, trackColor = MagicColors.SurfaceHighest)
-                        selected -> Icon(Icons.Rounded.Check, contentDescription = "선택됨", tint = MagicColors.Accent, modifier = Modifier.size(20.dp))
-                        !available -> Icon(Icons.Rounded.Download, contentDescription = "내려받기", tint = MagicColors.OnSurface45, modifier = Modifier.size(20.dp))
+                        selected -> Icon(Icons.Rounded.Check, contentDescription = stringResource(Res.string.selected), tint = MagicColors.Accent, modifier = Modifier.size(20.dp))
+                        !available -> Icon(Icons.Rounded.Download, contentDescription = stringResource(Res.string.download), tint = MagicColors.OnSurface45, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -625,9 +630,9 @@ private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: 
         ) {
             Text(
                 text = when {
-                    length == 0 -> "글자를 먼저 입력하세요"
-                    draft.hasSelection -> "‘${draft.text.substring(draft.selectionStart, draft.selectionEnd)}’에만 적용해요"
-                    else -> "글자 전체에 적용해요 · 입력창에서 글자를 고르면 그 부분만 꾸며요"
+                    length == 0 -> stringResource(Res.string.decoration_type_first)
+                    draft.hasSelection -> stringResource(Res.string.decoration_selection, draft.text.substring(draft.selectionStart, draft.selectionEnd))
+                    else -> stringResource(Res.string.decoration_all)
                 },
                 modifier = Modifier.weight(1f),
                 fontSize = 12.5.sp,
@@ -635,12 +640,12 @@ private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: 
                 color = MagicColors.OnSurface60,
             )
             if (draft.decorations.isNotEmpty()) {
-                SmallPillButton(label = "꾸미기 초기화", onClick = { onIntent(EditorIntent.ResetDraftDecorations) })
+                SmallPillButton(label = stringResource(Res.string.decoration_reset), onClick = { onIntent(EditorIntent.ResetDraftDecorations) })
             }
         }
         if (!draft.isCaption) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(text = "크기", modifier = Modifier.width(40.dp), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
+                Text(text = stringResource(Res.string.decoration_size), modifier = Modifier.width(40.dp), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
                 Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     SizeSteps(draft = draft, boxSize = 44.dp, diameters = SizeStepDiameters, onIntent = onIntent)
                 }
@@ -648,7 +653,7 @@ private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: 
         }
         Column(modifier = Modifier.alpha(if (colorOff) 0.4f else 1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                text = if (colorOff) "색상 · 배경이 있는 글자는 글자색이 자동이에요" else "색상",
+                text = stringResource(if (colorOff) Res.string.decoration_color_auto else Res.string.decoration_color),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MagicColors.OnSurface70,
@@ -668,7 +673,7 @@ private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: 
             DecorationToggles(draft = draft, onIntent = onIntent, modifier = Modifier.weight(1f))
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text = "배경", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
+            Text(text = stringResource(Res.string.decoration_background), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
             SwatchRow {
                 BackgroundSwatches(backgrounds = backgrounds, hasText = length > 0, onIntent = onIntent)
             }
@@ -718,7 +723,7 @@ private fun DecorationStrip(draft: TextDraft, recentColors: List<Int>, onIntent:
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                StripLabel(text = "색")
+                StripLabel(text = stringResource(Res.string.decoration_color_short))
                 TextColorSwatches(
                     colors = colors,
                     recentColors = recentColors,
@@ -729,7 +734,7 @@ private fun DecorationStrip(draft: TextDraft, recentColors: List<Int>, onIntent:
                 )
             }
             StripDivider()
-            StripLabel(text = "배경")
+            StripLabel(text = stringResource(Res.string.decoration_background))
             BackgroundSwatches(backgrounds = backgrounds, hasText = length > 0, onIntent = onIntent)
         }
     }
@@ -786,13 +791,13 @@ private fun SizeSteps(draft: TextDraft, boxSize: Dp, diameters: List<Dp>, onInte
  */
 @Composable
 private fun DecorationToggles(draft: TextDraft, onIntent: (EditorIntent) -> Unit, modifier: Modifier = Modifier, compact: Boolean = false) {
-    DecorationToggle(Icons.Rounded.FormatBold, "굵게", draft.decorationValues { it.bold }, modifier, compact) {
+    DecorationToggle(Icons.Rounded.FormatBold, stringResource(Res.string.decoration_bold), draft.decorationValues { it.bold }, modifier, compact) {
         onIntent(EditorIntent.DecorateDraft(DecorationChange.Bold(it)))
     }
-    DecorationToggle(Icons.Rounded.BorderColor, "테두리", draft.decorationValues { it.outline }, modifier, compact) {
+    DecorationToggle(Icons.Rounded.BorderColor, stringResource(Res.string.decoration_outline), draft.decorationValues { it.outline }, modifier, compact) {
         onIntent(EditorIntent.DecorateDraft(DecorationChange.Outline(it)))
     }
-    DecorationToggle(Icons.Rounded.Gradient, "그림자", draft.decorationValues { it.shadow }, modifier, compact) {
+    DecorationToggle(Icons.Rounded.Gradient, stringResource(Res.string.decoration_shadow), draft.decorationValues { it.shadow }, modifier, compact) {
         onIntent(EditorIntent.DecorateDraft(DecorationChange.Shadow(it)))
     }
 }
@@ -854,7 +859,7 @@ private fun BackgroundSwatches(backgrounds: Set<Int?>, hasText: Boolean, onInten
     }
 }
 
-/** Small label in front of a group in a strip, for example "색". */
+/** Small label in front of a group in a strip, for example stringResource(Res.string.decoration_color_short). */
 @Composable
 private fun StripLabel(text: String) {
     Text(text = text, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface60)
@@ -909,7 +914,7 @@ private fun ColorSwatch(
             .border(1.dp, Color.White.copy(alpha = 0.18f), shape),
         contentAlignment = Alignment.Center,
     ) {
-        if (icon != null) Icon(icon, contentDescription = "배경 없음", tint = MagicColors.OnSurface60, modifier = Modifier.size(18.dp))
+        if (icon != null) Icon(icon, contentDescription = stringResource(Res.string.decoration_no_background), tint = MagicColors.OnSurface60, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -925,7 +930,7 @@ private fun CustomColorButton(enabled: Boolean, onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Box(modifier = Modifier.size(26.dp).clip(CircleShape).background(MagicColors.Surface), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Add, contentDescription = "직접 고르기", modifier = Modifier.size(18.dp))
+            Icon(Icons.Rounded.Add, contentDescription = stringResource(Res.string.decoration_custom_color), modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -970,7 +975,7 @@ private fun DecorationToggle(
         val content = if (on) MagicColors.Background else MagicColors.OnSurface
         if (!compact) Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(19.dp))
         Text(
-            text = if (mixed) "$label 섞임" else label,
+            text = if (mixed) stringResource(Res.string.decoration_mixed, label) else label,
             fontSize = if (compact) 12.5.sp else 13.5.sp,
             fontWeight = FontWeight.Bold,
             color = content,
@@ -980,7 +985,7 @@ private fun DecorationToggle(
 }
 
 /**
- * Small dark pill button of a sheet, for example "꾸미기 초기화".
+ * Small dark pill button of a sheet, for example stringResource(Res.string.decoration_reset).
  *
  * @param label Label of the button.
  * @param onClick Action on click.

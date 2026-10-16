@@ -64,15 +64,12 @@ import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.core.designsystem.theme.oklch
 import com.company.core.domain.model.editor.MyVoiceStatus
+import com.company.feature.editor.resources.*
 import com.company.ui.editor.formatTime
 import kotlin.math.abs
 import kotlin.math.sin
+import org.jetbrains.compose.resources.stringResource
 
-/** Consent sentence that the user reads. A vendor sentence replaces it when the vendor needs one. */
-private const val CONSENT_LINE = "나는 이 목소리의 주인이며 magic이 이 목소리로 음성 합성 모델을 만드는 것에 동의합니다."
-
-/** Sample sentence that the user reads. */
-private const val SAMPLE_LINE = "오늘은 바닷가에서 하루를 보냈어요. 바람이 시원하고 하늘이 정말 맑았어요. 다음에는 친구들과 함께 오고 싶어요."
 
 /** Red of the record button and the recording waveform. */
 private val RecordRed = oklch(0.68f, 0.2f, 25f)
@@ -100,8 +97,8 @@ internal fun MyVoiceScreen(state: MyVoiceState, onIntent: (MyVoiceIntent) -> Uni
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            MagicIconButton(icon = Icons.Rounded.Close, contentDescription = "닫기", onClick = { onIntent(MyVoiceIntent.Close) }, iconSize = 26.dp)
-            Text(text = "내 목소리", modifier = Modifier.weight(1f), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            MagicIconButton(icon = Icons.Rounded.Close, contentDescription = stringResource(Res.string.close), onClick = { onIntent(MyVoiceIntent.Close) }, iconSize = 26.dp)
+            Text(text = stringResource(Res.string.voice_mine), modifier = Modifier.weight(1f), fontSize = 15.sp, fontWeight = FontWeight.Bold)
             val stepLabel = when (state.step) {
                 MyVoiceStep.CONSENT -> "1 / 2"
                 MyVoiceStep.SAMPLE -> "2 / 2"
@@ -126,11 +123,11 @@ internal fun MyVoiceScreen(state: MyVoiceState, onIntent: (MyVoiceIntent) -> Uni
     }
     if (state.confirmDelete) {
         MagicDialog(
-            title = "내 목소리를 지울까요?",
-            message = "만든 목소리와 녹음 파일을 함께 지워요. 이미 넣은 더빙은 그대로 남아요",
-            confirmLabel = "지우기",
+            title = stringResource(Res.string.my_voice_delete_title),
+            message = stringResource(Res.string.my_voice_delete_message),
+            confirmLabel = stringResource(Res.string.my_voice_delete_confirm),
             onConfirm = { onIntent(MyVoiceIntent.ConfirmDelete) },
-            cancelLabel = "취소",
+            cancelLabel = stringResource(Res.string.cancel),
             onCancel = { onIntent(MyVoiceIntent.DismissDelete) },
             onDismissRequest = { onIntent(MyVoiceIntent.DismissDelete) },
         )
@@ -139,19 +136,19 @@ internal fun MyVoiceScreen(state: MyVoiceState, onIntent: (MyVoiceIntent) -> Uni
 
 @Composable
 private fun ColumnScope.IntroStep(state: MyVoiceState, onIntent: (MyVoiceIntent) -> Unit) {
-    Text(text = "내 목소리로\n더빙해요", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 34.sp)
+    Text(text = stringResource(Res.string.my_voice_intro_title), fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 34.sp)
     Text(
-        text = "문장 두 개를 소리 내어 읽으면 내 목소리를 만들어요. 그다음부터는 직접 녹음하지 않아도 내 목소리로 더빙할 수 있어요.",
+        text = stringResource(Res.string.my_voice_intro_body),
         fontSize = 14.sp,
         lineHeight = 22.sp,
         color = MagicColors.OnSurface.copy(alpha = 0.65f),
     )
     InfoCard(
         items = listOf(
-            Icons.Outlined.Mic to "동의 문장 하나와 짧은 문장 하나를 소리 내어 읽어요",
-            Icons.Outlined.VerifiedUser to "본인 목소리만 등록할 수 있어요. 다른 사람 목소리는 등록하면 안 돼요",
-            Icons.Outlined.Lock to "녹음은 목소리를 만드는 데만 쓰고, 목소리 업체에 안전하게 보내요",
-            Icons.Outlined.Delete to "마이 > 내 목소리에서 언제든 지울 수 있고, 지우면 녹음도 함께 지워요",
+            Icons.Outlined.Mic to stringResource(Res.string.my_voice_intro_read),
+            Icons.Outlined.VerifiedUser to stringResource(Res.string.my_voice_intro_own),
+            Icons.Outlined.Lock to stringResource(Res.string.my_voice_intro_safe),
+            Icons.Outlined.Delete to stringResource(Res.string.my_voice_intro_delete),
         ),
     )
     Row(
@@ -169,23 +166,24 @@ private fun ColumnScope.IntroStep(state: MyVoiceState, onIntent: (MyVoiceIntent)
         ) {
             if (state.agreed) Icon(Icons.Rounded.Check, contentDescription = null, tint = MagicColors.OnAccent, modifier = Modifier.size(18.dp))
         }
-        Text(text = "위 내용을 확인했고, 내 목소리로 녹음하는 것에 동의해요", fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold, lineHeight = 21.sp)
+        Text(text = stringResource(Res.string.my_voice_intro_agree), fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold, lineHeight = 21.sp)
     }
 }
 
 @Composable
 private fun ColumnScope.RecordStep(state: MyVoiceState, onIntent: (MyVoiceIntent) -> Unit) {
     val sample = state.step == MyVoiceStep.SAMPLE
-    Text(text = if (sample) "이 문장을 읽어 주세요" else "동의 문장을 그대로 읽어 주세요", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 30.sp)
+    Text(text = stringResource(if (sample) Res.string.my_voice_read_sample else Res.string.my_voice_read_consent), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 30.sp)
     Text(
-        text = if (sample) "평소 말투로 5초 이상 읽어 주세요. 조용한 곳이면 더 좋아요" else "내 목소리를 등록한다는 동의를 녹음해요",
+        text = stringResource(if (sample) Res.string.my_voice_read_sample_hint else Res.string.my_voice_read_consent_hint),
         modifier = Modifier.padding(top = 0.dp),
         fontSize = 14.sp,
         lineHeight = 21.sp,
         color = MagicColors.OnSurface60,
     )
     Text(
-        text = if (sample) SAMPLE_LINE else CONSENT_LINE,
+        // 업체가 동의 문장을 정하면 my_voice_consent_line을 그 문장으로 바꾼다.
+        text = stringResource(if (sample) Res.string.my_voice_sample_line else Res.string.my_voice_consent_line),
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(MagicColors.Surface).padding(horizontal = 18.dp, vertical = 20.dp),
         fontSize = 19.sp,
         lineHeight = 31.sp,
@@ -196,10 +194,10 @@ private fun ColumnScope.RecordStep(state: MyVoiceState, onIntent: (MyVoiceIntent
     val seconds = state.recordedSeconds
     Text(
         text = when {
-            state.recording -> "녹음 중 ${formatTime(seconds)}"
-            seconds > 0.0 && seconds >= state.requiredSeconds -> "${formatTime(seconds)} 녹음했어요"
-            seconds > 0.0 -> "${state.requiredSeconds.toInt()}초 이상 읽어 주세요"
-            else -> "버튼을 누르고 읽기 시작해요"
+            state.recording -> stringResource(Res.string.my_voice_recording, formatTime(seconds))
+            seconds > 0.0 && seconds >= state.requiredSeconds -> stringResource(Res.string.my_voice_recorded, formatTime(seconds))
+            seconds > 0.0 -> stringResource(Res.string.my_voice_read_longer, state.requiredSeconds.toInt())
+            else -> stringResource(Res.string.my_voice_press_to_start)
         },
         modifier = Modifier.fillMaxWidth(),
         textAlign = TextAlign.Center,
@@ -223,7 +221,7 @@ private fun ColumnScope.RecordStep(state: MyVoiceState, onIntent: (MyVoiceIntent
                 Box(modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp)).background(RecordRed))
             } else {
                 Box(modifier = Modifier.size(64.dp).clip(CircleShape).background(RecordRed), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Mic, contentDescription = "녹음 시작", tint = Color.White, modifier = Modifier.size(30.dp))
+                    Icon(Icons.Rounded.Mic, contentDescription = stringResource(Res.string.my_voice_record_start), tint = Color.White, modifier = Modifier.size(30.dp))
                 }
             }
         }
@@ -270,9 +268,9 @@ private fun RecordingWave(recording: Boolean, recorded: Boolean) {
 @Composable
 private fun CheckStep(state: MyVoiceState) {
     val checking = state.checkedItems < CHECK_ITEMS
-    Text(text = if (checking) "녹음을 확인하고 있어요" else "녹음이 잘 됐어요", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+    Text(text = stringResource(if (checking) Res.string.my_voice_checking else Res.string.my_voice_checked), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
     Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MagicColors.Surface).padding(horizontal = 16.dp, vertical = 4.dp)) {
-        listOf("잡음이 적어요", "길이가 충분해요", "동의한 사람과 같은 목소리예요").forEachIndexed { index, text ->
+        listOf(Res.string.my_voice_check_noise, Res.string.my_voice_check_length, Res.string.my_voice_check_same).forEachIndexed { index, text ->
             if (index > 0) Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MagicColors.Divider))
             Row(modifier = Modifier.padding(vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (index < state.checkedItems) {
@@ -280,7 +278,7 @@ private fun CheckStep(state: MyVoiceState) {
                 } else {
                     MagicSpinner(color = MagicColors.OnSurface50, trackColor = MagicColors.SurfaceHighest, size = 20.dp)
                 }
-                Text(text = text, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+                Text(text = stringResource(text), fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -293,13 +291,13 @@ private fun MakingStep(state: MyVoiceState) {
         MyVoiceStatus.Ready -> 100
         MyVoiceStatus.None -> 0
     }
-    Text(text = "내 목소리를\n만들고 있어요", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 30.sp)
+    Text(text = stringResource(Res.string.my_voice_making_title), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 30.sp)
     Column(modifier = Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(text = "$percent%", fontSize = 40.sp, fontWeight = FontWeight.ExtraBold)
         Box(modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(MagicColors.SurfaceHigh)) {
             Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(percent / 100f).clip(RoundedCornerShape(4.dp)).background(MagicColors.Accent))
         }
-        Text(text = "다른 화면으로 나가도 계속 만들어요. 다 되면 알려 드릴게요.", fontSize = 14.sp, lineHeight = 21.sp, color = MagicColors.OnSurface60)
+        Text(text = stringResource(Res.string.my_voice_making_body), fontSize = 14.sp, lineHeight = 21.sp, color = MagicColors.OnSurface60)
     }
 }
 
@@ -308,9 +306,9 @@ private fun DoneStep() {
     Box(modifier = Modifier.padding(top = 12.dp).size(72.dp).clip(CircleShape).background(MagicColors.Accent), contentAlignment = Alignment.Center) {
         Icon(Icons.Rounded.RecordVoiceOver, contentDescription = null, tint = MagicColors.OnAccent, modifier = Modifier.size(36.dp))
     }
-    Text(text = "내 목소리가 준비됐어요", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+    Text(text = stringResource(Res.string.my_voice_ready_title), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
     Text(
-        text = "더빙 목소리 목록 맨 앞에 '내 목소리'가 생겼어요. 미리 듣기로 확인해 보세요.",
+        text = stringResource(Res.string.my_voice_ready_body),
         fontSize = 14.sp,
         lineHeight = 22.sp,
         color = MagicColors.OnSurface60,
@@ -328,8 +326,8 @@ private fun ManageStep(state: MyVoiceState, onIntent: (MyVoiceIntent) -> Unit) {
             Icon(Icons.Rounded.Person, contentDescription = null, tint = MagicColors.OnAccent, modifier = Modifier.size(28.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = "내 목소리", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            Text(text = "등록됨 · 계정마다 하나만 만들 수 있어요", modifier = Modifier.padding(top = 2.dp), fontSize = 12.5.sp, color = MagicColors.OnSurface55)
+            Text(text = stringResource(Res.string.voice_mine), fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text(text = stringResource(Res.string.my_voice_registered), modifier = Modifier.padding(top = 2.dp), fontSize = 12.5.sp, color = MagicColors.OnSurface55)
         }
         Box(
             modifier = Modifier.size(44.dp).pressClickable { onIntent(MyVoiceIntent.PlaySample) }.clip(CircleShape).background(MagicColors.SurfaceHighest),
@@ -337,14 +335,14 @@ private fun ManageStep(state: MyVoiceState, onIntent: (MyVoiceIntent) -> Unit) {
         ) {
             Icon(
                 if (state.samplePlaying) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
-                contentDescription = "미리 듣기",
+                contentDescription = stringResource(Res.string.listen_preview),
                 tint = if (state.samplePlaying) MagicColors.Accent else MagicColors.OnSurface,
                 modifier = Modifier.size(26.dp),
             )
         }
     }
     Text(
-        text = "지우면 만든 목소리와 녹음 파일도 함께 지워요. 이미 영상에 넣은 더빙은 그대로 남아요.",
+        text = stringResource(Res.string.my_voice_manage_note),
         fontSize = 13.sp,
         lineHeight = 20.sp,
         color = MagicColors.OnSurface55,
@@ -370,17 +368,17 @@ private fun InfoCard(items: List<Pair<ImageVector, String>>) {
 private fun BottomButtons(state: MyVoiceState, onIntent: (MyVoiceIntent) -> Unit) {
     val step = state.step
     val (label, enabled) = when (step) {
-        MyVoiceStep.INTRO -> "시작하기" to state.agreed
-        MyVoiceStep.CONSENT, MyVoiceStep.SAMPLE -> "다음" to state.recordedEnough
-        MyVoiceStep.CHECK -> "내 목소리 만들기" to (state.checkedItems >= CHECK_ITEMS)
-        MyVoiceStep.MAKING -> "닫기" to true
-        MyVoiceStep.DONE -> "확인" to true
-        MyVoiceStep.MANAGE -> "다시 만들기" to true
+        MyVoiceStep.INTRO -> stringResource(Res.string.my_voice_start) to state.agreed
+        MyVoiceStep.CONSENT, MyVoiceStep.SAMPLE -> stringResource(Res.string.next) to state.recordedEnough
+        MyVoiceStep.CHECK -> stringResource(Res.string.voice_mine_make) to (state.checkedItems >= CHECK_ITEMS)
+        MyVoiceStep.MAKING -> stringResource(Res.string.close) to true
+        MyVoiceStep.DONE -> stringResource(Res.string.confirm) to true
+        MyVoiceStep.MANAGE -> stringResource(Res.string.remake) to true
     }
     val secondary = when (step) {
-        MyVoiceStep.MANAGE -> "삭제"
-        MyVoiceStep.DONE -> if (state.samplePlaying) "정지" else "미리 듣기"
-        MyVoiceStep.CONSENT, MyVoiceStep.SAMPLE -> "다시 녹음".takeIf { state.recordedSeconds > 0.0 && !state.recording }
+        MyVoiceStep.MANAGE -> stringResource(Res.string.delete)
+        MyVoiceStep.DONE -> stringResource(if (state.samplePlaying) Res.string.my_voice_stop else Res.string.listen_preview)
+        MyVoiceStep.CONSENT, MyVoiceStep.SAMPLE -> stringResource(Res.string.my_voice_rerecord).takeIf { state.recordedSeconds > 0.0 && !state.recording }
         else -> null
     }
     Row(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

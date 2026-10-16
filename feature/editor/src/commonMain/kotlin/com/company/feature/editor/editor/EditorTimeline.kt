@@ -90,20 +90,25 @@ import com.company.core.domain.model.editor.AudioTrack
 import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.MediaType
 import com.company.core.domain.model.editor.MusicRange
-import com.company.core.domain.model.editor.clipBoundaries
 import com.company.core.domain.model.editor.TextOverlay
+import com.company.core.domain.model.editor.clipBoundaries
 import com.company.core.domain.model.editor.textLayerCount
+import com.company.feature.editor.resources.Res
+import com.company.feature.editor.resources.seconds
+import com.company.feature.editor.resources.speed_factor
+import com.company.feature.editor.resources.timeline_add
 import com.company.ui.editor.formatTime
 import com.company.ui.media.rememberFilmstripFrame
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log2
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
 
 /** Width of one second on the timeline at the default zoom. */
 private val PixelsPerSecond = 50.dp
@@ -672,12 +677,12 @@ private fun ClipBlock(
             )
         }
         DurationBadge(
-            text = "${(clip.duration * 10).roundToInt() / 10.0}초",
+            text = stringResource(Res.string.seconds, ((clip.duration * 10).roundToInt() / 10.0).toString()),
             modifier = Modifier.align(Alignment.BottomStart).padding(start = 6.dp, bottom = 5.dp),
         )
         if (clip.speed != 1.0) {
             Text(
-                text = "${clip.speed.toSpeedLabel()}배",
+                text = stringResource(Res.string.speed_factor, clip.speed.toSpeedLabel()),
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(start = 6.dp, top = 5.dp)
@@ -802,7 +807,7 @@ private fun AddClipButton(onClick: () -> Unit, modifier: Modifier) {
         verticalArrangement = Arrangement.spacedBy(1.dp, Alignment.CenterVertically),
     ) {
         Icon(Icons.Rounded.Add, contentDescription = null, tint = MagicColors.Background, modifier = Modifier.size(24.dp))
-        Text(text = "추가", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MagicColors.Background)
+        Text(text = stringResource(Res.string.timeline_add), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MagicColors.Background)
     }
 }
 

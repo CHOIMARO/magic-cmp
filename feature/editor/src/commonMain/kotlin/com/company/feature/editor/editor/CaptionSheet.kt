@@ -45,12 +45,16 @@ import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicTheme
 import com.company.core.domain.model.editor.CaptionStyleType
 import com.company.core.domain.model.editor.scriptLines
+import com.company.feature.editor.resources.*
 import com.company.ui.editor.CaptionText
 import com.company.ui.editor.displayName
 import com.company.ui.editor.look
+import com.company.ui.editor.splitWords
+import org.jetbrains.compose.resources.stringResource
 
 /** Words of the sample caption in the caption style options. */
-private val CaptionSampleWords = listOf("자막", "예시")
+private val CaptionSampleWords: List<String>
+    @Composable get() = stringResource(Res.string.caption_sheet_sample).splitWords()
 
 /** Warning color of a script with more lines than clips. */
 private val WarningColor = com.company.core.designsystem.theme.oklch(0.84f, 0.12f, 70f)
@@ -73,8 +77,8 @@ internal fun CaptionSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         CaptionSourceButton(
             icon = Icons.Rounded.Mic,
-            title = if (progress != null) "만드는 중 $progress%" else "말소리로 만들기",
-            note = "말하는 소리를 알아들어요",
+            title = if (progress != null) stringResource(Res.string.caption_from_speech_progress, progress) else stringResource(Res.string.caption_from_speech),
+            note = stringResource(Res.string.caption_from_speech_note),
             progress = (progress ?: 0) / 100f,
             enabled = !running,
             modifier = Modifier.weight(1f),
@@ -82,8 +86,8 @@ internal fun CaptionSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
         )
         CaptionSourceButton(
             icon = Icons.Outlined.EditNote,
-            title = "글로 만들기",
-            note = "한 줄이 자막 하나가 돼요",
+            title = stringResource(Res.string.caption_from_script),
+            note = stringResource(Res.string.caption_from_script_note),
             progress = 0f,
             enabled = !running,
             modifier = Modifier.weight(1f),
@@ -91,7 +95,7 @@ internal fun CaptionSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
         )
     }
     Text(
-        text = "스타일 · 모든 자막에 바로 적용돼요",
+        text = stringResource(Res.string.caption_style_title),
         modifier = Modifier.padding(bottom = 0.dp),
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
@@ -134,7 +138,7 @@ internal fun CaptionSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
     if (state.project.captions.isNotEmpty()) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MagicButton(
-                text = "재생선에 자막 추가",
+                text = stringResource(Res.string.caption_add_at_playhead),
                 onClick = { onIntent(EditorIntent.AddCaptionAtPlayhead) },
                 modifier = Modifier.weight(1f),
                 style = MagicButtonStyle.SECONDARY,
@@ -142,7 +146,7 @@ internal fun CaptionSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
                 height = 52.dp,
             )
             MagicButton(
-                text = "모두 지우기",
+                text = stringResource(Res.string.caption_clear_all),
                 onClick = { onIntent(EditorIntent.RemoveCaptions) },
                 style = MagicButtonStyle.DANGER,
                 enabled = !running,
@@ -220,7 +224,7 @@ private fun CaptionScriptPage(script: String, clipCount: Int, onIntent: (EditorI
             Box {
                 if (script.isEmpty()) {
                     Text(
-                        text = "한 줄이 자막 하나가 돼요\n다른 곳에서 쓴 대본을 붙여 넣어도 돼요",
+                        text = stringResource(Res.string.caption_script_hint),
                         fontSize = 15.sp,
                         lineHeight = 24.sp,
                         color = MagicColors.OnSurface40,
@@ -234,26 +238,26 @@ private fun CaptionScriptPage(script: String, clipCount: Int, onIntent: (EditorI
         val over = lines.size > clipCount
         Text(
             text = when {
-                lines.isEmpty() -> "줄바꿈으로 자막을 나눠요"
-                over -> "${lines.size}줄 · 구간보다 ${lines.size - clipCount}줄 많아요"
-                else -> "${lines.size}줄"
+                lines.isEmpty() -> stringResource(Res.string.caption_script_empty)
+                over -> stringResource(Res.string.caption_script_over, lines.size, lines.size - clipCount)
+                else -> stringResource(Res.string.caption_script_lines, lines.size)
             },
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             color = if (over) WarningColor else MagicColors.OnSurface70,
         )
-        Text(text = "영상 구간 ${clipCount}개", fontSize = 13.sp, color = MagicColors.OnSurface45)
+        Text(text = stringResource(Res.string.caption_script_clips, clipCount), fontSize = 13.sp, color = MagicColors.OnSurface45)
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         MagicButton(
-            text = "뒤로",
+            text = stringResource(Res.string.back),
             onClick = { onIntent(EditorIntent.CloseCaptionScript) },
             style = MagicButtonStyle.SECONDARY,
             colors = MagicButtonDefaults.colors(MagicButtonStyle.SECONDARY),
             height = MagicButtonStyle.PRIMARY.height,
         )
         MagicButton(
-            text = "자막 넣기",
+            text = stringResource(Res.string.caption_script_insert),
             onClick = { onIntent(EditorIntent.InsertCaptionScript) },
             modifier = Modifier.weight(1f),
             enabled = lines.isNotEmpty(),

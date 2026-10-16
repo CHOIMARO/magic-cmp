@@ -72,6 +72,11 @@ import com.company.core.domain.model.editor.clipAt
 import com.company.core.domain.model.editor.transitionWindows
 import com.company.core.media.openingLook
 import com.company.core.media.transitionLook
+import com.company.feature.editor.resources.Res
+import com.company.feature.editor.resources.delete
+import com.company.feature.editor.resources.play
+import com.company.feature.editor.resources.stage_empty
+import com.company.feature.editor.resources.stage_text_placeholder
 import com.company.ui.editor.OverlayText
 import com.company.ui.editor.TextFrame
 import com.company.ui.editor.centeredAt
@@ -87,6 +92,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 9:16 preview of the project at the playhead.
@@ -177,7 +183,7 @@ internal fun EditorStage(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Icon(Icons.Outlined.VideoLibrary, contentDescription = null, tint = MagicColors.OnSurface60, modifier = Modifier.size(34.dp))
-                Text(text = "아직 영상이 없어요", fontSize = 14.sp, color = MagicColors.OnSurface60)
+                Text(text = stringResource(Res.string.stage_empty), fontSize = 14.sp, color = MagicColors.OnSurface60)
             }
         }
 
@@ -195,7 +201,8 @@ internal fun EditorStage(
         val transformTarget by rememberUpdatedState(project.texts.find { it.id == state.selectedTextId && it.isVisibleAt(state.time) })
         // 글자 시트가 열려 있으면 그 글자를 재생 위치와 상관없이 보여 주고, 입력 중인 문구와 꾸미기를 바로 반영한다.
         val draft = state.textDraft?.takeIf { state.sheet == EditorSheet.TEXT }
-        val liveTexts = remember(project.texts, draft, state.time) { project.liveTexts(draft, state.time) }
+        val textPlaceholder = stringResource(Res.string.stage_text_placeholder)
+        val liveTexts = remember(project.texts, draft, state.time, textPlaceholder) { project.liveTexts(draft, state.time, textPlaceholder) }
         val focusId = when {
             draft != null && !draft.isCaption -> draft.id ?: DRAFT_TEXT_ID
             state.sheet == EditorSheet.ANIMATION -> state.selectedTextId
@@ -236,7 +243,7 @@ internal fun EditorStage(
                     .background(Color.Black.copy(alpha = 0.45f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = "재생", modifier = Modifier.size(32.dp))
+                Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(Res.string.play), modifier = Modifier.size(32.dp))
             }
         }
     }
@@ -514,7 +521,7 @@ private fun BoxScope.TextTransformFrame(
             modifier = Modifier.size(FrameDeleteButtonSize).clip(CircleShape).background(MagicColors.DangerIcon),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Rounded.Delete, contentDescription = "삭제", tint = MagicColors.Background, modifier = Modifier.size(15.dp))
+            Icon(Icons.Rounded.Delete, contentDescription = stringResource(Res.string.delete), tint = MagicColors.Background, modifier = Modifier.size(15.dp))
         }
     }
 }
@@ -572,8 +579,9 @@ private const val DRAFT_TEXT_ID = "__draft"
  *
  * @param draft Draft of the open text sheet, or null.
  * @param time Playhead position.
+ * @param placeholder Text that shows in place of an empty input.
  */
-private fun EditorProject.liveTexts(draft: TextDraft?, time: Double): List<TextOverlay> {
+private fun EditorProject.liveTexts(draft: TextDraft?, time: Double, placeholder: String): List<TextOverlay> {
     if (draft == null || draft.isCaption) return texts
     val show = { overlay: TextOverlay ->
         overlay.copy(text = draft.text, style = draft.style, font = draft.font, sizeStep = draft.sizeStep, decorations = draft.decorations)
@@ -584,7 +592,7 @@ private fun EditorProject.liveTexts(draft: TextDraft?, time: Double): List<TextO
         texts + show(TextOverlay(id = DRAFT_TEXT_ID, text = "", start = time, length = 3.0, style = draft.style, x = 50.0, y = 40.0))
     }.map { overlay ->
         // 비운 입력은 '글자'로 보여 준다.
-        if (overlay.id == (draft.id ?: DRAFT_TEXT_ID) && overlay.text.isBlank()) overlay.copy(text = "글자", decorations = emptyList()) else overlay
+        if (overlay.id == (draft.id ?: DRAFT_TEXT_ID) && overlay.text.isBlank()) overlay.copy(text = placeholder, decorations = emptyList()) else overlay
     }
 }
 

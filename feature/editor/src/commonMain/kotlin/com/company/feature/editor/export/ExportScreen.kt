@@ -60,9 +60,12 @@ import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.feature.editor.preview.EditorPreviewData
+import com.company.feature.editor.resources.*
 import com.company.ui.editor.formatTime
 import com.company.ui.editor.toColorFilter
 import com.company.ui.media.MediaThumbnail
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Export screen. It only draws [state] and sends user actions to [onIntent].
@@ -82,7 +85,7 @@ internal fun ExportScreen(state: ExportState, onIntent: (ExportIntent) -> Unit) 
         Row(modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             MagicIconButton(
                 icon = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = "뒤로",
+                contentDescription = stringResource(Res.string.back),
                 onClick = { onIntent(ExportIntent.Back) },
                 iconSize = 26.dp,
             )
@@ -166,7 +169,7 @@ private fun ExportThumbnail(state: ExportState) {
  * Content of the setup and running steps.
  *
  * During the export, the save button keeps its size and color and shows the progress
- * ("저장하는 중 n%"). The text button under it changes to "취소".
+ * ("저장하는 중 n%"). The text button under it changes to stringResource(Res.string.cancel).
  */
 @Composable
 private fun ColumnScope.SaveContent(state: ExportState, onIntent: (ExportIntent) -> Unit) {
@@ -176,12 +179,12 @@ private fun ColumnScope.SaveContent(state: ExportState, onIntent: (ExportIntent)
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(text = if (running) "저장하는 중" else "다 됐어요!", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+            Text(text = stringResource(if (running) Res.string.export_saving else Res.string.export_done), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
             Text(
                 text = if (running) {
-                    "앱을 닫지 말고 잠시만 기다려주세요"
+                    stringResource(Res.string.export_wait)
                 } else {
-                    "${formatTime(state.project.totalDuration)} · ${state.resolution.label} · 약 ${state.estimatedMegabytes}MB"
+                    stringResource(Res.string.export_summary, formatTime(state.project.totalDuration), state.resolution.label, state.estimatedMegabytes)
                 },
                 fontSize = 14.sp,
                 color = MagicColors.OnSurface60,
@@ -198,18 +201,18 @@ private fun ColumnScope.SaveContent(state: ExportState, onIntent: (ExportIntent)
         }
         Spacer(modifier = Modifier.weight(1f))
         MagicButton(
-            text = "저장하기",
+            text = stringResource(Res.string.export_save),
             onClick = { onIntent(ExportIntent.Start) },
             modifier = Modifier.fillMaxWidth(),
             style = MagicButtonStyle.PRIMARY,
             leadingIcon = Icons.Rounded.Download,
-            loading = if (running) MagicButtonLoading.Progress(label = "저장하는 중", fraction = state.progress / 100f) else null,
+            loading = if (running) MagicButtonLoading.Progress(label = stringResource(Res.string.export_saving), fraction = state.progress / 100f) else null,
         )
         MagicButton(
             text = when {
-                running -> "취소"
-                state.showOptions -> "화질 설정 닫기"
-                else -> "화질 바꾸기"
+                running -> stringResource(Res.string.cancel)
+                state.showOptions -> stringResource(Res.string.export_close_quality)
+                else -> stringResource(Res.string.export_change_quality)
             },
             onClick = { onIntent(if (running) ExportIntent.Cancel else ExportIntent.ToggleOptions) },
             modifier = Modifier.align(Alignment.CenterHorizontally).offset(y = (-6).dp),
@@ -218,13 +221,13 @@ private fun ColumnScope.SaveContent(state: ExportState, onIntent: (ExportIntent)
     }
 }
 
-private data class ShareTarget(val icon: ImageVector, val label: String)
+private data class ShareTarget(val icon: ImageVector, val label: StringResource)
 
 private val ShareTargets = listOf(
-    ShareTarget(Icons.Outlined.SmartDisplay, "쇼츠"),
-    ShareTarget(Icons.Outlined.PhotoCamera, "릴스"),
-    ShareTarget(Icons.Outlined.Link, "링크 복사"),
-    ShareTarget(Icons.Outlined.Share, "더보기"),
+    ShareTarget(Icons.Outlined.SmartDisplay, Res.string.export_share_shorts),
+    ShareTarget(Icons.Outlined.PhotoCamera, Res.string.export_share_reels),
+    ShareTarget(Icons.Outlined.Link, Res.string.export_share_copy_link),
+    ShareTarget(Icons.Outlined.Share, Res.string.export_share_more),
 )
 
 @Composable
@@ -234,8 +237,8 @@ private fun ColumnScope.DoneContent(onIntent: (ExportIntent) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(text = "갤러리에 저장했어요", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
-            Text(text = "바로 올려볼까요?", fontSize = 14.sp, color = MagicColors.OnSurface60)
+            Text(text = stringResource(Res.string.export_saved), fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+            Text(text = stringResource(Res.string.export_upload_now), fontSize = 14.sp, color = MagicColors.OnSurface60)
         }
         FixedGrid(items = ShareTargets, columns = 4, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { target ->
             Column(
@@ -249,20 +252,20 @@ private fun ColumnScope.DoneContent(onIntent: (ExportIntent) -> Unit) {
                 ) {
                     Icon(target.icon, contentDescription = null, modifier = Modifier.size(26.dp))
                 }
-                Text(text = target.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface80)
+                Text(text = stringResource(target.label), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface80)
             }
         }
         Spacer(modifier = Modifier.weight(1f))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MagicButton(
-                text = "더 편집하기",
+                text = stringResource(Res.string.export_edit_more),
                 onClick = { onIntent(ExportIntent.Back) },
                 modifier = Modifier.weight(1f),
                 style = MagicButtonStyle.SECONDARY,
             )
-            // 디자인의 "홈으로"는 밝은 버튼이다. 스펙에 없는 색이라 보조 버튼 크기에 칩의 눌림 색을 쓴다.
+            // 디자인의 stringResource(Res.string.export_home)는 밝은 버튼이다. 스펙에 없는 색이라 보조 버튼 크기에 칩의 눌림 색을 쓴다.
             MagicButton(
-                text = "홈으로",
+                text = stringResource(Res.string.export_home),
                 onClick = { onIntent(ExportIntent.GoHome) },
                 modifier = Modifier.weight(1f),
                 style = MagicButtonStyle.SECONDARY,
