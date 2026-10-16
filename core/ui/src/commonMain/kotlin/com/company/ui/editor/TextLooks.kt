@@ -14,13 +14,20 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Matrix
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
@@ -29,6 +36,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontSynthesis
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,6 +55,9 @@ import com.company.core.domain.model.editor.TextFontType
 import com.company.core.domain.model.editor.TextOverlay
 import com.company.core.domain.model.editor.TextStyleType
 import com.company.core.domain.model.editor.perCharacter
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.max
 
 /**
  * Shadow behind text. A blur of 0 gives a hard shadow with sharp edges.
@@ -58,6 +69,34 @@ import com.company.core.domain.model.editor.perCharacter
  */
 @Immutable
 data class LookShadow(val color: Color, val offsetY: Float, val blur: Float, val offsetX: Float = 0f)
+
+/**
+ * Band of color on the inner edge of the letters.
+ *
+ * @property color Color of the band. Its alpha is the strength of the band.
+ * @property widthEm Width of the band, as a part of the font size.
+ * @property bottomOnly True to draw the band only on the bottom edges of the letters.
+ */
+@Immutable
+data class LookEdge(val color: Color, val widthEm: Float, val bottomOnly: Boolean = false)
+
+/**
+ * Vertical gradient of the letters. Each line gets the full gradient, from the top to the bottom of its letters.
+ *
+ * @property stops Colors at positions from 0 (top of the letters) to 1 (bottom of the letters).
+ * @property edge Band on the inner edge of the letters, or null.
+ */
+@Immutable
+data class LookFill(val stops: List<Pair<Float, Color>>, val edge: LookEdge? = null)
+
+/**
+ * Soft light around the outline.
+ *
+ * @property color Color of the light. Its alpha is the strength of the light.
+ * @property blurEm Blur radius, as a part of the font size.
+ */
+@Immutable
+data class LookGlow(val color: Color, val blurEm: Float)
 
 /**
  * Visual style of overlay text or caption text.
@@ -89,6 +128,13 @@ data class LookShadow(val color: Color, val offsetY: Float, val blur: Float, val
  * @property animation Entrance and exit of the text.
  * @property widthFactor Factor of the average letter width. Bold and outline decorations make the letters wider,
  *   so fewer letters fit on a line.
+ * @property outlineEm Width of the outline outside the letters, as a part of the font size. 0 uses [outlineWidth].
+ * @property extrude Offset of a solid 3D shadow behind the outline, as parts of the font size, or null.
+ * @property extrudeColor Color of the 3D shadow.
+ * @property glow Soft light around the outline, or null.
+ * @property fill Gradient of the letters, or null for [color].
+ * @property firstWordFill Gradient of the first word, or null for [fill].
+ * @property skewX Slant of the letters. A negative value moves the tops of the letters to the right.
  */
 @Immutable
 data class TextLook(
@@ -116,6 +162,13 @@ data class TextLook(
     val revealByWord: Boolean = false,
     val animation: TextAnimation = TextAnimation(TextEntrance.FADE, entranceMillis = 150, exitMillis = 150),
     val widthFactor: Float = 1f,
+    val outlineEm: Float = 0f,
+    val extrude: Offset? = null,
+    val extrudeColor: Color = Color.Black,
+    val glow: LookGlow? = null,
+    val fill: LookFill? = null,
+    val firstWordFill: LookFill? = null,
+    val skewX: Float = 0f,
 ) {
     /** Copy with the sizes multiplied by [scale]. Previews use it. */
     internal fun scaled(scale: Float): TextLook = if (scale == 1f) this else copy(
@@ -138,6 +191,30 @@ private val ImpactYellow = Color(0xFFFFE14D)
 private val RetroCream = Color(0xFFFFF3D6)
 private val RetroRed = Color(0xFFFF5A5F)
 private val CutePurple = Color(0xFF7B4FD6)
+
+// Thumbnail looks. The colors, the outline widths, and the 3D shadows come from pixels of a reference thumbnail.
+private val ShoutRed = Color(0xFFF83C23)
+private val FlameFill = LookFill(
+    stops = listOf(0f to Color(0xFFF31A3A), 0.5f to Color(0xFFF74A3D), 1f to Color(0xFFF98A4A)),
+    edge = LookEdge(Color(0xD9FFB49A), widthEm = 0.024f, bottomOnly = true),
+)
+private val SparkWhite = LookFill(
+    stops = listOf(0f to Color(0xFFFDFBF8), 1f to Color(0xFFFCF6F2)),
+    edge = LookEdge(Color(0x80F6D0CC), widthEm = 0.018f),
+)
+private val SparkYellow = LookFill(
+    stops = listOf(0f to Color(0xFFFFF368), 0.8f to Color(0xFFFEF168), 1f to Color(0xFFFEE671)),
+    edge = LookEdge(Color(0x99F2B65A), widthEm = 0.018f),
+)
+private val DashPeach = LookFill(
+    stops = listOf(0f to Color(0xFFFFFFFF), 0.3f to Color(0xFFFDFAF6), 0.55f to Color(0xFFFEE6C0), 1f to Color(0xFFFDDAB3)),
+)
+private val DashYellow = LookFill(
+    stops = listOf(0f to Color(0xFFFBDF42), 0.3f to Color(0xFFFCDD3B), 0.55f to Color(0xFFFCCB2F), 1f to Color(0xFFFBC02C)),
+)
+
+/** Most steps of a 3D shadow. One step is about one pixel. */
+private const val MAX_EXTRUDE_STEPS = 24
 
 /** Fade-out length of a title, from the spec. */
 private const val TITLE_EXIT_MILLIS = 200
@@ -236,6 +313,30 @@ fun TextStyleType.look(
             shadows = listOf(LookShadow(Color.Black.copy(alpha = 0.5f), offsetY = 0.5f, blur = 5f)),
             textAlign = TextAlign.Start, boxWidthRatio = 0.7f,
             animation = TextAnimation(TextEntrance.FADE_UP, entranceMillis = 700, exitMillis = TITLE_EXIT_MILLIS),
+        )
+        TextStyleType.SHOUT -> base.copy(
+            font = TextFontType.STRONG_ARMY, fontSize = 30f, color = ShoutRed, shadows = emptyList(),
+            outline = true, outlineEm = 0.021f, outlineColor = Color(0xFF3D0D0D),
+            extrude = Offset(0.035f, 0.035f), extrudeColor = Color(0xFF170E18),
+        )
+        TextStyleType.FLAME -> base.copy(
+            font = TextFontType.OK_GUNG, fontSize = 28f, color = Color(0xFFF74A3D), fill = FlameFill, shadows = emptyList(),
+            outline = true, outlineEm = 0.021f, outlineColor = Color(0xFF3D0C08),
+            extrude = Offset(0.034f, 0.026f), extrudeColor = Color(0xFF230E0E),
+            glow = LookGlow(Color(0x59D8304A), blurEm = 0.05f),
+        )
+        TextStyleType.SPARK -> base.copy(
+            font = TextFontType.KUKDETOPOKKI, fontSize = 27f, color = Color(0xFFFEF268), fill = SparkYellow, firstWordFill = SparkWhite,
+            shadows = emptyList(), outline = true, outlineEm = 0.035f, outlineColor = Color(0xFF3D1707),
+            extrude = Offset(0.026f, 0.026f), extrudeColor = Color(0xFF29110B),
+            glow = LookGlow(Color(0x99F07E5E), blurEm = 0.1f),
+        )
+        TextStyleType.DASH -> base.copy(
+            font = TextFontType.ESAMANRU, fontSize = 27f, color = Color(0xFFFCCB2F), fill = DashYellow,
+            firstWordFill = DashPeach, shadows = emptyList(), outline = true, outlineEm = 0.036f,
+            outlineColor = Color(0xFF343F8E), extrude = Offset(-0.005f, 0.069f), extrudeColor = Color(0xFF223FA6),
+            // 기울인 글자의 윗부분이 글자 상자 밖으로 나가지 않게 좌우를 조금 띄운다.
+            skewX = -0.15f, paddingHorizontal = 3f,
         )
     }
     val stepFactor = SizeStepFactors[sizeStep.coerceIn(1, SizeStepFactors.size) - 1]
@@ -387,6 +488,15 @@ private enum class TextLayer {
 
     /** MAIN : The letters with their colors and the near shadow of the style. */
     MAIN,
+
+    /** FILL_ALL : The gradient fill of all words. */
+    FILL_ALL,
+
+    /** FILL_FIRST : The gradient fill of the first word. */
+    FILL_FIRST,
+
+    /** FILL_REST : The gradient fill of the words after the first word. */
+    FILL_REST,
 }
 
 /**
@@ -430,6 +540,8 @@ private fun LookText(
         lineHeight = 1.25.em,
         textAlign = look.textAlign,
     )
+    val outlineStrokePx = if (look.outlineEm > 0f) look.outlineEm * fontSizePx * 2 else with(density) { (look.outlineWidth * fit).dp.toPx() }
+    val outlineLayout = remember { LayoutRef() }
     val hasDecorations = decorations.isNotEmpty()
     val decorationShadow = remember(density) { DecorationShadow.toShadow(density) }
 
@@ -457,6 +569,20 @@ private fun LookText(
                             fontWeight = if (decoration?.bold == true && boldWeight != null) boldWeight else null,
                             shadow = if (onBackground) Shadow.None else null,
                         )
+                        TextLayer.FILL_ALL, TextLayer.FILL_FIRST, TextLayer.FILL_REST -> {
+                            val inGroup = when (kind) {
+                                TextLayer.FILL_FIRST -> char.word == 0
+                                TextLayer.FILL_REST -> char.word > 0
+                                else -> true
+                            }
+                            // 꾸미기 색이나 배경이 있는 글자는 그라데이션을 덮지 않고 꾸미기 색을 보여 준다.
+                            // 칠할 글자에는 색을 두지 않는다. 그래야 나중에 다른 색으로 다시 그릴 수 있다.
+                            if (inGroup && decoration?.color == null && !onBackground) {
+                                SpanStyle(fontWeight = if (decoration?.bold == true && boldWeight != null) boldWeight else null)
+                            } else {
+                                SpanStyle(color = Color.Transparent)
+                            }
+                        }
                     }
                 }
                 val letter = if (char.word < 0) ' ' else text[char.source]
@@ -478,16 +604,19 @@ private fun LookText(
                 rotationZ = look.rotation
             }
             .drawWithContent {
-                if (frame.textReveal >= 1f) {
-                    drawContent()
-                } else {
-                    // 스펙처럼 위아래와 왼쪽은 넉넉히 남겨서, 그림자와 테두리가 잘리지 않게 한다.
-                    clipRect(
-                        left = -size.width * 0.1f,
-                        top = -size.height * 0.3f,
-                        right = size.width * frame.textReveal,
-                        bottom = size.height * 1.3f,
-                    ) { this@drawWithContent.drawContent() }
+                // 기울임은 그리기 단계에서 준다. iOS(Skia)의 글자 배치는 TextGeometricTransform을 그리지 않는다.
+                withTransform({ if (look.skewX != 0f) transform(skewMatrix(look.skewX, size.height / 2)) }) {
+                    if (frame.textReveal >= 1f) {
+                        this@drawWithContent.drawContent()
+                    } else {
+                        // 스펙처럼 위아래와 왼쪽은 넉넉히 남겨서, 그림자와 테두리가 잘리지 않게 한다.
+                        clipRect(
+                            left = -size.width * 0.1f,
+                            top = -size.height * 0.3f,
+                            right = size.width * frame.textReveal,
+                            bottom = size.height * 1.3f,
+                        ) { this@drawWithContent.drawContent() }
+                    }
                 }
             }
             .drawBehind {
@@ -508,7 +637,8 @@ private fun LookText(
                 },
             )
         }
-        // 아래 레이어부터 그린다: 먼 그림자 → 꾸미기 그림자 → 테두리 → 본문(가까운 그림자 포함).
+        // 아래 레이어부터 그린다: 먼 그림자 → 꾸미기 그림자 → 빛·입체 그림자 → 테두리 → 본문(가까운 그림자 포함)
+        // → 그라데이션.
         look.shadows.drop(1).reversed().forEach { shadow ->
             Text(text = layer(TextLayer.FAR_SHADOW), style = style.copy(shadow = shadow.toShadow(density)), softWrap = false)
         }
@@ -518,11 +648,13 @@ private fun LookText(
         if (look.outline) {
             Text(
                 text = layer(TextLayer.STYLE_OUTLINE),
-                style = style.copy(
-                    color = look.outlineColor,
-                    drawStyle = Stroke(width = with(density) { (look.outlineWidth * fit).dp.toPx() }, join = StrokeJoin.Round),
-                ),
+                style = style.copy(color = look.outlineColor, drawStyle = Stroke(width = outlineStrokePx, join = StrokeJoin.Round)),
                 softWrap = false,
+                onTextLayout = { outlineLayout.value = it },
+                modifier = if (look.glow == null && look.extrude == null) Modifier else Modifier.drawWithContent {
+                    outlineLayout.value?.let { drawUnderOutline(it, look, fontSizePx, outlineStrokePx) }
+                    drawContent()
+                },
             )
         }
         if (hasDecorations && decorations.any { it.decoration.outline }) {
@@ -545,7 +677,130 @@ private fun LookText(
             softWrap = false,
             onTextLayout = { mainLayout = it },
         )
+        look.fill?.let { fill ->
+            val firstWordFill = look.firstWordFill
+            if (firstWordFill == null) {
+                FillText(layer(TextLayer.FILL_ALL), style, fill, look.font, fontSizePx)
+            } else {
+                FillText(layer(TextLayer.FILL_FIRST), style, firstWordFill, look.font, fontSizePx)
+                FillText(layer(TextLayer.FILL_REST), style, fill, look.font, fontSizePx)
+            }
+        }
     }
+}
+
+/**
+ * Matrix that slants the drawing horizontally around a row.
+ *
+ * @param skewX Slant. A negative value moves the parts above [pivotY] to the right.
+ * @param pivotY Row that does not move.
+ */
+private fun skewMatrix(skewX: Float, pivotY: Float): Matrix = Matrix().apply {
+    values[Matrix.SkewX] = skewX
+    values[Matrix.TranslateX] = -skewX * pivotY
+}
+
+/** Last text layout of a layer. The drawing of the layer reads the lines from it. */
+private class LayoutRef {
+    var value: TextLayoutResult? = null
+}
+
+/** Number of times that the glow draws. More passes make the light stronger. */
+private const val GLOW_PASSES = 2
+
+/**
+ * Draws the glow and the 3D shadow of [look] under the outline.
+ *
+ * @param layout Layout of the outline layer.
+ * @param look Visual style.
+ * @param fontSizePx Font size in pixels.
+ * @param strokePx Width of the outline stroke in pixels.
+ */
+private fun DrawScope.drawUnderOutline(layout: TextLayoutResult, look: TextLook, fontSizePx: Float, strokePx: Float) {
+    val stroke = Stroke(width = strokePx, join = StrokeJoin.Round)
+    look.glow?.let { glow ->
+        val shadow = Shadow(color = glow.color, offset = Offset.Zero, blurRadius = glow.blurEm * fontSizePx)
+        // 테두리 색 획은 위의 테두리 층에 가려지고, 번진 빛만 남는다.
+        repeat(GLOW_PASSES) { drawText(layout, color = look.outlineColor, drawStyle = stroke, shadow = shadow) }
+    }
+    look.extrude?.let { extrude ->
+        val dx = extrude.x * fontSizePx
+        val dy = extrude.y * fontSizePx
+        // 1픽셀 간격으로 글자를 겹쳐 그려서 끊김 없는 입체 그림자를 만든다.
+        val steps = ceil(max(abs(dx), abs(dy))).toInt().coerceIn(1, MAX_EXTRUDE_STEPS)
+        for (step in steps downTo 1) {
+            val at = Offset(dx * step / steps, dy * step / steps)
+            drawText(layout, color = look.extrudeColor, topLeft = at, drawStyle = Fill)
+            drawText(layout, color = look.extrudeColor, topLeft = at, drawStyle = stroke)
+        }
+    }
+}
+
+/**
+ * Letters of one fill group with a vertical gradient on each line, and the inner edge band of the fill.
+ *
+ * @param text Text of the group. The letters outside the group are transparent.
+ * @param style Text style of the layers.
+ * @param fill Gradient and edge band.
+ * @param font Font of the text. Its letter bounds place the gradient.
+ * @param fontSizePx Font size in pixels.
+ */
+@Composable
+private fun FillText(text: AnnotatedString, style: TextStyle, fill: LookFill, font: TextFontType, fontSizePx: Float) {
+    val layoutRef = remember { LayoutRef() }
+    Text(
+        text = text,
+        style = style.copy(color = Color.White),
+        softWrap = false,
+        onTextLayout = { layoutRef.value = it },
+        modifier = Modifier.drawWithContent {
+            val layout = layoutRef.value ?: run {
+                drawContent()
+                return@drawWithContent
+            }
+            // 기울인 글자와 줄 밖으로 나온 획도 칠하도록 그리는 영역을 넓힌다.
+            val bounds = Rect(-fontSizePx, -fontSizePx, size.width + fontSizePx, size.height + fontSizePx)
+            drawContext.canvas.saveLayer(bounds, Paint())
+            drawContent()
+            drawLineGradients(layout, fill, font, fontSizePx, bounds)
+            drawContext.canvas.restore()
+            fill.edge?.let { drawInnerEdge(layout, it, fontSizePx, bounds) }
+        },
+    )
+}
+
+/** Colors the letters of the current layer with the gradient. Each line gets the full gradient. */
+private fun DrawScope.drawLineGradients(layout: TextLayoutResult, fill: LookFill, font: TextFontType, fontSizePx: Float, bounds: Rect) {
+    val (topEm, bottomEm) = font.letterBoundsEm
+    val stops = fill.stops.toTypedArray()
+    val last = layout.lineCount - 1
+    for (line in 0..last) {
+        val baseline = layout.getLineBaseline(line)
+        val top = if (line == 0) bounds.top else layout.getLineTop(line)
+        val bottom = if (line == last) bounds.bottom else layout.getLineBottom(line)
+        drawRect(
+            brush = Brush.verticalGradient(*stops, startY = baseline - topEm * fontSizePx, endY = baseline + bottomEm * fontSizePx),
+            topLeft = Offset(bounds.left, top),
+            size = Size(bounds.width, bottom - top),
+            blendMode = BlendMode.SrcIn,
+        )
+    }
+}
+
+/** Draws the band of [edge] on the inner edge of the letters. */
+private fun DrawScope.drawInnerEdge(layout: TextLayoutResult, edge: LookEdge, fontSizePx: Float, bounds: Rect) {
+    val width = edge.widthEm * fontSizePx
+    drawContext.canvas.saveLayer(bounds, Paint())
+    if (edge.bottomOnly) {
+        // 글자에서 위로 옮긴 글자를 빼면 아래 가장자리만 남는다.
+        drawText(layout, color = edge.color)
+        drawText(layout, color = Color.Black, topLeft = Offset(0f, -width), blendMode = BlendMode.DstOut)
+    } else {
+        // 가장자리 획에서 글자 안쪽 부분만 남긴다.
+        drawText(layout, color = edge.color, drawStyle = Stroke(width = width * 2, join = StrokeJoin.Round))
+        drawText(layout, color = Color.Black, drawStyle = Fill, blendMode = BlendMode.DstIn)
+    }
+    drawContext.canvas.restore()
 }
 
 /** Color of a letter in the main layer. A background decoration decides it first, then a color decoration. */
@@ -668,7 +923,34 @@ internal val TextFontType.boldWeight: FontWeight?
         TextFontType.GOWUN_BATANG, TextFontType.GAEGU, TextFontType.DONGLE, TextFontType.NEUJOH -> FontWeight.Bold
         TextFontType.NANUM_PEN, TextFontType.BLACK_HAN_SANS, TextFontType.DO_HYEON, TextFontType.JUA,
         TextFontType.GUGI, TextFontType.SONG_MYUNG, TextFontType.KKUBULIM, TextFontType.MYOEUN_HEULLIM,
-        TextFontType.GELLYROLL, TextFontType.MONA12, TextFontType.OK_DANDAN -> null
+        TextFontType.GELLYROLL, TextFontType.MONA12, TextFontType.OK_DANDAN, TextFontType.STRONG_ARMY,
+        TextFontType.KUKDETOPOKKI, TextFontType.ESAMANRU, TextFontType.OK_GUNG -> null
+    }
+
+/**
+ * Top of the letters above the baseline and bottom of the letters below the baseline, as parts of the font size.
+ * A gradient fill spans this range on each line. The values come from the measured Hangul letters of each font.
+ */
+internal val TextFontType.letterBoundsEm: Pair<Float, Float>
+    get() = when (this) {
+        TextFontType.PRETENDARD -> 0.79f to 0.08f
+        TextFontType.GOWUN_BATANG -> 0.88f to 0.10f
+        TextFontType.NANUM_PEN -> 0.77f to 0.16f
+        TextFontType.BLACK_HAN_SANS -> 0.78f to 0.01f
+        TextFontType.DO_HYEON -> 0.76f to 0.02f
+        TextFontType.JUA -> 0.81f to 0.05f
+        TextFontType.KKUBULIM, TextFontType.MYOEUN_HEULLIM -> 0.76f to 0.16f
+        TextFontType.GELLYROLL -> 0.73f to 0.13f
+        TextFontType.MONA12 -> 0.83f to 0.08f
+        TextFontType.NEUJOH -> 0.80f to 0.09f
+        TextFontType.OK_DANDAN -> 0.74f to 0.15f
+        TextFontType.STRONG_ARMY -> 0.82f to 0.05f
+        TextFontType.KUKDETOPOKKI, TextFontType.ESAMANRU -> 0.77f to 0.15f
+        TextFontType.OK_GUNG -> 0.79f to 0.14f
+        TextFontType.GAEGU -> 0.76f to 0.24f
+        TextFontType.DONGLE -> 0.52f to 0.39f
+        TextFontType.GUGI -> 0.83f to 0.08f
+        TextFontType.SONG_MYUNG -> 0.80f to 0.07f
     }
 
 /** Splits a text into words at spaces. */

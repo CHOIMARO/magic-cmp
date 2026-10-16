@@ -1,0 +1,10 @@
+OK Gung (읏궁체)
+Copyright (c) OK Holdings co., Ltd. All Rights Reserved. Font made by DDUNGSANG CORP.
+
+Source: Official free download of OK Holdings (OK금융그룹).
+
+Check before release: The license text was not in the download. Confirm the terms for embedding in apps with
+OK Holdings. The OkFont license of Ok단단체 (OKTICON) permits embedding in programs, but that license may not
+apply to this font.
+
+The app includes the font file without changes, only to draw text in the app.

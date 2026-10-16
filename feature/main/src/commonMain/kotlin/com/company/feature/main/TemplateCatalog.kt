@@ -27,6 +27,10 @@ internal object TemplateCatalog {
         EditorTemplate.Layout(LayoutType.BEFORE_AFTER),
         EditorTemplate.Layout(LayoutType.POLAROID),
         EditorTemplate.Text(TextStyleType.NEON),
+        EditorTemplate.Text(TextStyleType.SHOUT),
+        EditorTemplate.Text(TextStyleType.FLAME),
+        EditorTemplate.Text(TextStyleType.SPARK),
+        EditorTemplate.Text(TextStyleType.DASH),
         EditorTemplate.Caption(CaptionStyleType.BIG),
     )
 }

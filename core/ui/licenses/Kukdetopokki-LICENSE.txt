@@ -1,0 +1,15 @@
+Sandoll Kukdetopokki (국대떡볶이체) 02 Bold
+Copyright (c) 2015 Sandoll Communications Inc. & Kukde F&B
+
+Source: https://www.sandollcloud.com/free-font/218/Sandoll-Kukdetopokki (Sandoll Cloud free font)
+
+Summary of the license (from the source page):
+- Individuals and companies can use the font for commercial purposes free of charge.
+- Embedding in websites and program servers, and making e-books, are permitted.
+- You must not use the font for CI or BI.
+- Only the owner of the rights can change or sell the font. Use the font in the distributed form.
+- You must not sell the font file.
+
+Check before release: The source page does not state embedding in app UI. Ask Sandoll for a written confirmation.
+
+The app includes the font file without changes, only to draw text in the app.

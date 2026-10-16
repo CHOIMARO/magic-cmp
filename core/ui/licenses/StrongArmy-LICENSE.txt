@@ -1,0 +1,13 @@
+Strong Army (강한육군체) Bold
+Copyright (C) ROKA (Republic of Korea Army). All Rights Reserved.
+
+Source: Republic of Korea Army homepage and official blog (강한육군체 free distribution, January 2021)
+
+Summary of the license (from news reports of the distribution):
+- Anyone can use the font free of charge, for documents, video, and printing.
+- You must not transfer or sell the font for money.
+- You must not change the distributed form of the font.
+
+Check before release: The reports do not state embedding in apps. Confirm the terms on the official page.
+
+The app includes the font file without changes, only to draw text in the app.

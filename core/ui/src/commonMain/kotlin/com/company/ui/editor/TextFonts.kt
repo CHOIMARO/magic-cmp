@@ -12,16 +12,20 @@ import com.company.core.domain.repository.FontFiles
 import com.company.ui.resources.Res
 import com.company.ui.resources.black_han_sans
 import com.company.ui.resources.do_hyeon
+import com.company.ui.resources.esamanru_bold
 import com.company.ui.resources.gellyroll
 import com.company.ui.resources.gowun_batang_bold
 import com.company.ui.resources.jua
 import com.company.ui.resources.kkubulim
+import com.company.ui.resources.kukdetopokki_bold
 import com.company.ui.resources.mona12_text_kr
 import com.company.ui.resources.myoeun_heullim
 import com.company.ui.resources.nanum_pen_script
 import com.company.ui.resources.neujoh_bold
 import com.company.ui.resources.neujoh_regular
 import com.company.ui.resources.ok_dandan
+import com.company.ui.resources.ok_gung
+import com.company.ui.resources.strong_army_bold
 import org.jetbrains.compose.resources.Font
 
 /**
@@ -52,6 +56,11 @@ fun TextFontType.fontFamily(): FontFamily = when (this) {
     TextFontType.NEUJOH -> FontFamily(Font(Res.font.neujoh_regular, weight = FontWeight.Normal), Font(Res.font.neujoh_bold, weight = FontWeight.Bold))
     // Ok단단체는 굵은 글꼴 파일 하나뿐이다. 파일의 굵기(500)와 상관없이 모든 굵기에 이 파일을 쓴다.
     TextFontType.OK_DANDAN -> FontFamily(Font(Res.font.ok_dandan))
+    // 아래 글꼴은 썸네일 템플릿에 쓰는 Bold 파일만 넣었다. 모든 굵기에 이 파일을 쓴다.
+    TextFontType.STRONG_ARMY -> FontFamily(Font(Res.font.strong_army_bold))
+    TextFontType.KUKDETOPOKKI -> FontFamily(Font(Res.font.kukdetopokki_bold))
+    TextFontType.ESAMANRU -> FontFamily(Font(Res.font.esamanru_bold))
+    TextFontType.OK_GUNG -> FontFamily(Font(Res.font.ok_gung))
     TextFontType.GAEGU, TextFontType.DONGLE, TextFontType.GUGI, TextFontType.SONG_MYUNG -> downloadedFontFamily(this)
 }
 

@@ -275,6 +275,10 @@ internal val TextFontType.glyphWidthRatio: Float
         TextFontType.GELLYROLL -> 0.9f
         TextFontType.MONA12 -> 1.1f
         TextFontType.NEUJOH -> 0.57f
+        TextFontType.STRONG_ARMY -> 0.97f
+        TextFontType.KUKDETOPOKKI -> 1.02f
+        TextFontType.ESAMANRU -> 1.04f
+        TextFontType.OK_GUNG -> 1.1f
     }
 
 /**

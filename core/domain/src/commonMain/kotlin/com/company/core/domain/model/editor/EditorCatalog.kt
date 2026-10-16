@@ -31,11 +31,16 @@ enum class LayoutType(val clipCount: Int) {
     CINEMA(1),
 }
 
-/** Look of a text overlay. */
-enum class TextStyleType { BOLD, BOX, OUTLINE, SERIF, NEON, MARKER, TAG, HAND, IMPACT, RETRO, CUTE, MINIMAL }
+/**
+ * Look of a text overlay.
+ *
+ * SHOUT, FLAME, SPARK, and DASH are the thumbnail looks: heavy letters with an outline and a solid 3D shadow.
+ */
+enum class TextStyleType { BOLD, BOX, OUTLINE, SERIF, NEON, MARKER, TAG, HAND, IMPACT, RETRO, CUTE, MINIMAL, SHOUT, FLAME, SPARK, DASH }
 
 /**
- * Font of a text overlay. All fonts use the SIL Open Font License 1.1.
+ * Font of a text overlay. The downloadable fonts use the SIL Open Font License 1.1. The license notices of the fonts
+ * in the app are in the `licenses` folder of core:ui.
  *
  * @property downloadable True when the app does not include the font file. The app downloads the file the first
  *   time that the user picks the font.
@@ -77,6 +82,18 @@ enum class TextFontType(val downloadable: Boolean = false, val isNew: Boolean = 
 
     /** OkDanDan (Ok단단체), a heavy display font. */
     OK_DANDAN(isNew = true),
+
+    /** Strong Army Bold (강한육군체), a narrow heavy font of the Republic of Korea Army. */
+    STRONG_ARMY(isNew = true),
+
+    /** Sandoll Kukdetopokki Bold (국대떡볶이체), a heavy round brush font. */
+    KUKDETOPOKKI(isNew = true),
+
+    /** Esamanru Bold (이사만루체), a heavy gothic font of Gong Games. */
+    ESAMANRU(isNew = true),
+
+    /** OK Gung (읏궁체), a heavy brush font of OK Holdings. */
+    OK_GUNG(isNew = true),
 
     /** Gaegu (개구쟁이), a playful handwriting font. */
     GAEGU(downloadable = true, isNew = true),

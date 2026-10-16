@@ -1,0 +1,12 @@
+Esamanru (이사만루체) Bold
+Copyright (c) 2020 GONGGAMES (공게임즈). All rights reserved. Font designed by FONTRIX Inc.
+
+Source: http://gonggames.com (GONGGAMES free font)
+
+Summary of the license (from the font listing):
+- Anyone can use the font free of charge, also for commercial purposes.
+- You must not change the font and sell it.
+
+Check before release: Confirm the terms for embedding in apps on the official page.
+
+The app includes the font file without changes, only to draw text in the app.

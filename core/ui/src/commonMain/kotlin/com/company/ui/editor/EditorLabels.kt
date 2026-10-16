@@ -62,6 +62,10 @@ val TextStyleType.displayName: String
         TextStyleType.RETRO -> "레트로"
         TextStyleType.CUTE -> "말랑"
         TextStyleType.MINIMAL -> "미니멀"
+        TextStyleType.SHOUT -> "버럭"
+        TextStyleType.FLAME -> "불꽃"
+        TextStyleType.SPARK -> "반짝"
+        TextStyleType.DASH -> "질주"
     }
 
 /** Display name of the font. */
@@ -79,6 +83,10 @@ val TextFontType.displayName: String
         TextFontType.MONA12 -> "Mona12"
         TextFontType.NEUJOH -> "느좋체"
         TextFontType.OK_DANDAN -> "Ok단단체"
+        TextFontType.STRONG_ARMY -> "강한육군체"
+        TextFontType.KUKDETOPOKKI -> "국대떡볶이체"
+        TextFontType.ESAMANRU -> "이사만루체"
+        TextFontType.OK_GUNG -> "읏궁체"
         TextFontType.GAEGU -> "개구쟁이"
         TextFontType.DONGLE -> "동글"
         TextFontType.GUGI -> "구기"
