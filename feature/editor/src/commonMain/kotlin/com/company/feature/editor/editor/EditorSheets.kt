@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -48,6 +47,7 @@ import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.bleedHorizontal
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.component.selectionRing
+import com.company.core.designsystem.component.sheetIme
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
@@ -79,13 +79,14 @@ internal val SheetBottomPadding = 22.dp
 internal val SheetKeyboardBottomPadding = 10.dp
 
 /**
- * Tells if the keyboard of the window is open. Call it in the sheet content, because the sheet is a separate window.
+ * Tells if the keyboard is open. Call it in the sheet content, because the sheet gives the keyboard insets
+ * ([WindowInsets.sheetIme]).
  *
  * @return State that is true while the keyboard is open or moves.
  */
 @Composable
 internal fun rememberKeyboardOpen(): State<Boolean> {
-    val keyboard = WindowInsets.ime
+    val keyboard = WindowInsets.sheetIme
     val density = LocalDensity.current
     return remember(keyboard, density) { derivedStateOf { keyboard.getBottom(density) > 0 } }
 }

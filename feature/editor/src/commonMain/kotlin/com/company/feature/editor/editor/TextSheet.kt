@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -83,6 +82,7 @@ import com.company.core.designsystem.component.SheetHeaderButtonHeight
 import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.bleedHorizontal
 import com.company.core.designsystem.component.pressClickable
+import com.company.core.designsystem.component.sheetIme
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicTheme
 import com.company.core.domain.model.editor.Decoration
@@ -172,7 +172,7 @@ internal fun TextSheet(state: EditorState, onIntent: (EditorIntent) -> Unit, onC
         // 입력한 글자를 카드에 그대로 보여 준다. 비어 있으면 예시 글자를 쓴다.
         val sampleText = draft.text.trim().ifEmpty { SAMPLE_TEXT }
         if (keyboardOpen) {
-            val keyboardAboveBars = WindowInsets.ime.exclude(WindowInsets.systemBars.union(WindowInsets.displayCutout))
+            val keyboardAboveBars = WindowInsets.sheetIme.exclude(WindowInsets.systemBars.union(WindowInsets.displayCutout))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

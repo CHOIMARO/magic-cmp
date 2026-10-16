@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.offset
@@ -16,12 +17,14 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -35,6 +38,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -83,6 +87,16 @@ private const val ScrimFadeTimeoutMs = 500L
 private const val ImeStartTimeoutMs = 150L
 
 private val SheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+
+/** Keyboard insets of the content of the open [MagicModalBottomSheet], or null outside a sheet. */
+private val LocalSheetKeyboardInsets = staticCompositionLocalOf<WindowInsets?> { null }
+
+/**
+ * Keyboard insets for the content of a [MagicModalBottomSheet]. Read them in the sheet content instead of
+ * [WindowInsets.ime], so that Android and iOS get the same keyboard height. Outside a sheet they are [WindowInsets.ime].
+ */
+val WindowInsets.Companion.sheetIme: WindowInsets
+    @Composable get() = LocalSheetKeyboardInsets.current ?: WindowInsets.ime
 
 /**
  * Modal bottom sheet of the app. It wraps the M3 [ModalBottomSheet].
@@ -300,6 +314,8 @@ private fun MagicModalBottomSheetContainer(
     }
     // 확장형 시트는 제스처 닫기가 꺼져 있어도 끌어서 키우고 접을 수 있어야 한다.
     val dragEnabled = gestureDismissEnabled || expansionState != null
+    // 시트 밖(화면)의 키보드 인셋. iOS에서는 시트 안의 키보드 인셋이 0이므로 이 값을 시트 콘텐츠에 넘긴다.
+    val windowImeInsets = WindowInsets.ime
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -319,6 +335,13 @@ private fun MagicModalBottomSheetContainer(
         containerColor = containerColor,
         contentColor = contentColor,
         scrimColor = scrimColor,
+        // Android는 M3가 키보드 인셋을 먼저 소비해서, 키보드가 열리면 시트 아래 시스템 바 여백이 없어진다.
+        // iOS는 키보드가 열려도 홈 인디케이터 여백이 남으므로, 키보드 높이만큼 빼서 Android와 맞춘다.
+        contentWindowInsets = if (SheetWindowHasKeyboardInsets) {
+            { BottomSheetDefaults.windowInsets }
+        } else {
+            { BottomSheetDefaults.windowInsets.exclude(windowImeInsets) }
+        },
         // 시트 밖(scrim) 터치 닫기는 제스처 닫기와 한 묶음으로 손잡이 시트에서만 허용한다.
         // 뒤로가기 닫기는 아래 SystemBackHandler가 동적으로 제어한다. M3는 다이얼로그를 만들 때의
         // shouldDismissOnBackPress만 반영하고 이후 변경은 무시하므로 true로 고정한다.
@@ -341,7 +364,8 @@ private fun MagicModalBottomSheetContainer(
     ) {
         // Android에서 시트는 별도 다이얼로그 윈도우이므로 IME 인셋과 키보드도 이 윈도우의 것을 써야 한다.
         // 시트 밖(화면 윈도우)의 키보드 컨트롤러로는 시트 안 입력창의 키보드를 내릴 수 없다.
-        val dialogImeInsets = WindowInsets.ime
+        // iOS에서는 시트 안의 IME 인셋이 0이므로 시트 밖의 IME 인셋을 쓴다.
+        val dialogImeInsets = if (SheetWindowHasKeyboardInsets) WindowInsets.ime else windowImeInsets
         val dialogFocusManager = LocalFocusManager.current
         val dialogKeyboardController = LocalSoftwareKeyboardController.current
         SideEffect {
@@ -385,7 +409,9 @@ private fun MagicModalBottomSheetContainer(
                     onDragStopped = { velocity -> swipeController.endDrag(velocity) },
                 ),
         ) {
-            content()
+            CompositionLocalProvider(LocalSheetKeyboardInsets provides dialogImeInsets) {
+                content()
+            }
         }
     }
 }
