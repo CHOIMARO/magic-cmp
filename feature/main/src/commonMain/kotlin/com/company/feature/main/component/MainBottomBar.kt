@@ -14,15 +14,23 @@ import androidx.compose.ui.unit.dp
 import com.company.core.designsystem.component.MagicTabPill
 import com.company.core.designsystem.theme.MagicColors
 import com.company.feature.main.MainTab
+import com.company.feature.main.resources.Res
+import com.company.feature.main.resources.tab_home
+import com.company.feature.main.resources.tab_library
+import com.company.feature.main.resources.tab_my
+import com.company.feature.main.resources.tab_templates
+import org.jetbrains.compose.resources.stringResource
 
 /** Label of the tab in the bottom tabs. */
 private val MainTab.label: String
-    get() = when (this) {
-        MainTab.HOME -> "홈"
-        MainTab.TEMPLATES -> "템플릿"
-        MainTab.LIBRARY -> "내 영상"
-        MainTab.MY -> "마이"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            MainTab.HOME -> Res.string.tab_home
+            MainTab.TEMPLATES -> Res.string.tab_templates
+            MainTab.LIBRARY -> Res.string.tab_library
+            MainTab.MY -> Res.string.tab_my
+        }
+    )
 
 /**
  * Bottom tabs: four pills that float on top of the tab content.

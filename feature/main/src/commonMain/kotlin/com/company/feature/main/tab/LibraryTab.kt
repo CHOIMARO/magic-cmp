@@ -19,11 +19,16 @@ import com.company.core.domain.model.editor.VideoSummary
 import com.company.feature.main.LibrarySegment
 import com.company.feature.main.component.TabContentBottomPadding
 import com.company.feature.main.component.TabTitle
+import com.company.feature.main.resources.Res
+import com.company.feature.main.resources.library_completed
+import com.company.feature.main.resources.library_drafts
+import com.company.feature.main.resources.tab_library
 import com.company.ui.editor.formatTime
+import org.jetbrains.compose.resources.stringResource
 
 private val SegmentChips = listOf(
-    LibrarySegment.DRAFTS to "작업 중",
-    LibrarySegment.COMPLETED to "완성",
+    LibrarySegment.DRAFTS to Res.string.library_drafts,
+    LibrarySegment.COMPLETED to Res.string.library_completed,
 )
 
 /**
@@ -50,10 +55,10 @@ internal fun LibraryTab(
             .navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = TabContentBottomPadding),
     ) {
-        TabTitle(text = "내 영상", modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 22.dp, bottom = 18.dp))
+        TabTitle(text = stringResource(Res.string.tab_library), modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 22.dp, bottom = 18.dp))
         Row(modifier = Modifier.padding(bottom = 18.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             SegmentChips.forEach { (chipSegment, label) ->
-                MagicChip(label = label, selected = chipSegment == segment, onClick = { onSelectSegment(chipSegment) })
+                MagicChip(label = stringResource(label), selected = chipSegment == segment, onClick = { onSelectSegment(chipSegment) })
             }
         }
         FixedGrid(

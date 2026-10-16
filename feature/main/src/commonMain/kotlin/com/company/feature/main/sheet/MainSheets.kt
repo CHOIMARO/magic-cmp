@@ -40,10 +40,18 @@ import com.company.core.designsystem.theme.MagicTheme
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.core.domain.model.editor.EditorTemplate
 import com.company.core.domain.model.editor.LayoutType
+import com.company.feature.main.resources.Res
+import com.company.feature.main.resources.app_info_feedback
+import com.company.feature.main.resources.app_info_latest
+import com.company.feature.main.resources.app_info_licenses
+import com.company.feature.main.resources.app_info_version
+import com.company.feature.main.resources.app_info_whats_new
+import com.company.feature.main.resources.template_use
 import com.company.ui.editor.TemplatePreview
 import com.company.ui.editor.description
 import com.company.ui.editor.displayName
 import com.company.ui.editor.sheetLabel
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Content of the template preview sheet.
@@ -80,7 +88,7 @@ internal fun ColumnScope.TemplateSheetContent(template: EditorTemplate, onUseTem
         }
     }
     MagicButton(
-        text = "이 템플릿으로 만들기",
+        text = stringResource(Res.string.template_use),
         onClick = onUseTemplate,
         modifier = Modifier.fillMaxWidth(),
         style = MagicButtonStyle.PRIMARY,
@@ -116,7 +124,7 @@ internal fun ColumnScope.AppInfoSheetContent() {
             fontStyle = FontStyle.Italic,
             fontSize = 28.sp,
         )
-        Text(text = "버전 1.0.0 (100)", fontSize = 13.sp, color = MagicColors.OnSurface55)
+        Text(text = stringResource(Res.string.app_info_version), fontSize = 13.sp, color = MagicColors.OnSurface55)
         Row(
             modifier = Modifier
                 .clip(CircleShape)
@@ -126,18 +134,18 @@ internal fun ColumnScope.AppInfoSheetContent() {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = MagicColors.Success, modifier = Modifier.size(15.dp))
-            Text(text = "최신 버전이에요", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.Success)
+            Text(text = stringResource(Res.string.app_info_latest), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.Success)
         }
     }
     Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MagicColors.Background)) {
-        listOf("새로운 기능", "오픈소스 라이선스", "의견 보내기").forEachIndexed { index, label ->
+        listOf(Res.string.app_info_whats_new, Res.string.app_info_licenses, Res.string.app_info_feedback).forEachIndexed { index, label ->
             if (index > 0) Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(MagicColors.Divider))
             Row(
                 modifier = Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(text = label, fontSize = 15.sp)
+                Text(text = stringResource(label), fontSize = 15.sp)
                 Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = MagicColors.OnSurface40, modifier = Modifier.size(20.dp))
             }
         }

@@ -24,15 +24,22 @@ import com.company.feature.main.TemplateCatalog
 import com.company.feature.main.component.TabContentBottomPadding
 import com.company.feature.main.component.TabTitle
 import com.company.feature.main.component.TemplateCard
+import com.company.feature.main.resources.Res
+import com.company.feature.main.resources.filter_all
+import com.company.feature.main.resources.filter_caption
+import com.company.feature.main.resources.filter_layout
+import com.company.feature.main.resources.filter_text
+import com.company.feature.main.resources.tab_templates
+import org.jetbrains.compose.resources.stringResource
 
 /** Side padding of the template tab. */
 private val TemplatePadding = 16.dp
 
 private val FilterChips = listOf(
-    null to "전체",
-    TemplateKind.LAYOUT to "레이아웃",
-    TemplateKind.TEXT to "글자",
-    TemplateKind.CAPTION to "자막",
+    null to Res.string.filter_all,
+    TemplateKind.LAYOUT to Res.string.filter_layout,
+    TemplateKind.TEXT to Res.string.filter_text,
+    TemplateKind.CAPTION to Res.string.filter_caption,
 )
 
 /**
@@ -56,7 +63,7 @@ internal fun TemplateTab(
             .navigationBarsPadding()
             .padding(start = TemplatePadding, end = TemplatePadding, top = 12.dp, bottom = TabContentBottomPadding),
     ) {
-        TabTitle(text = "템플릿", modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 22.dp, bottom = 18.dp))
+        TabTitle(text = stringResource(Res.string.tab_templates), modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 22.dp, bottom = 18.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -66,7 +73,7 @@ internal fun TemplateTab(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             FilterChips.forEach { (kind, label) ->
-                MagicChip(label = label, selected = kind == filter, onClick = { onSelectFilter(kind) })
+                MagicChip(label = stringResource(label), selected = kind == filter, onClick = { onSelectFilter(kind) })
             }
         }
         Spacer(modifier = Modifier.height(18.dp))

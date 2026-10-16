@@ -43,9 +43,12 @@ import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicTheme
 import com.company.core.domain.model.editor.EditorTemplate
+import com.company.feature.main.resources.Res
+import com.company.feature.main.resources.show_all
 import com.company.ui.editor.TemplatePreview
 import com.company.ui.editor.displayName
 import com.company.ui.editor.subLabel
+import org.jetbrains.compose.resources.stringResource
 
 /** Space under the content of a tab. The floating bottom tabs cover this space. */
 internal val TabContentBottomPadding = 112.dp
@@ -140,7 +143,7 @@ internal fun SectionHeader(title: String, onShowAll: () -> Unit) {
         Text(text = title, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.03).em)
         MagicIconButton(
             icon = Icons.AutoMirrored.Rounded.ArrowForward,
-            contentDescription = "$title 전체 보기",
+            contentDescription = stringResource(Res.string.show_all, title),
             onClick = onShowAll,
             style = MagicIconButtonStyle.SURFACE,
             size = 40.dp,

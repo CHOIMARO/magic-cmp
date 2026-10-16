@@ -1,0 +1,46 @@
+<resources>
+    <!-- 메인 화면 -->
+    <string name="tab_home">홈</string>
+    <string name="tab_templates">템플릿</string>
+    <string name="tab_library">내 영상</string>
+    <string name="tab_my">마이</string>
+    <string name="show_all">%1$s 전체 보기</string>
+    <string name="filter_all">전체</string>
+    <string name="filter_layout">레이아웃</string>
+    <string name="filter_text">글자</string>
+    <string name="filter_caption">자막</string>
+    <string name="library_drafts">작업 중</string>
+    <string name="library_completed">완성</string>
+    <string name="home_new_video">새 영상\n만들기</string>
+    <string name="home_camera">촬영</string>
+    <string name="home_recent">최근 작업</string>
+    <string name="template_use">이 템플릿으로 만들기</string>
+    <string name="app_info_version">버전 1.0.0 (100)</string>
+    <string name="app_info_latest">최신 버전이에요</string>
+    <string name="app_info_whats_new">새로운 기능</string>
+    <string name="app_info_licenses">오픈소스 라이선스</string>
+    <string name="app_info_feedback">의견 보내기</string>
+    <string name="my_group_account">계정</string>
+    <string name="my_profile_edit">프로필 편집</string>
+    <string name="my_account_manage">계정 관리</string>
+    <string name="my_account_google">Google 계정</string>
+    <string name="my_subscription">구독</string>
+    <string name="my_plan_free">무료 플랜</string>
+    <string name="my_group_notification">알림</string>
+    <string name="my_template_news">새 템플릿 소식</string>
+    <string name="my_group_edit">편집</string>
+    <string name="my_voice">내 목소리</string>
+    <string name="my_voice_ready">등록됨</string>
+    <string name="my_voice_making">만드는 중</string>
+    <string name="my_voice_none">없음</string>
+    <string name="my_watermark">magic 워터마크</string>
+    <string name="my_default_quality">기본 저장 화질</string>
+    <string name="my_group_info">정보</string>
+    <string name="my_app_info">앱 정보</string>
+    <string name="my_help">도움말 · 문의</string>
+    <string name="my_terms">약관 및 개인정보</string>
+    <string name="my_logout">로그아웃</string>
+    <string name="my_profile_name">민지</string>
+    <string name="my_profile_summary">@minji.daily · 완성한 영상 %1$d개</string>
+    <string name="my_profile_modify">프로필 수정</string>
+</resources>

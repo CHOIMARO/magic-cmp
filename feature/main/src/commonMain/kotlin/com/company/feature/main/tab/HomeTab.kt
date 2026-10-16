@@ -30,7 +30,13 @@ import com.company.feature.main.component.SectionHeader
 import com.company.feature.main.component.TabContentBottomPadding
 import com.company.feature.main.component.TemplateCard
 import com.company.feature.main.component.TemplateCardSize
+import com.company.feature.main.resources.Res
+import com.company.feature.main.resources.home_camera
+import com.company.feature.main.resources.home_new_video
+import com.company.feature.main.resources.home_recent
+import com.company.feature.main.resources.tab_templates
 import com.company.ui.editor.formatTime
+import org.jetbrains.compose.resources.stringResource
 
 /** Side padding of the home tab. */
 private val HomePadding = 16.dp
@@ -69,13 +75,13 @@ internal fun HomeTab(
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MagicActionCard(
-                title = "새 영상\n만들기",
+                title = stringResource(Res.string.home_new_video),
                 icon = Icons.Rounded.Add,
                 onClick = onNewVideo,
                 modifier = Modifier.weight(1.3f),
             )
             MagicActionCard(
-                title = "촬영",
+                title = stringResource(Res.string.home_camera),
                 icon = Icons.Rounded.PhotoCamera,
                 onClick = onOpenCamera,
                 modifier = Modifier.weight(1f),
@@ -83,7 +89,7 @@ internal fun HomeTab(
             )
         }
 
-        SectionHeader(title = "템플릿", onShowAll = onShowAllTemplates)
+        SectionHeader(title = stringResource(Res.string.tab_templates), onShowAll = onShowAllTemplates)
         // 가로 목록은 화면 끝까지 스크롤되고, 첫 카드는 다른 내용과 같은 왼쪽 선에서 시작한다.
         Row(
             modifier = Modifier
@@ -103,7 +109,7 @@ internal fun HomeTab(
             }
         }
 
-        SectionHeader(title = "최근 작업", onShowAll = onShowAllDrafts)
+        SectionHeader(title = stringResource(Res.string.home_recent), onShowAll = onShowAllDrafts)
         FixedGrid(items = drafts, columns = 2, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { draft ->
             MagicVideoCard(
                 title = draft.name,

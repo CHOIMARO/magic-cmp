@@ -60,10 +60,12 @@ import com.company.core.domain.model.editor.EditorTemplate
 import com.company.core.domain.model.editor.LayoutType
 import com.company.core.domain.model.editor.MediaType
 import com.company.core.domain.model.editor.SourceMedia
+import com.company.feature.capture.resources.*
 import com.company.ui.editor.GalleryMode
 import com.company.ui.editor.displayName
 import com.company.ui.editor.formatTime
 import com.company.ui.media.MediaThumbnail
+import org.jetbrains.compose.resources.stringResource
 
 /** Text shadow on thumbnails, like CSS `text-shadow: 0 1px 3px rgba(0,0,0,.6)`. */
 private val ThumbnailTextShadow = Shadow(Color.Black.copy(alpha = 0.6f), Offset(0f, 2f), 6f)
@@ -99,11 +101,11 @@ internal fun GalleryScreen(
         ) {
             MagicIconButton(
                 icon = Icons.Rounded.Close,
-                contentDescription = "닫기",
+                contentDescription = stringResource(Res.string.close),
                 onClick = onClose,
                 style = MagicIconButtonStyle.SURFACE,
             )
-            Text(text = if (append) "추가하기" else "영상 · 사진 선택", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(text = stringResource(if (append) Res.string.gallery_title_append else Res.string.gallery_title_pick), fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.size(44.dp))
         }
 
@@ -120,7 +122,7 @@ internal fun GalleryScreen(
             ) {
                 Icon(Icons.Outlined.Dashboard, contentDescription = null, tint = MagicColors.AccentPale, modifier = Modifier.size(18.dp))
                 Text(
-                    text = "${template.displayName} 템플릿으로 시작해요",
+                    text = stringResource(Res.string.gallery_template_banner, template.displayName),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = MagicColors.AccentPale,
@@ -166,12 +168,12 @@ internal fun GalleryScreen(
 private fun galleryHint(state: GalleryState): String {
     val layout = (state.template as? EditorTemplate.Layout)?.layout
     return when {
-        state.mode == GalleryMode.APPEND -> "고른 순서대로 타임라인 맨 뒤에 붙어요"
+        state.mode == GalleryMode.APPEND -> stringResource(Res.string.gallery_hint_append)
         layout != null && layout.clipCount > 1 -> {
             val name = layout.displayName
-            "$name${name.topicParticle()} ${layout.clipCount}개를 고르면 딱 맞아요 · 누른 순서대로 들어가요"
+            stringResource(Res.string.gallery_hint_layout, name, name.topicParticle(), layout.clipCount)
         }
-        else -> "여러 개 고를 수 있어요 · 누른 순서대로 들어가요"
+        else -> stringResource(Res.string.gallery_hint_default)
     }
 }
 
@@ -291,7 +293,7 @@ private fun AddMoreCell(onClick: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {
         Icon(Icons.Rounded.Add, contentDescription = null, tint = MagicColors.OnSurface70, modifier = Modifier.size(24.dp))
-        Text(text = "더 고르기", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
+        Text(text = stringResource(Res.string.gallery_pick_more), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
     }
 }
 
@@ -306,9 +308,9 @@ private fun GalleryBottomBar(
     val count = pickedMedia.size
     val hasPicked = count > 0
     val label = when {
-        !hasPicked -> "영상이나 사진을 골라주세요"
-        state.mode == GalleryMode.APPEND -> "${count}개 붙이기"
-        else -> "${count}개로 편집 시작"
+        !hasPicked -> stringResource(Res.string.gallery_next_empty)
+        state.mode == GalleryMode.APPEND -> stringResource(Res.string.gallery_next_append, count)
+        else -> stringResource(Res.string.gallery_next_edit, count)
     }
     Column(
         modifier = modifier
@@ -356,7 +358,7 @@ private fun PickedThumbnail(item: SourceMedia, order: Int, onRemove: () -> Unit)
                 style = LocalTextStyle.current.merge(fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, shadow = ThumbnailTextShadow),
             )
             Text(
-                text = item.duration?.let { formatTime(it) } ?: "사진",
+                text = item.duration?.let { formatTime(it) } ?: stringResource(Res.string.gallery_photo),
                 modifier = Modifier.align(Alignment.BottomStart).padding(start = 5.dp, bottom = 3.dp),
                 style = LocalTextStyle.current.merge(fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, shadow = ThumbnailTextShadow),
             )
@@ -371,7 +373,7 @@ private fun PickedThumbnail(item: SourceMedia, order: Int, onRemove: () -> Unit)
                 .background(MagicColors.OnSurface),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Rounded.Close, contentDescription = "빼기", tint = MagicColors.Background, modifier = Modifier.size(14.dp))
+            Icon(Icons.Rounded.Close, contentDescription = stringResource(Res.string.gallery_remove), tint = MagicColors.Background, modifier = Modifier.size(14.dp))
         }
     }
 }

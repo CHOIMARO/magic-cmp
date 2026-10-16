@@ -1,0 +1,24 @@
+<resources>
+    <!-- 촬영·사진 선택 화면 -->
+    <string name="close">닫기</string>
+    <string name="camera_view">카메라 화면</string>
+    <string name="camera_switch">카메라 전환</string>
+    <string name="camera_seconds">%1$d초</string>
+    <string name="camera_undo">지우기</string>
+    <string name="camera_next">다음</string>
+    <string name="camera_hint_recording">촬영 중 · 누르면 잠깐 멈춰요</string>
+    <string name="camera_hint_segments">%1$d개 찍었어요 · 이어 찍거나 다음으로</string>
+    <string name="camera_hint_idle">누르면 촬영, 한 번 더 누르면 멈춰요</string>
+    <string name="gallery_title_append">추가하기</string>
+    <string name="gallery_title_pick">영상 · 사진 선택</string>
+    <string name="gallery_template_banner">%1$s 템플릿으로 시작해요</string>
+    <string name="gallery_hint_append">고른 순서대로 타임라인 맨 뒤에 붙어요</string>
+    <string name="gallery_hint_layout">%1$s%2$s %3$d개를 고르면 딱 맞아요 · 누른 순서대로 들어가요</string>
+    <string name="gallery_hint_default">여러 개 고를 수 있어요 · 누른 순서대로 들어가요</string>
+    <string name="gallery_pick_more">더 고르기</string>
+    <string name="gallery_next_empty">영상이나 사진을 골라주세요</string>
+    <string name="gallery_next_append">%1$d개 붙이기</string>
+    <string name="gallery_next_edit">%1$d개로 편집 시작</string>
+    <string name="gallery_photo">사진</string>
+    <string name="gallery_remove">빼기</string>
+</resources>

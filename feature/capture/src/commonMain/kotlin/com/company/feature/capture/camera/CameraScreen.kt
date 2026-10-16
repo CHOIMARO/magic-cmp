@@ -52,7 +52,9 @@ import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
+import com.company.feature.capture.resources.*
 import com.company.ui.editor.formatTime
+import org.jetbrains.compose.resources.stringResource
 
 private val ShutterEasing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
 
@@ -73,7 +75,7 @@ internal fun CameraScreen(state: CameraState, onIntent: (CameraIntent) -> Unit, 
             modifier = Modifier.fillMaxSize(),
         )
         Text(
-            text = "카메라 화면",
+            text = stringResource(Res.string.camera_view),
             modifier = Modifier
                 .align(BiasAlignment(0f, -0.12f))
                 .clip(RoundedCornerShape(6.dp))
@@ -92,7 +94,7 @@ internal fun CameraScreen(state: CameraState, onIntent: (CameraIntent) -> Unit, 
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                RoundIconButton(Icons.Rounded.Close, contentDescription = "닫기", onClick = onClose)
+                RoundIconButton(Icons.Rounded.Close, contentDescription = stringResource(Res.string.close), onClick = onClose)
                 Text(
                     text = "${formatTime(state.recordedSeconds)} / ${formatTime(state.maxSeconds.toDouble())}",
                     modifier = Modifier
@@ -102,7 +104,7 @@ internal fun CameraScreen(state: CameraState, onIntent: (CameraIntent) -> Unit, 
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
-                RoundIconButton(Icons.Rounded.FlipCameraAndroid, contentDescription = "카메라 전환", onClick = {})
+                RoundIconButton(Icons.Rounded.FlipCameraAndroid, contentDescription = stringResource(Res.string.camera_switch), onClick = {})
             }
         }
 
@@ -157,7 +159,7 @@ private fun CameraControls(state: CameraState, onIntent: (CameraIntent) -> Unit,
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "${seconds}초",
+                        text = stringResource(Res.string.camera_seconds, seconds),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (selected) Color.Black else Color.White.copy(alpha = 0.85f),
@@ -170,7 +172,7 @@ private fun CameraControls(state: CameraState, onIntent: (CameraIntent) -> Unit,
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 if (state.canUndoOrContinue) {
                     OverlayPillButton(
-                        text = "지우기",
+                        text = stringResource(Res.string.camera_undo),
                         icon = Icons.AutoMirrored.Rounded.Undo,
                         onClick = { onIntent(CameraIntent.RemoveLastSegment) },
                     )
@@ -180,7 +182,7 @@ private fun CameraControls(state: CameraState, onIntent: (CameraIntent) -> Unit,
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
                 if (state.canUndoOrContinue) {
                     MagicButton(
-                        text = "다음",
+                        text = stringResource(Res.string.camera_next),
                         onClick = { onIntent(CameraIntent.Done) },
                         style = MagicButtonStyle.PRIMARY_SMALL,
                     )
@@ -190,9 +192,9 @@ private fun CameraControls(state: CameraState, onIntent: (CameraIntent) -> Unit,
 
         Text(
             text = when {
-                state.recording -> "촬영 중 · 누르면 잠깐 멈춰요"
-                state.segments.isNotEmpty() -> "${state.segments.size}개 찍었어요 · 이어 찍거나 다음으로"
-                else -> "누르면 촬영, 한 번 더 누르면 멈춰요"
+                state.recording -> stringResource(Res.string.camera_hint_recording)
+                state.segments.isNotEmpty() -> stringResource(Res.string.camera_hint_segments, state.segments.size)
+                else -> stringResource(Res.string.camera_hint_idle)
             },
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,

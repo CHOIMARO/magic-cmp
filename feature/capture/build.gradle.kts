@@ -66,6 +66,7 @@ kotlin {
                 implementation(libs.jetbrains.compose.ui)
                 implementation(libs.jetbrains.compose.material.icons.extended)
                 implementation(libs.jetbrains.compose.ui.tooling.preview) // @Preview
+                implementation(libs.jetbrains.compose.components.resources)
             }
         }
 
@@ -88,4 +89,8 @@ kotlin {
 // Android Studio에서 commonMain의 @Preview를 그리기 위한 도구. KMP 라이브러리 플러그인은 androidRuntimeClasspath에 둔다.
 dependencies {
     androidRuntimeClasspath(libs.jetbrains.compose.ui.tooling)
+}
+
+compose.resources {
+    packageOfResClass = "com.company.feature.capture.resources"
 }

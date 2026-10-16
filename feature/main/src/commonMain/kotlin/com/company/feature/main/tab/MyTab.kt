@@ -53,6 +53,8 @@ import com.company.core.domain.model.editor.MyVoiceStatus
 import com.company.feature.main.SettingKey
 import com.company.feature.main.component.TabContentBottomPadding
 import com.company.feature.main.component.TabTitle
+import com.company.feature.main.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * One row of a settings group.
@@ -93,32 +95,32 @@ internal fun MyTab(
     onOpenMyVoice: () -> Unit,
 ) {
     val groups = listOf(
-        "계정" to listOf(
-            SettingRow(Icons.Outlined.Person, "프로필 편집"),
-            SettingRow(Icons.Outlined.ManageAccounts, "계정 관리", value = "Google 계정"),
-            SettingRow(Icons.Outlined.WorkspacePremium, "구독", value = "무료 플랜"),
+        stringResource(Res.string.my_group_account) to listOf(
+            SettingRow(Icons.Outlined.Person, stringResource(Res.string.my_profile_edit)),
+            SettingRow(Icons.Outlined.ManageAccounts, stringResource(Res.string.my_account_manage), value = stringResource(Res.string.my_account_google)),
+            SettingRow(Icons.Outlined.WorkspacePremium, stringResource(Res.string.my_subscription), value = stringResource(Res.string.my_plan_free)),
         ),
-        "알림" to listOf(
-            SettingRow(Icons.Outlined.Campaign, "새 템플릿 소식", toggle = SettingKey.TEMPLATE_NEWS),
+        stringResource(Res.string.my_group_notification) to listOf(
+            SettingRow(Icons.Outlined.Campaign, stringResource(Res.string.my_template_news), toggle = SettingKey.TEMPLATE_NEWS),
         ),
-        "편집" to listOf(
+        stringResource(Res.string.my_group_edit) to listOf(
             SettingRow(
                 Icons.Outlined.RecordVoiceOver,
-                "내 목소리",
+                stringResource(Res.string.my_voice),
                 value = when (myVoice) {
-                    MyVoiceStatus.Ready -> "등록됨"
-                    is MyVoiceStatus.Making -> "만드는 중"
-                    MyVoiceStatus.None -> "없음"
+                    MyVoiceStatus.Ready -> stringResource(Res.string.my_voice_ready)
+                    is MyVoiceStatus.Making -> stringResource(Res.string.my_voice_making)
+                    MyVoiceStatus.None -> stringResource(Res.string.my_voice_none)
                 },
                 onClick = onOpenMyVoice,
             ),
-            SettingRow(Icons.AutoMirrored.Outlined.BrandingWatermark, "magic 워터마크", toggle = SettingKey.WATERMARK),
-            SettingRow(Icons.Outlined.Hd, "기본 저장 화질", value = "1080p"),
+            SettingRow(Icons.AutoMirrored.Outlined.BrandingWatermark, stringResource(Res.string.my_watermark), toggle = SettingKey.WATERMARK),
+            SettingRow(Icons.Outlined.Hd, stringResource(Res.string.my_default_quality), value = "1080p"),
         ),
-        "정보" to listOf(
-            SettingRow(Icons.Outlined.Info, "앱 정보", value = "v1.0.0", onClick = onOpenAppInfo),
-            SettingRow(Icons.AutoMirrored.Outlined.HelpOutline, "도움말 · 문의"),
-            SettingRow(Icons.Outlined.Description, "약관 및 개인정보"),
+        stringResource(Res.string.my_group_info) to listOf(
+            SettingRow(Icons.Outlined.Info, stringResource(Res.string.my_app_info), value = "v1.0.0", onClick = onOpenAppInfo),
+            SettingRow(Icons.AutoMirrored.Outlined.HelpOutline, stringResource(Res.string.my_help)),
+            SettingRow(Icons.Outlined.Description, stringResource(Res.string.my_terms)),
         ),
     )
 
@@ -129,7 +131,7 @@ internal fun MyTab(
             .navigationBarsPadding()
             .padding(top = 12.dp, bottom = TabContentBottomPadding),
     ) {
-        TabTitle(text = "마이", modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 22.dp))
+        TabTitle(text = stringResource(Res.string.tab_my), modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 22.dp))
         ProfileRow(completedCount = completedCount)
         groups.forEach { (title, rows) ->
             Column(
@@ -154,7 +156,7 @@ internal fun MyTab(
             }
         }
         MagicButton(
-            text = "로그아웃",
+            text = stringResource(Res.string.my_logout),
             onClick = {},
             modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
             style = MagicButtonStyle.DANGER,
@@ -171,15 +173,15 @@ private fun ProfileRow(completedCount: Int) {
     ) {
         StripeBox(hue = 300f, lightness = 0.55f, shape = CircleShape, modifier = Modifier.size(60.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = "민지", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(text = stringResource(Res.string.my_profile_name), fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(
-                text = "@minji.daily · 완성한 영상 ${completedCount}개",
+                text = stringResource(Res.string.my_profile_summary, completedCount),
                 modifier = Modifier.padding(top = 2.dp),
                 fontSize = 13.sp,
                 color = MagicColors.OnSurface55,
             )
         }
-        MagicButton(text = "프로필 수정", onClick = {}, style = MagicButtonStyle.OUTLINE)
+        MagicButton(text = stringResource(Res.string.my_profile_modify), onClick = {}, style = MagicButtonStyle.OUTLINE)
     }
 }
 
