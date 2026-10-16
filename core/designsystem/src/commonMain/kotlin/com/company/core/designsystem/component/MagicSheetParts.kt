@@ -10,19 +10,29 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.KeyboardHide
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -58,6 +68,9 @@ fun SheetHeader(title: String, onClose: () -> Unit, closeLabel: String = "닫기
 /**
  * Top row of an editor sheet with custom content in place of the title, for example a text field.
  *
+ * While the keyboard is open, the close button shows a "hide keyboard" icon. Then a tap hides the keyboard and does
+ * not close the sheet. When the keyboard is closed, the button shows [closeLabel] again and closes the sheet.
+ *
  * @param onClose Action of the close button.
  * @param closeLabel Label of the close button.
  * @param action Optional button before the close button, for example the main action of the sheet.
@@ -71,6 +84,11 @@ fun SheetHeader(
     action: (@Composable () -> Unit)? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val keyboard = WindowInsets.sheetIme
+    val density = LocalDensity.current
+    val keyboardOpen by remember(keyboard, density) { derivedStateOf { keyboard.getBottom(density) > 0 } }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -88,13 +106,36 @@ fun SheetHeader(
         Box(
             modifier = Modifier
                 .height(SheetHeaderButtonHeight)
-                .pressClickable(interactionSource = interactionSource, onClick = onClose)
+                .pressClickable(
+                    interactionSource = interactionSource,
+                    onClick = {
+                        if (keyboardOpen) {
+                            focusManager.clearFocus(force = true)
+                            keyboardController?.hide()
+                        } else {
+                            onClose()
+                        }
+                    },
+                )
                 .clip(CircleShape)
                 .background(background)
                 .padding(horizontal = 14.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = closeLabel, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            // 아이콘으로 바뀌어도 버튼 폭은 "닫기" 글자 폭을 유지한다. 그래야 입력창 폭이 흔들리지 않는다.
+            Text(
+                text = closeLabel,
+                modifier = if (keyboardOpen) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            if (keyboardOpen) {
+                Icon(
+                    imageVector = Icons.Rounded.KeyboardHide,
+                    contentDescription = "키보드 내리기",
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
     }
 }
