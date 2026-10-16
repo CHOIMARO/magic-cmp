@@ -9,11 +9,16 @@ import com.company.core.domain.model.editor.Clip
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.newEditorId
 import com.company.core.domain.repository.EditorProjectRepository
+import com.company.feature.capture.resources.Res
+import com.company.feature.capture.resources.camera_clip_name
+import com.company.feature.capture.resources.new_recording_name
+import com.company.ui.text.StringResolver
+import com.company.ui.text.uiText
+import kotlin.time.TimeSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.time.TimeSource
 
 /**
  * One recorded part. The user can record several parts in a row.
@@ -72,6 +77,7 @@ sealed class CameraSideEffect : SideEffect() {
  */
 class CameraViewModel(
     private val projectRepository: EditorProjectRepository,
+    private val strings: StringResolver,
 ) : BaseViewModel<CameraState, CameraIntent, CameraSideEffect>(
     initialState = CameraState()
 ) {
@@ -138,19 +144,23 @@ class CameraViewModel(
     }
 
     private fun done() {
-        val clips = currentState.segments.filter { it.duration > MIN_SEGMENT_SECONDS }.mapIndexed { index, segment ->
-            Clip(
-                id = newEditorId(),
-                name = "촬영 ${index + 1}",
-                sourceDuration = segment.duration,
-                inPoint = 0.0,
-                outPoint = segment.duration,
-                thumbnailHue = segment.hue,
-            )
+        val segments = currentState.segments.filter { it.duration > MIN_SEGMENT_SECONDS }
+        if (segments.isEmpty()) return
+        // 클립과 프로젝트의 기본 이름은 리소스에서 읽는다.
+        viewModelScope.launch {
+            val clips = segments.mapIndexed { index, segment ->
+                Clip(
+                    id = newEditorId(),
+                    name = strings.resolve(uiText(Res.string.camera_clip_name, index + 1)),
+                    sourceDuration = segment.duration,
+                    inPoint = 0.0,
+                    outPoint = segment.duration,
+                    thumbnailHue = segment.hue,
+                )
+            }
+            projectRepository.start(EditorProject(name = strings.resolve(uiText(Res.string.new_recording_name)), clips = clips))
+            postSideEffect { CameraSideEffect.OpenEditor }
         }
-        if (clips.isEmpty()) return
-        projectRepository.start(EditorProject(name = NEW_RECORDING_NAME, clips = clips))
-        postSideEffect { CameraSideEffect.OpenEditor }
     }
 
     private companion object {
@@ -159,9 +169,6 @@ class CameraViewModel(
 
         /** Shorter parts are not used as clips. */
         const val MIN_SEGMENT_SECONDS = 0.3
-
-        /** Name of a project that starts from a recording. */
-        const val NEW_RECORDING_NAME = "새 촬영"
 
         /** Hues of the placeholder previews of the recorded parts. */
         val SegmentHues = listOf(35, 80, 150, 200, 250, 300, 20, 120, 180, 270, 330, 60, 220, 100, 0, 160, 45, 240)

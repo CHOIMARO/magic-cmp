@@ -8,12 +8,11 @@ import com.company.core.domain.model.editor.removeCaption
 import com.company.core.domain.model.editor.scriptLines
 import com.company.core.domain.model.editor.splitCaption
 import com.company.core.domain.usecase.editor.GenerateCaptionsUseCase
+import com.company.feature.editor.resources.*
+import com.company.ui.text.uiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-/** Text of a caption that the user adds at the playhead. */
-private const val NEW_CAPTION_TEXT = "새 자막"
 
 /** Update interval of the caption progress. */
 private const val CAPTION_TICK_MILLIS = 45L
@@ -50,7 +49,7 @@ internal class CaptionActions(private val host: EditorHost, private val generate
         val count = state.project.captions.size
         if (count > 0) {
             host.reduce {
-                copy(dialog = EditorDialog("기존 자막을 바꿀까요?", "지금 있는 자막 ${count}개를 지우고 말소리로 새로 만들어요", "바꾸기", DialogAction.ReplaceWithSpeechCaptions))
+                copy(dialog = EditorDialog(uiText(Res.string.dialog_replace_captions_title), uiText(Res.string.dialog_replace_captions_speech, count), uiText(Res.string.dialog_replace), DialogAction.ReplaceWithSpeechCaptions))
             }
         } else {
             startGeneration()
@@ -70,7 +69,7 @@ internal class CaptionActions(private val host: EditorHost, private val generate
             val captions = generateCaptions(host.state.project.clips)
             host.projects.commit { it.copy(captions = captions) }
             host.reduce { copy(captionProgress = null, sheet = null, selectedTrackItem = null) }
-            host.toast("자막을 넣었어요")
+            host.toast(uiText(Res.string.toast_captions_made))
         }
     }
 
@@ -86,7 +85,7 @@ internal class CaptionActions(private val host: EditorHost, private val generate
         if (host.state.captionProgress != null) return
         host.projects.commit { it.copy(captions = emptyList()) }
         host.reduce { copy(sheet = null, selectedTrackItem = null) }
-        host.toast("자막을 지웠어요 · 되돌리기 가능")
+        host.toast(uiText(Res.string.toast_captions_removed))
     }
 
     /**
@@ -105,7 +104,7 @@ internal class CaptionActions(private val host: EditorHost, private val generate
     /** Shows the script field. A project without clips has no part to put the lines into. */
     fun openScript() {
         if (host.state.project.clips.isEmpty()) {
-            host.toast("먼저 영상이나 사진을 넣어 주세요")
+            host.toast(uiText(Res.string.toast_add_media_first))
             return
         }
         host.reduce { copy(captionScript = lastScript) }
@@ -127,9 +126,9 @@ internal class CaptionActions(private val host: EditorHost, private val generate
             host.reduce {
                 copy(
                     dialog = EditorDialog(
-                        "자막이 영상 구간보다 많아요",
-                        "구간 ${clipCount}개에 맞춰 넣고 남는 ${lines.size - clipCount}줄은 잘려요",
-                        "넣기",
+                        uiText(Res.string.dialog_script_over_title),
+                        uiText(Res.string.dialog_script_over_message, clipCount, lines.size - clipCount),
+                        uiText(Res.string.insert),
                         DialogAction.InsertScript(checkExisting = true),
                     ),
                 )
@@ -148,14 +147,14 @@ internal class CaptionActions(private val host: EditorHost, private val generate
         val state = host.state
         val count = state.project.captions.size
         if (checkExisting && count > 0) {
-            host.reduce { copy(dialog = EditorDialog("기존 자막을 바꿀까요?", "지금 있는 자막 ${count}개를 지우고 새로 넣어요", "바꾸기", DialogAction.InsertScript(checkExisting = false))) }
+            host.reduce { copy(dialog = EditorDialog(uiText(Res.string.dialog_replace_captions_title), uiText(Res.string.dialog_replace_captions_script, count), uiText(Res.string.dialog_replace), DialogAction.InsertScript(checkExisting = false))) }
             return
         }
         val lines = scriptLines(state.captionScript ?: return).take(state.project.clips.size)
         host.projects.commit { it.copy(captions = it.captionsFromScript(lines)) }
         lastScript = ""
         host.reduce { copy(sheet = null, captionScript = null, selectedTrackItem = null) }
-        host.toast("자막 ${lines.size}개를 넣었어요")
+        host.toast(uiText(Res.string.toast_captions_inserted, lines.size))
     }
 
     // =====================================================================
@@ -168,12 +167,15 @@ internal class CaptionActions(private val host: EditorHost, private val generate
      * @param openEditor Opens the text sheet for the new caption.
      */
     fun addAtPlayhead(openEditor: (String) -> Unit) {
-        val (project, captionId) = host.state.project.addCaptionAt(host.state.time, NEW_CAPTION_TEXT) ?: run {
-            host.toast("재생선을 자막이 없는 곳으로 옮겨 주세요")
-            return
+        host.scope.launch {
+            val text = host.strings.resolve(uiText(Res.string.new_caption_text))
+            val (project, captionId) = host.state.project.addCaptionAt(host.state.time, text) ?: run {
+                host.toast(uiText(Res.string.toast_move_playhead_off_caption))
+                return@launch
+            }
+            host.projects.commit { project }
+            openEditor(captionId)
         }
-        host.projects.commit { project }
-        openEditor(captionId)
     }
 
     /** Splits the selected caption at the playhead. */
@@ -182,10 +184,10 @@ internal class CaptionActions(private val host: EditorHost, private val generate
         when (val result = host.state.project.splitCaption(caption.id, host.state.time)) {
             is CaptionSplit.Done -> {
                 host.projects.commit { result.project }
-                host.toast("흰 선 위치에서 나눴어요")
+                host.toast(uiText(Res.string.toast_split_at_line))
             }
-            CaptionSplit.OutsideCaption -> host.toast("흰 선을 자막 안쪽으로 옮겨 주세요")
-            CaptionSplit.OneWord -> host.toast("단어가 하나라 나눌 수 없어요")
+            CaptionSplit.OutsideCaption -> host.toast(uiText(Res.string.toast_move_line_into_caption))
+            CaptionSplit.OneWord -> host.toast(uiText(Res.string.toast_one_word))
         }
     }
 }

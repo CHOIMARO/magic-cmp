@@ -13,8 +13,14 @@ import com.company.core.domain.model.editor.toClip
 import com.company.core.domain.repository.EditorProjectRepository
 import com.company.core.domain.repository.MediaLibraryRepository
 import com.company.core.domain.usecase.editor.ApplyTemplateUseCase
-import com.company.ui.editor.DEFAULT_TITLE_TEXT
+import com.company.feature.capture.resources.Res
+import com.company.feature.capture.resources.new_project_name
+import com.company.feature.capture.resources.toast_clips_added
+import com.company.ui.editor.DefaultTitleText
 import com.company.ui.editor.GalleryMode
+import com.company.ui.text.StringResolver
+import com.company.ui.text.UiText
+import com.company.ui.text.uiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -73,7 +79,7 @@ sealed class GallerySideEffect : SideEffect() {
     data object OpenEditor : GallerySideEffect()
 
     /** ReturnToEditor(message) : Goes back to the editor and shows the message. */
-    data class ReturnToEditor(val message: String) : GallerySideEffect()
+    data class ReturnToEditor(val message: UiText) : GallerySideEffect()
 
     /** Close : Leaves the picker because the user picked nothing in the first full-screen picker. */
     data object Close : GallerySideEffect()
@@ -90,6 +96,7 @@ class GalleryViewModel(
     private val mediaLibraryRepository: MediaLibraryRepository,
     private val projectRepository: EditorProjectRepository,
     private val applyTemplate: ApplyTemplateUseCase,
+    private val strings: StringResolver,
 ) : BaseViewModel<GalleryState, GalleryIntent, GallerySideEffect>(
     initialState = GalleryState(mode = args.mode, template = args.template)
 ) {
@@ -171,18 +178,15 @@ class GalleryViewModel(
         when (state.mode) {
             GalleryMode.APPEND -> {
                 projectRepository.commit { it.addClips(clips) }
-                postSideEffect { GallerySideEffect.ReturnToEditor("${clips.size}개를 붙였어요") }
+                postSideEffect { GallerySideEffect.ReturnToEditor(uiText(Res.string.toast_clips_added, clips.size)) }
             }
             GalleryMode.CREATE -> viewModelScope.launch {
-                val project = applyTemplate(EditorProject(name = NEW_PROJECT_NAME, clips = clips), state.template, DEFAULT_TITLE_TEXT)
+                val name = strings.resolve(uiText(Res.string.new_project_name))
+                val defaultText = strings.resolve(UiText.Resource(DefaultTitleText))
+                val project = applyTemplate(EditorProject(name = name, clips = clips), state.template, defaultText)
                 projectRepository.start(project)
                 postSideEffect { GallerySideEffect.OpenEditor }
             }
         }
-    }
-
-    private companion object {
-        /** Name of a project that starts from picked items. */
-        const val NEW_PROJECT_NAME = "새 영상"
     }
 }

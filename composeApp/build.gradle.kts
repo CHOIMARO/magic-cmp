@@ -84,3 +84,7 @@ dependencies {
     "androidRuntimeClasspath"(compose.uiTooling)
 }
 
+
+compose.resources {
+    packageOfResClass = "com.company.magiccmp.resources"
+}

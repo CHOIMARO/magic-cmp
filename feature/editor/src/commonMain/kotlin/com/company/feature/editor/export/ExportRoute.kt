@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.company.core.designsystem.component.LocalMagicToast
+import com.company.ui.text.resolve
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -30,7 +31,7 @@ internal fun ExportRoute(
     LaunchedEffect(viewModel) {
         viewModel.sideEffect.collect { effect ->
             when (effect) {
-                is ExportSideEffect.ShowToast -> toast.show(effect.message)
+                is ExportSideEffect.ShowToast -> toast.show(effect.message.resolve())
                 ExportSideEffect.Close -> onBack()
                 ExportSideEffect.GoHome -> onGoHome()
             }

@@ -9,6 +9,10 @@ import com.company.core.domain.model.editor.nearestTransitionSlot
 import com.company.core.domain.model.editor.setTransition
 import com.company.core.domain.model.editor.setTransitionForAllBoundaries
 import com.company.core.domain.model.editor.transitionAt
+import com.company.feature.editor.resources.Res
+import com.company.feature.editor.resources.toast_transition_applied_all
+import com.company.feature.editor.resources.toast_transition_removed_all
+import com.company.ui.text.uiText
 
 /**
  * Transition sheet (F08).
@@ -74,6 +78,6 @@ internal class TransitionActions(private val host: EditorHost) {
         val slot = host.state.transitionSlot ?: return
         val current = host.state.project.transitionAt(slot)
         host.projects.commit { it.setTransitionForAllBoundaries(current) }
-        host.toast(if (current != null) "모든 구간에 적용했어요" else "모든 구간의 전환을 뺐어요")
+        host.toast(uiText(if (current != null) Res.string.toast_transition_applied_all else Res.string.toast_transition_removed_all))
     }
 }

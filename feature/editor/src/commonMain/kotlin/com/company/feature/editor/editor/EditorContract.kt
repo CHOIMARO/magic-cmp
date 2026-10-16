@@ -32,6 +32,7 @@ import com.company.core.domain.model.editor.TextStyleType
 import com.company.core.domain.model.editor.TransitionSlot
 import com.company.core.domain.model.editor.TransitionType
 import com.company.core.domain.model.editor.placedCaptions
+import com.company.ui.text.UiText
 
 // =====================================================================
 // Sheets and drags
@@ -268,7 +269,7 @@ enum class VolumeKind {
  * @property confirmLabel Label of the confirm button.
  * @property action Change to make when the user confirms.
  */
-data class EditorDialog(val title: String, val message: String, val confirmLabel: String, val action: DialogAction)
+data class EditorDialog(val title: UiText, val message: UiText, val confirmLabel: UiText, val action: DialogAction)
 
 /** Change that a popup asks about. */
 sealed interface DialogAction {
@@ -712,7 +713,7 @@ sealed class EditorIntent : Intent() {
 /** One-time events of the editor screen. */
 sealed class EditorSideEffect : SideEffect() {
     /** ShowToast(message) : Shows a short message. */
-    data class ShowToast(val message: String) : EditorSideEffect()
+    data class ShowToast(val message: UiText) : EditorSideEffect()
 
     /** OpenGalleryToAppend : Navigates to the video picker in append mode. */
     data object OpenGalleryToAppend : EditorSideEffect()

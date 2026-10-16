@@ -9,6 +9,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.company.core.designsystem.component.LocalMagicToast
+import com.company.ui.text.resolve
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -36,7 +37,7 @@ internal fun EditorRoute(
     LaunchedEffect(viewModel) {
         viewModel.sideEffect.collect { effect ->
             when (effect) {
-                is EditorSideEffect.ShowToast -> toast.show(effect.message)
+                is EditorSideEffect.ShowToast -> toast.show(effect.message.resolve())
                 EditorSideEffect.OpenGalleryToAppend -> onAddClips()
                 EditorSideEffect.OpenExport -> onExport()
                 EditorSideEffect.OpenMyVoice -> onOpenMyVoice()

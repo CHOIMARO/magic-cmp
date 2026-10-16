@@ -5,7 +5,6 @@ import com.company.core.base.BaseViewModel
 import com.company.core.base.Intent
 import com.company.core.base.SideEffect
 import com.company.core.base.State
-import com.company.core.domain.model.editor.transitionWindows
 import com.company.core.domain.model.editor.EditorProject
 import com.company.core.domain.model.editor.ExportOverlay
 import com.company.core.domain.model.editor.ExportRequest
@@ -13,17 +12,27 @@ import com.company.core.domain.model.editor.ExportStatus
 import com.company.core.domain.model.editor.FrameArea
 import com.company.core.domain.model.editor.GalleryAccessDeniedException
 import com.company.core.domain.model.editor.VideoSummary
+import com.company.core.domain.model.editor.transitionWindows
 import com.company.core.domain.repository.EditorProjectRepository
 import com.company.core.domain.repository.EditorSettingsRepository
 import com.company.core.domain.repository.MyVideoRepository
 import com.company.core.domain.repository.VideoExportRepository
+import com.company.feature.editor.resources.Res
+import com.company.feature.editor.resources.export_quality_best
+import com.company.feature.editor.resources.export_quality_light
+import com.company.feature.editor.resources.export_quality_recommended
+import com.company.feature.editor.resources.toast_gallery_access
+import com.company.feature.editor.resources.toast_save_failed
 import com.company.ui.editor.LayoutCell
 import com.company.ui.editor.spec
+import com.company.ui.text.UiText
+import com.company.ui.text.uiText
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.StringResource
 
 /**
  * Video quality of the export.
@@ -36,19 +45,19 @@ import kotlin.math.roundToInt
  */
 enum class ExportResolution(
     val label: String,
-    val note: String,
+    val note: StringResource,
     val megabytesPerSecond: Double,
     val width: Int,
     val height: Int,
 ) {
     /** Small file. */
-    HD("720p", "가볍게", 0.5, 720, 1280),
+    HD("720p", Res.string.export_quality_light, 0.5, 720, 1280),
 
     /** Recommended quality. */
-    FULL_HD("1080p", "추천", 1.1, 1080, 1920),
+    FULL_HD("1080p", Res.string.export_quality_recommended, 1.1, 1080, 1920),
 
     /** Best quality. */
-    UHD("4K", "최고 화질", 4.2, 2160, 3840),
+    UHD("4K", Res.string.export_quality_best, 4.2, 2160, 3840),
 }
 
 /**
@@ -128,7 +137,7 @@ sealed class ExportIntent : Intent() {
 /** One-time events of the export screen. */
 sealed class ExportSideEffect : SideEffect() {
     /** ShowToast(message) : Shows a short message. */
-    data class ShowToast(val message: String) : ExportSideEffect()
+    data class ShowToast(val message: UiText) : ExportSideEffect()
 
     /** Close : Goes back to the editor. */
     data object Close : ExportSideEffect()
@@ -245,9 +254,9 @@ class ExportViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: GalleryAccessDeniedException) {
-                fail("사진 보관함에 저장하려면 접근을 허용해 주세요")
+                fail(uiText(Res.string.toast_gallery_access))
             } catch (e: Exception) {
-                fail("저장하지 못했어요. 다시 시도해 주세요")
+                fail(uiText(Res.string.toast_save_failed))
             }
         }
     }
@@ -278,7 +287,7 @@ class ExportViewModel(
         reduce { copy(phase = ExportPhase.DONE, progress = 100) }
     }
 
-    private fun fail(message: String) {
+    private fun fail(message: UiText) {
         reduce { copy(phase = ExportPhase.SETUP, progress = 0, overlayRequest = null) }
         postSideEffect { ExportSideEffect.ShowToast(message) }
     }

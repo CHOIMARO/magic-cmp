@@ -21,4 +21,10 @@
     <string name="gallery_next_edit">%1$d개로 편집 시작</string>
     <string name="gallery_photo">사진</string>
     <string name="gallery_remove">빼기</string>
+
+    <!-- 토스트·기본값 (ViewModel) -->
+    <string name="camera_clip_name">촬영 %1$d</string>
+    <string name="new_recording_name">새 촬영</string>
+    <string name="new_project_name">새 영상</string>
+    <string name="toast_clips_added">%1$d개를 붙였어요</string>
 </resources>

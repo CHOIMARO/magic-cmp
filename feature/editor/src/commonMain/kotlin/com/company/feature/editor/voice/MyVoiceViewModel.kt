@@ -7,6 +7,11 @@ import com.company.core.base.SideEffect
 import com.company.core.base.State
 import com.company.core.domain.model.editor.MyVoiceStatus
 import com.company.core.domain.repository.MyVoiceRepository
+import com.company.feature.editor.resources.Res
+import com.company.feature.editor.resources.toast_my_voice_deleted
+import com.company.feature.editor.resources.toast_my_voice_notify
+import com.company.ui.text.UiText
+import com.company.ui.text.uiText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -96,7 +101,7 @@ sealed class MyVoiceIntent : Intent() {
 /** One-time events of the screen of the user's own voice. */
 sealed class MyVoiceSideEffect : SideEffect() {
     /** ShowToast(message) : Shows a short message. */
-    data class ShowToast(val message: String) : MyVoiceSideEffect()
+    data class ShowToast(val message: UiText) : MyVoiceSideEffect()
 
     /** Close : Leaves the screen. */
     data object Close : MyVoiceSideEffect()
@@ -155,12 +160,12 @@ class MyVoiceViewModel(
             MyVoiceIntent.ConfirmDelete -> {
                 reduce { copy(confirmDelete = false) }
                 repository.delete()
-                postSideEffect { MyVoiceSideEffect.ShowToast("내 목소리를 지웠어요") }
+                postSideEffect { MyVoiceSideEffect.ShowToast(uiText(Res.string.toast_my_voice_deleted)) }
                 postSideEffect { MyVoiceSideEffect.Close }
             }
             MyVoiceIntent.DismissDelete -> reduce { copy(confirmDelete = false) }
             MyVoiceIntent.Close -> {
-                if (currentState.step == MyVoiceStep.MAKING) postSideEffect { MyVoiceSideEffect.ShowToast("다 되면 알려 드릴게요") }
+                if (currentState.step == MyVoiceStep.MAKING) postSideEffect { MyVoiceSideEffect.ShowToast(uiText(Res.string.toast_my_voice_notify)) }
                 postSideEffect { MyVoiceSideEffect.Close }
             }
         }

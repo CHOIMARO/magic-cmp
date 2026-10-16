@@ -27,6 +27,16 @@ import com.company.core.domain.repository.FontRepository
 import com.company.core.domain.repository.MediaLibraryRepository
 import com.company.core.domain.repository.MyVoiceRepository
 import com.company.core.domain.usecase.editor.GenerateCaptionsUseCase
+import com.company.feature.editor.resources.Res
+import com.company.feature.editor.resources.toast_deleted_undoable
+import com.company.feature.editor.resources.toast_duplicated
+import com.company.feature.editor.resources.toast_layout_clip_hint
+import com.company.feature.editor.resources.toast_move_line_into_clip
+import com.company.feature.editor.resources.toast_split_at_line
+import com.company.feature.editor.resources.toast_undone
+import com.company.ui.text.StringResolver
+import com.company.ui.text.UiText
+import com.company.ui.text.uiText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -43,6 +53,9 @@ internal interface EditorHost {
     /** Scope for work that ends with the screen. */
     val scope: CoroutineScope
 
+    /** Reads default strings, for example the text of a new caption. */
+    val strings: StringResolver
+
     /**
      * Changes the screen state.
      *
@@ -55,7 +68,7 @@ internal interface EditorHost {
      *
      * @param message Text of the message.
      */
-    fun toast(message: String)
+    fun toast(message: UiText)
 
     /**
      * Sends a one-time event to the screen.
@@ -88,6 +101,7 @@ class EditorViewModel(
     fontRepository: FontRepository,
     dubbingRepository: DubbingRepository,
     private val myVoiceRepository: MyVoiceRepository,
+    private val stringResolver: StringResolver,
 ) : BaseViewModel<EditorState, EditorIntent, EditorSideEffect>(
     initialState = EditorState(
         project = projectRepository.project.value,
@@ -105,10 +119,12 @@ class EditorViewModel(
             get() = projectRepository
         override val scope: CoroutineScope
             get() = viewModelScope
+        override val strings: StringResolver
+            get() = stringResolver
 
         override fun reduce(reducer: EditorState.() -> EditorState) = this@EditorViewModel.reduce(reducer)
 
-        override fun toast(message: String) = this@EditorViewModel.toast(message)
+        override fun toast(message: UiText) = this@EditorViewModel.toast(message)
 
         override fun send(effect: EditorSideEffect) {
             postSideEffect { effect }
@@ -516,12 +532,12 @@ class EditorViewModel(
     private fun splitClip() {
         val split = currentState.project.splitAt(currentState.time)
         if (split == null) {
-            toast("흰 선을 클립 안쪽으로 옮겨주세요")
+            toast(uiText(Res.string.toast_move_line_into_clip))
             return
         }
         projectRepository.commit { split }
         reduce { copy(selectedClipId = null) }
-        toast("흰 선 위치에서 나눴어요")
+        toast(uiText(Res.string.toast_split_at_line))
     }
 
     private fun duplicateClip() {
@@ -529,28 +545,28 @@ class EditorViewModel(
         val (project, copyId) = currentState.project.duplicateClip(clipId) ?: return
         projectRepository.commit { project }
         reduce { copy(selectedClipId = copyId) }
-        toast("복제했어요")
+        toast(uiText(Res.string.toast_duplicated))
     }
 
     private fun removeClip() {
         val clipId = currentState.selectedClipId ?: return
         projectRepository.commit { it.removeClip(clipId) }
         reduce { copy(selectedClipId = null, time = 0.0) }
-        toast("삭제했어요 · 되돌리기 가능")
+        toast(uiText(Res.string.toast_deleted_undoable))
     }
 
     private fun pickLayout(layout: LayoutType) {
         val project = currentState.project
         if (project.layout == layout) return
         projectRepository.commit { it.copy(layout = layout) }
-        if (layout.clipCount > project.clips.size) toast("클립을 ${layout.clipCount}개 넣으면 더 잘 어울려요")
+        if (layout.clipCount > project.clips.size) toast(uiText(Res.string.toast_layout_clip_hint, layout.clipCount))
     }
 
     private fun undo() {
         if (!projectRepository.undo()) return
         pause()
         reduce { copy(selectedClipId = null, selectedTextId = null, selectedTrackItem = null) }
-        toast("되돌렸어요")
+        toast(uiText(Res.string.toast_undone))
     }
 
     // =====================================================================
@@ -562,14 +578,14 @@ class EditorViewModel(
         val (project, copyId) = currentState.project.duplicateText(textId) ?: return
         projectRepository.commit { project }
         reduce { copy(selectedTextId = copyId) }
-        toast("복제했어요")
+        toast(uiText(Res.string.toast_duplicated))
     }
 
     private fun removeText() {
         val textId = currentState.selectedTextId ?: return
         projectRepository.commit { it.removeText(textId) }
         reduce { copy(selectedTextId = null) }
-        toast("삭제했어요 · 되돌리기 가능")
+        toast(uiText(Res.string.toast_deleted_undoable))
     }
 
     private fun removeTrackItem() {
@@ -579,7 +595,7 @@ class EditorViewModel(
             is TrackSelection.Dubbing, is TrackSelection.SoundEffect -> audio.removeSelected()
         }
         reduce { copy(selectedTrackItem = null) }
-        toast("삭제했어요 · 되돌리기 가능")
+        toast(uiText(Res.string.toast_deleted_undoable))
     }
 
     // =====================================================================
@@ -628,7 +644,7 @@ class EditorViewModel(
         }
     }
 
-    private fun toast(message: String) {
+    private fun toast(message: UiText) {
         postSideEffect { EditorSideEffect.ShowToast(message) }
     }
 

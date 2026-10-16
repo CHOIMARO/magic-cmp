@@ -24,7 +24,10 @@ import com.company.core.domain.repository.FontRepository
 import com.company.core.domain.repository.MyVoiceRepository
 import com.company.feature.editor.navigation.MyVoiceRoute
 import com.company.magiccmp.navigation.AppNavHost
+import com.company.magiccmp.resources.Res
+import com.company.magiccmp.resources.my_voice_ready
 import com.company.ui.editor.LocalDownloadedFonts
+import org.jetbrains.compose.resources.getString
 import org.koin.compose.koinInject
 
 @Composable
@@ -38,7 +41,7 @@ fun MainApp() {
     val myVoiceRepository = koinInject<MyVoiceRepository>()
     LaunchedEffect(myVoiceRepository) {
         myVoiceRepository.readyEvents.collect {
-            if (navHostController.currentDestination?.hasRoute<MyVoiceRoute>() != true) toastState.show("내 목소리가 준비됐어요")
+            if (navHostController.currentDestination?.hasRoute<MyVoiceRoute>() != true) toastState.show(getString(Res.string.my_voice_ready))
         }
     }
 

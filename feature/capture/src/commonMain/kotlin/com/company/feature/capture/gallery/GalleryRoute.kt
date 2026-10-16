@@ -11,6 +11,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.company.core.designsystem.component.LocalMagicToast
+import com.company.ui.text.resolve
 import kotlinx.coroutines.flow.first
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -55,7 +56,7 @@ internal fun GalleryRoute(
             when (effect) {
                 GallerySideEffect.OpenEditor -> onOpenEditor()
                 is GallerySideEffect.ReturnToEditor -> {
-                    toast.show(effect.message)
+                    toast.show(effect.message.resolve())
                     onReturnToEditor()
                 }
                 GallerySideEffect.Close -> {

@@ -50,6 +50,7 @@ import com.company.feature.editor.preview.EditorPreviewData
 import com.company.feature.editor.resources.*
 import com.company.ui.editor.formatTime
 import com.company.ui.editor.formatTimeTenths
+import com.company.ui.text.asString
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -124,9 +125,9 @@ internal fun EditorScreen(
         }
         state.dialog?.let { dialog ->
             MagicDialog(
-                title = dialog.title,
-                message = dialog.message,
-                confirmLabel = dialog.confirmLabel,
+                title = dialog.title.asString(),
+                message = dialog.message.asString(),
+                confirmLabel = dialog.confirmLabel.asString(),
                 onConfirm = { onIntent(EditorIntent.ConfirmDialog) },
                 cancelLabel = stringResource(Res.string.cancel),
                 onCancel = { onIntent(EditorIntent.DismissDialog) },

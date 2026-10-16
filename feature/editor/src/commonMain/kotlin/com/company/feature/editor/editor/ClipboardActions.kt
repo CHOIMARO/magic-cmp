@@ -6,6 +6,8 @@ import com.company.core.domain.model.editor.captionsInClip
 import com.company.core.domain.model.editor.copyElement
 import com.company.core.domain.model.editor.paste
 import com.company.core.domain.model.editor.pasteOptions
+import com.company.feature.editor.resources.*
+import com.company.ui.text.uiText
 
 /**
  * Copy and paste of texts and captions (F12).
@@ -26,7 +28,7 @@ internal class ClipboardActions(private val host: EditorHost) {
             else -> null
         } ?: return
         host.reduce { copy(clipboard = clipboard) }
-        host.toast("복사했어요")
+        host.toast(uiText(Res.string.toast_copied))
     }
 
     /** Opens the paste sheet. */
@@ -46,13 +48,13 @@ internal class ClipboardActions(private val host: EditorHost) {
         val clipboard = state.clipboard ?: return
         val indexes = state.project.pasteOptions(clipboard, state.time)?.indexesOf(target).orEmpty()
         if (indexes.isEmpty()) {
-            host.toast(if (target == PasteTarget.NEXT) "붙일 다음 구간이 없어요" else "붙일 구간이 없어요")
+            host.toast(uiText(if (target == PasteTarget.NEXT) Res.string.toast_no_next_clip else Res.string.toast_no_clip))
             return
         }
         val single = indexes.singleOrNull()
         if (clipboard.element is CopiedElement.Caption && single != null && state.project.captionsInClip(single).isNotEmpty()) {
             host.reduce {
-                copy(dialog = EditorDialog("이 구간 자막을 바꿀까요?", "이 구간에 있는 자막을 지우고 복사한 자막을 넣어요", "바꾸기", DialogAction.PasteReplacingCaption(target)))
+                copy(dialog = EditorDialog(uiText(Res.string.dialog_paste_caption_title), uiText(Res.string.dialog_paste_caption_message), uiText(Res.string.dialog_replace), DialogAction.PasteReplacingCaption(target)))
             }
             return
         }
@@ -77,9 +79,9 @@ internal class ClipboardActions(private val host: EditorHost) {
         if (last == null) {
             host.toast(
                 when {
-                    result.shortClips > 0 && indexes.size > 1 -> "${result.shortClips}개 구간은 짧아서 건너뛰었어요"
-                    result.shortClips > 0 -> "구간이 짧아서 붙일 수 없어요"
-                    else -> "자막이 있는 구간은 건너뛰었어요"
+                    result.shortClips > 0 && indexes.size > 1 -> uiText(Res.string.toast_skipped_short, result.shortClips)
+                    result.shortClips > 0 -> uiText(Res.string.toast_clip_too_short)
+                    else -> uiText(Res.string.toast_skipped_caption_clips)
                 },
             )
             return
@@ -100,14 +102,15 @@ internal class ClipboardActions(private val host: EditorHost) {
             }
         }
         val extras = listOfNotNull(
-            "${result.shortClips}개 구간은 짧아서 건너뛰었어요".takeIf { result.shortClips > 0 },
-            "${result.clipsWithCaptions}개 구간은 자막이 있어서 건너뛰었어요".takeIf { result.clipsWithCaptions > 0 },
-        ).joinToString(" · ")
+            uiText(Res.string.toast_skipped_short, result.shortClips).takeIf { result.shortClips > 0 },
+            uiText(Res.string.toast_skipped_captions, result.clipsWithCaptions).takeIf { result.clipsWithCaptions > 0 },
+        )
         host.toast(
             when (target) {
-                PasteTarget.NEXT -> "다음 구간에 붙였어요"
-                PasteTarget.CURRENT -> "지금 구간에 붙였어요"
-                PasteTarget.ALL -> "구간 ${result.pasted.size}개에 붙였어요" + if (extras.isNotEmpty()) " · $extras" else ""
+                PasteTarget.NEXT -> uiText(Res.string.toast_pasted_next)
+                PasteTarget.CURRENT -> uiText(Res.string.toast_pasted_current)
+                // 건너뛴 구간 안내는 " · "로 이어 붙인다.
+                PasteTarget.ALL -> extras.fold(uiText(Res.string.toast_pasted_all, result.pasted.size)) { text, extra -> uiText(Res.string.joined_with_dot, text, extra) }
             },
         )
     }

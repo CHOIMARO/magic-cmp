@@ -7,6 +7,8 @@ import com.company.feature.capture.di.captureModule
 import com.company.feature.editor.di.editorModule
 import com.company.feature.home.di.homeModule
 import com.company.feature.main.di.mainModule
+import com.company.ui.text.ComposeStringResolver
+import com.company.ui.text.StringResolver
 import org.koin.core.context.startKoin
 import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.module
@@ -25,6 +27,9 @@ val appModule = module {
         networkModule,
         dataModule,
     ) // core 모듈들
+
+    // ViewModel이 프로젝트에 넣는 기본 이름 등을 리소스에서 읽는다.
+    single<StringResolver> { ComposeStringResolver }
 }
 
 // 2. Koin을 시작하는 함수

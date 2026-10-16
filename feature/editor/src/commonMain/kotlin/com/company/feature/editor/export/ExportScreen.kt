@@ -192,7 +192,7 @@ private fun ColumnScope.SaveContent(state: ExportState, onIntent: (ExportIntent)
         }
         if (state.showOptions && !running) {
             SegmentedControl(
-                options = ExportResolution.entries.map { SegmentOption(it.label, it.note) },
+                options = ExportResolution.entries.map { SegmentOption(it.label, stringResource(it.note)) },
                 selectedIndex = state.resolution.ordinal,
                 onSelect = { onIntent(ExportIntent.SelectResolution(ExportResolution.entries[it])) },
                 contentColor = MagicColors.OnSurface80,

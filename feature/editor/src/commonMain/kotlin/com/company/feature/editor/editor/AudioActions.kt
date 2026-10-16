@@ -21,6 +21,8 @@ import com.company.core.domain.model.editor.setAudioVolume
 import com.company.core.domain.model.editor.setClipVolume
 import com.company.core.domain.model.editor.setMusic
 import com.company.core.domain.repository.DubbingRepository
+import com.company.feature.editor.resources.*
+import com.company.ui.text.uiText
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CancellationException
@@ -104,9 +106,9 @@ internal class AudioActions(private val host: EditorHost, private val dubbingRep
         host.reduce { copy(sheet = null, musicDraft = null) }
         host.toast(
             when {
-                draft.musicId == null -> "음악을 뺐어요"
-                had -> "음악을 바꿨어요"
-                else -> "음악을 넣었어요"
+                draft.musicId == null -> uiText(Res.string.toast_music_removed)
+                had -> uiText(Res.string.toast_music_changed)
+                else -> uiText(Res.string.toast_music_added)
             },
         )
     }
@@ -168,7 +170,7 @@ internal class AudioActions(private val host: EditorHost, private val dubbingRep
                 if (editId != null) {
                     host.projects.commit { it.replaceDubbing(editId, content, audio) }
                     host.reduce { copy(sheet = null, dubbingDraft = null) }
-                    host.toast("더빙을 다시 만들었어요")
+                    host.toast(uiText(Res.string.toast_dubbing_remade))
                 } else {
                     val time = host.state.time
                     var newId = ""
@@ -181,13 +183,13 @@ internal class AudioActions(private val host: EditorHost, private val dubbingRep
                     host.reduce {
                         copy(sheet = null, dubbingDraft = null, selectedTrackItem = TrackSelection.Dubbing(newId), selectedClipId = null, selectedTextId = null)
                     }
-                    host.toast("더빙을 넣었어요")
+                    host.toast(uiText(Res.string.toast_dubbing_added))
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
                 host.reduce { copy(dubbingDraft = dubbingDraft?.copy(busy = false)) }
-                host.toast("더빙을 만들지 못했어요 · 다시 시도해 주세요")
+                host.toast(uiText(Res.string.toast_dubbing_failed))
             }
         }
     }
@@ -196,7 +198,7 @@ internal class AudioActions(private val host: EditorHost, private val dubbingRep
     fun fitDubbing() {
         val dubbing = host.state.selectedDubbing ?: return
         host.projects.commit { it.fitDubbingToCaption(dubbing.id) }
-        host.toast("자막 구간에 맞췄어요")
+        host.toast(uiText(Res.string.toast_dubbing_fitted))
     }
 
     /** Stops the production of a dubbing. Closing the sheet calls it. */
@@ -234,7 +236,7 @@ internal class AudioActions(private val host: EditorHost, private val dubbingRep
                 recentSoundEffects = (listOf(effect.id) + recentSoundEffects.filter { it != effect.id }).take(RECENT_EFFECT_COUNT),
             )
         }
-        host.toast("‘${effect.name}’ 효과음을 넣었어요")
+        host.toast(uiText(Res.string.toast_effect_added, effect.name))
     }
 
     /**
@@ -265,7 +267,7 @@ internal class AudioActions(private val host: EditorHost, private val dubbingRep
         host.reduce {
             copy(selectedTrackItem = if (track == AudioTrack.DUBBING) TrackSelection.Dubbing(copyId) else TrackSelection.SoundEffect(copyId))
         }
-        host.toast("복제했어요")
+        host.toast(uiText(Res.string.toast_duplicated))
     }
 
     /** Removes the selected dubbing or sound effect. */

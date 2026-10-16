@@ -15,10 +15,12 @@ import com.company.core.domain.model.editor.TextFontType
 import com.company.core.domain.model.editor.TextStyleType
 import com.company.core.domain.model.editor.TransitionType
 import com.company.ui.resources.*
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Default text of a new title overlay. */
-const val DEFAULT_TITLE_TEXT = "오늘의 기록"
+/** Default text of a new title overlay. A ViewModel reads it with a StringResolver. */
+val DefaultTitleText: StringResource
+    get() = Res.string.default_title_text
 
 /** Display name of the layout. */
 val LayoutType.displayName: String

@@ -1,6 +1,7 @@
 package com.company.feature.editor.editor
 
 import com.company.core.domain.model.editor.Decoration
+import com.company.core.domain.model.editor.DecorationRange
 import com.company.core.domain.model.editor.TextContent
 import com.company.core.domain.model.editor.TextEntrance
 import com.company.core.domain.model.editor.TextExit
@@ -19,13 +20,17 @@ import com.company.core.domain.model.editor.trimWith
 import com.company.core.domain.model.editor.updateCaption
 import com.company.core.domain.model.editor.updateText
 import com.company.core.domain.repository.FontRepository
+import com.company.feature.editor.resources.Res
+import com.company.feature.editor.resources.empty_text
+import com.company.feature.editor.resources.toast_animation_reset
+import com.company.feature.editor.resources.toast_deleted_undoable
+import com.company.feature.editor.resources.toast_enter_caption
+import com.company.feature.editor.resources.toast_font_failed
+import com.company.ui.text.uiText
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-
-/** Text of a new overlay when the user saves an empty field. */
-private const val EMPTY_TEXT = "글자"
 
 /** Number of colors in the recent colors of the color picker. */
 private const val RECENT_COLOR_COUNT = 5
@@ -114,7 +119,7 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                host.toast("글꼴을 받지 못했어요")
+                host.toast(uiText(Res.string.toast_font_failed))
             } finally {
                 host.reduce { copy(fontDownloading = null) }
             }
@@ -153,7 +158,7 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
         val captionId = draft.captionId
         if (captionId != null) {
             if (text.isEmpty()) {
-                host.toast("자막 문구를 입력해 주세요")
+                host.toast(uiText(Res.string.toast_enter_caption))
                 return
             }
             host.projects.commit { it.updateCaption(captionId, text, decorations) }
@@ -161,13 +166,22 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
             return
         }
         // 빈 칸으로 저장하면 '글자'로 넣고, 앞뒤 빈칸을 지운 만큼 꾸미기도 당긴다.
-        val content = TextContent(
-            text = text.ifEmpty { EMPTY_TEXT },
-            style = draft.style,
-            font = draft.font,
-            sizeStep = draft.sizeStep,
-            decorations = if (text.isEmpty()) emptyList() else decorations,
-        )
+        if (text.isEmpty()) {
+            host.scope.launch { commitText(draft, host.strings.resolve(uiText(Res.string.empty_text)), emptyList()) }
+        } else {
+            commitText(draft, text, decorations)
+        }
+    }
+
+    /**
+     * Adds or changes the text overlay of the draft, then closes the sheet.
+     *
+     * @param draft Draft of the sheet.
+     * @param text Text to save.
+     * @param decorations Decorations of [text].
+     */
+    private fun commitText(draft: TextDraft, text: String, decorations: List<DecorationRange>) {
+        val content = TextContent(text = text, style = draft.style, font = draft.font, sizeStep = draft.sizeStep, decorations = decorations)
         val time = host.state.time
         host.projects.commit { project ->
             if (draft.id != null) project.updateText(draft.id, content) else project.addText(content, time).first
@@ -191,7 +205,7 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
             }
             else -> return
         }
-        host.toast("삭제했어요 · 되돌리기 가능")
+        host.toast(uiText(Res.string.toast_deleted_undoable))
     }
 
     // =====================================================================
@@ -251,7 +265,7 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
         val text = host.state.selectedText ?: return
         host.projects.commit { it.resetTextAnimation(text.id) }
         host.reduce { copy(animationReplay = animationReplay + 1) }
-        host.toast("애니메이션을 기본값으로 돌렸어요")
+        host.toast(uiText(Res.string.toast_animation_reset))
     }
 }
 

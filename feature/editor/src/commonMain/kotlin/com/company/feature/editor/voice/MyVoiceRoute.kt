@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.company.core.designsystem.component.LocalMagicToast
+import com.company.ui.text.resolve
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -20,7 +21,7 @@ internal fun MyVoiceRoute(onClose: () -> Unit, viewModel: MyVoiceViewModel = koi
     LaunchedEffect(viewModel) {
         viewModel.sideEffect.collect { effect ->
             when (effect) {
-                is MyVoiceSideEffect.ShowToast -> toast.show(effect.message)
+                is MyVoiceSideEffect.ShowToast -> toast.show(effect.message.resolve())
                 MyVoiceSideEffect.Close -> onClose()
             }
         }
