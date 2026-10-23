@@ -8,8 +8,8 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 /**
  * 화면(feature) 모듈의 공통 설정.
  *
- * magic.kmp.compose 설정 위에 Navigation 경로 직렬화, Koin, ViewModel, 공통 core 모듈을 더한다.
- * core:data는 넣지 않는다. feature는 domain의 UseCase만 쓰고, data는 composeApp의 DI에서 연결한다.
+ * magic.kmp.compose 설정 위에 Navigation 경로 직렬화, Koin, ViewModel, domain과 공통 core 모듈을 더한다.
+ * data는 넣지 않는다. feature는 domain의 UseCase만 쓰고, data는 composeApp의 DI에서 연결한다.
  */
 class KmpFeatureConventionPlugin : Plugin<Project> {
 
@@ -21,8 +21,8 @@ class KmpFeatureConventionPlugin : Plugin<Project> {
 
         extensions.configure<KotlinMultiplatformExtension> {
             sourceSets.commonMain.dependencies {
+                implementation(project(":domain"))
                 implementation(project(":core:base"))
-                implementation(project(":core:domain"))
                 implementation(project(":core:ui"))
                 implementation(project(":core:designsystem"))
 

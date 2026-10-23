@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.magic.kmp.library)
 }
 
-// 미리보기 재생기(feature:editor)와 내보내기(core:data)가 함께 쓰는 영상 합성 구성.
+// 미리보기 재생기(feature:editor)와 내보내기(data)가 함께 쓰는 영상 합성 구성.
 // 두 곳이 같은 코드로 합성해야 미리보기와 저장 결과가 같다.
 kotlin {
 
@@ -14,7 +14,7 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(libs.kotlinx.coroutines.core)
-                implementation(projects.core.domain)
+                implementation(projects.domain)
             }
         }
 

@@ -30,7 +30,7 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
                 }
             }
 
-            // ":core:domain" -> "core:domainKit"
+            // ":core:media" -> "core:mediaKit"
             val xcfName = "${path.removePrefix(":")}Kit"
 
             listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->

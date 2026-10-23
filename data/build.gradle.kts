@@ -20,7 +20,7 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
-                implementation(projects.core.domain)
+                implementation(projects.domain)
                 implementation(projects.core.media)
                 implementation(libs.kotlinx.coroutines.core)
 

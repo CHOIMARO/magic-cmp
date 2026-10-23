@@ -52,8 +52,8 @@ kotlin {
             implementation(projects.feature.capture)
             implementation(projects.feature.editor)
             implementation(projects.core.designsystem)
-            implementation(projects.core.domain)
-            implementation(projects.core.data)
+            implementation(projects.domain)
+            implementation(projects.data)
             implementation(projects.core.network)
             implementation(projects.core.ui)
 

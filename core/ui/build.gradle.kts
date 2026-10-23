@@ -18,7 +18,7 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
-                implementation(projects.core.domain)
+                implementation(projects.domain)
                 implementation(projects.core.designsystem)
 
                 // 화면 이동 연타 방지(onlyWhenResumed)
