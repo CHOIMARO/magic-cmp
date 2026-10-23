@@ -158,3 +158,4 @@ buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildKonfig"
 
 # Convention Plugin (build-logic)
 magic-kmp-library = { id = "magic.kmp.library" }
+magic-kmp-compose = { id = "magic.kmp.compose" }

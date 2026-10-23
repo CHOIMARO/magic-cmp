@@ -1,10 +1,9 @@
-import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
+import com.company.buildlogic.configureAndroidTarget
 import com.company.buildlogic.library
 import com.company.buildlogic.libs
 import com.company.buildlogic.version
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.plugins.ExtensionAware
 import org.gradle.kotlin.dsl.configure
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 
@@ -23,8 +22,7 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
         }
 
         extensions.configure<KotlinMultiplatformExtension> {
-            // kotlin { android { } } 블록. AGP가 "android" 이름으로 등록한다.
-            (this as ExtensionAware).extensions.configure<KotlinMultiplatformAndroidLibraryTarget>("android") {
+            configureAndroidTarget {
                 compileSdk = libs.version("android-compileSdk").toInt()
                 minSdk = libs.version("android-minSdk").toInt()
 
