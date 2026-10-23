@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.company.core.domain.model.editor.EditorTemplate
+import com.company.domain.model.editor.EditorTemplate
 import org.koin.compose.viewmodel.koinViewModel
 
 /**

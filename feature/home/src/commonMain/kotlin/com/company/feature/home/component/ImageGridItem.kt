@@ -13,7 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import com.company.core.domain.model.ImageItem
+import com.company.domain.model.ImageItem
 import coil3.compose.AsyncImage
 
 @Composable

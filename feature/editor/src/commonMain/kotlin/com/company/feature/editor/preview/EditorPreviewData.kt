@@ -1,19 +1,19 @@
 package com.company.feature.editor.preview
 
-import com.company.core.domain.model.editor.CaptionSegment
-import com.company.core.domain.model.editor.CaptionStyleType
-import com.company.core.domain.model.editor.Clip
-import com.company.core.domain.model.editor.EditorProject
-import com.company.core.domain.model.editor.FilterType
-import com.company.core.domain.model.editor.MediaType
-import com.company.core.domain.model.editor.DubbingVoice
-import com.company.core.domain.model.editor.MusicTrack
-import com.company.core.domain.model.editor.SoundEffect
-import com.company.core.domain.model.editor.SoundEffectCategory
-import com.company.core.domain.model.editor.PHOTO_CLIP_DEFAULT_LENGTH
-import com.company.core.domain.model.editor.PHOTO_CLIP_MAX_LENGTH
-import com.company.core.domain.model.editor.TextOverlay
-import com.company.core.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.CaptionSegment
+import com.company.domain.model.editor.CaptionStyleType
+import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.EditorProject
+import com.company.domain.model.editor.FilterType
+import com.company.domain.model.editor.MediaType
+import com.company.domain.model.editor.DubbingVoice
+import com.company.domain.model.editor.MusicTrack
+import com.company.domain.model.editor.SoundEffect
+import com.company.domain.model.editor.SoundEffectCategory
+import com.company.domain.model.editor.PHOTO_CLIP_DEFAULT_LENGTH
+import com.company.domain.model.editor.PHOTO_CLIP_MAX_LENGTH
+import com.company.domain.model.editor.TextOverlay
+import com.company.domain.model.editor.TextStyleType
 
 /** Sample data for the `@Preview` functions of the editor feature. */
 internal object EditorPreviewData {

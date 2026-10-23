@@ -22,8 +22,8 @@ import com.company.core.designsystem.component.MagicActionCard
 import com.company.core.designsystem.component.MagicActionCardStyle
 import com.company.core.designsystem.component.MagicVideoCard
 import com.company.core.designsystem.component.bleedHorizontal
-import com.company.core.domain.model.editor.EditorTemplate
-import com.company.core.domain.model.editor.VideoSummary
+import com.company.domain.model.editor.EditorTemplate
+import com.company.domain.model.editor.VideoSummary
 import com.company.feature.main.TemplateCatalog
 import com.company.feature.main.component.MagicLogo
 import com.company.feature.main.component.SectionHeader

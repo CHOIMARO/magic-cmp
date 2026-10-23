@@ -42,7 +42,7 @@ import com.company.core.designsystem.component.MagicIconButtonStyle
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicTheme
-import com.company.core.domain.model.editor.EditorTemplate
+import com.company.domain.model.editor.EditorTemplate
 import com.company.feature.main.resources.Res
 import com.company.feature.main.resources.show_all
 import com.company.ui.editor.TemplatePreview

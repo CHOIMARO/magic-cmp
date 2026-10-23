@@ -1,11 +1,11 @@
 package com.company.feature.editor.export
 
-import com.company.core.domain.model.editor.CaptionSegment
-import com.company.core.domain.model.editor.Clip
-import com.company.core.domain.model.editor.EditorProject
-import com.company.core.domain.model.editor.LayoutType
-import com.company.core.domain.model.editor.TextOverlay
-import com.company.core.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.CaptionSegment
+import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.EditorProject
+import com.company.domain.model.editor.LayoutType
+import com.company.domain.model.editor.TextOverlay
+import com.company.domain.model.editor.TextStyleType
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals

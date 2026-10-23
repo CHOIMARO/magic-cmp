@@ -1,11 +1,11 @@
 package com.company.feature.editor.editor
 
-import com.company.core.domain.model.editor.CopiedElement
-import com.company.core.domain.model.editor.PasteTarget
-import com.company.core.domain.model.editor.captionsInClip
-import com.company.core.domain.model.editor.copyElement
-import com.company.core.domain.model.editor.paste
-import com.company.core.domain.model.editor.pasteOptions
+import com.company.domain.model.editor.CopiedElement
+import com.company.domain.model.editor.PasteTarget
+import com.company.domain.model.editor.captionsInClip
+import com.company.domain.model.editor.copyElement
+import com.company.domain.model.editor.paste
+import com.company.domain.model.editor.pasteOptions
 import com.company.feature.editor.resources.*
 import com.company.ui.text.uiText
 

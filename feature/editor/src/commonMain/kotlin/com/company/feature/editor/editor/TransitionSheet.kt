@@ -43,11 +43,11 @@ import com.company.core.designsystem.component.MagicButtonStyle
 import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
-import com.company.core.domain.model.editor.PushDirection
-import com.company.core.domain.model.editor.TransitionSlot
-import com.company.core.domain.model.editor.TransitionType
-import com.company.core.domain.model.editor.transitionAt
-import com.company.core.domain.model.editor.transitionLength
+import com.company.domain.model.editor.PushDirection
+import com.company.domain.model.editor.TransitionSlot
+import com.company.domain.model.editor.TransitionType
+import com.company.domain.model.editor.transitionAt
+import com.company.domain.model.editor.transitionLength
 import com.company.core.media.CoverColor
 import com.company.core.media.SceneLook
 import com.company.core.media.TransitionLook

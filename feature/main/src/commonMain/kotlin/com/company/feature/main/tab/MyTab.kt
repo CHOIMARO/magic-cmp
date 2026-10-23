@@ -48,8 +48,8 @@ import com.company.core.designsystem.component.MagicSwitch
 import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
-import com.company.core.domain.model.editor.EditorSettings
-import com.company.core.domain.model.editor.MyVoiceStatus
+import com.company.domain.model.editor.EditorSettings
+import com.company.domain.model.editor.MyVoiceStatus
 import com.company.feature.main.SettingKey
 import com.company.feature.main.component.TabContentBottomPadding
 import com.company.feature.main.component.TabTitle

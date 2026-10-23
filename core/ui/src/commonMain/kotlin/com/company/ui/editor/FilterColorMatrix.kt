@@ -2,8 +2,8 @@ package com.company.ui.editor
 
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
-import com.company.core.domain.model.editor.FilterType
-import com.company.core.domain.model.editor.colorMatrix
+import com.company.domain.model.editor.FilterType
+import com.company.domain.model.editor.colorMatrix
 
 /**
  * Color filter that gives the same result as the CSS filter of the design.

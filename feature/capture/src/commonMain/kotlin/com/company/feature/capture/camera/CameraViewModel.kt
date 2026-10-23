@@ -5,10 +5,10 @@ import com.company.core.base.BaseViewModel
 import com.company.core.base.Intent
 import com.company.core.base.SideEffect
 import com.company.core.base.State
-import com.company.core.domain.model.editor.Clip
-import com.company.core.domain.model.editor.EditorProject
-import com.company.core.domain.model.editor.newEditorId
-import com.company.core.domain.repository.EditorProjectRepository
+import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.EditorProject
+import com.company.domain.model.editor.newEditorId
+import com.company.domain.repository.EditorProjectRepository
 import com.company.feature.capture.resources.Res
 import com.company.feature.capture.resources.camera_clip_name
 import com.company.feature.capture.resources.new_recording_name

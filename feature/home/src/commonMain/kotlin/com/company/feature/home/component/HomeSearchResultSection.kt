@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
-import com.company.core.domain.model.ImageItem
+import com.company.domain.model.ImageItem
 import com.company.ui.UiStatus
 
 @Composable

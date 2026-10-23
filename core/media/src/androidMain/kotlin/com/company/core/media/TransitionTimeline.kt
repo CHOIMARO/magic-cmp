@@ -1,6 +1,6 @@
 package com.company.core.media
 
-import com.company.core.domain.model.editor.TransitionWindow
+import com.company.domain.model.editor.TransitionWindow
 import kotlin.math.abs
 import kotlin.math.roundToLong
 

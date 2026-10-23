@@ -63,7 +63,7 @@ import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.core.designsystem.theme.oklch
-import com.company.core.domain.model.editor.MyVoiceStatus
+import com.company.domain.model.editor.MyVoiceStatus
 import com.company.feature.editor.resources.*
 import com.company.ui.editor.formatTime
 import kotlin.math.abs

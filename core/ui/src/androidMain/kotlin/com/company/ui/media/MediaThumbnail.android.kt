@@ -21,7 +21,7 @@ import androidx.media3.effect.MatrixTransformation
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.inspector.frame.FrameExtractor
-import com.company.core.domain.model.editor.MediaType
+import com.company.domain.model.editor.MediaType
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors

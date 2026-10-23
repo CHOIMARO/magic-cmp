@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import com.company.core.designsystem.component.StripeBox
-import com.company.core.domain.model.editor.MediaType
+import com.company.domain.model.editor.MediaType
 import kotlin.math.roundToInt
 
 /** Loads thumbnails. Use it on the main thread. */

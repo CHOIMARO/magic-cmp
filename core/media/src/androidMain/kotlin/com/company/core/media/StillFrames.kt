@@ -15,10 +15,10 @@ import android.util.LruCache
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.BitmapUtil
-import com.company.core.domain.model.editor.Clip
-import com.company.core.domain.model.editor.FilterType
-import com.company.core.domain.model.editor.MediaType
-import com.company.core.domain.model.editor.colorMatrix
+import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.FilterType
+import com.company.domain.model.editor.MediaType
+import com.company.domain.model.editor.colorMatrix
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap

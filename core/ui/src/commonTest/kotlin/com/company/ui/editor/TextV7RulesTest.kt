@@ -1,13 +1,13 @@
 package com.company.ui.editor
 
 import androidx.compose.ui.graphics.Color
-import com.company.core.domain.model.editor.Decoration
-import com.company.core.domain.model.editor.DecorationRange
-import com.company.core.domain.model.editor.TextEntrance
-import com.company.core.domain.model.editor.TextExit
-import com.company.core.domain.model.editor.TextFontType
-import com.company.core.domain.model.editor.TextOverlay
-import com.company.core.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.Decoration
+import com.company.domain.model.editor.DecorationRange
+import com.company.domain.model.editor.TextEntrance
+import com.company.domain.model.editor.TextExit
+import com.company.domain.model.editor.TextFontType
+import com.company.domain.model.editor.TextOverlay
+import com.company.domain.model.editor.TextStyleType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

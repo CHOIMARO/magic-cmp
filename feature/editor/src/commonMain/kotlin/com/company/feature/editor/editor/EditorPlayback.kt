@@ -9,7 +9,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import com.company.core.domain.model.editor.transitionWindows
+import com.company.domain.model.editor.transitionWindows
 import kotlin.math.abs
 import kotlinx.coroutines.delay
 

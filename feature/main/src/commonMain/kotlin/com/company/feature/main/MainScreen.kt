@@ -21,7 +21,7 @@ import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
-import com.company.core.domain.model.editor.VideoSummary
+import com.company.domain.model.editor.VideoSummary
 import com.company.feature.main.component.MainBottomBar
 import com.company.feature.main.sheet.AppInfoSheetContent
 import com.company.feature.main.sheet.TemplateSheetContent

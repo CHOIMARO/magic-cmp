@@ -22,9 +22,9 @@ import androidx.media3.common.util.ExperimentalApi
 import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.transformer.CompositionPlayer
-import com.company.core.domain.model.editor.Clip
-import com.company.core.domain.model.editor.FilterType
-import com.company.core.domain.model.editor.TransitionWindow
+import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.FilterType
+import com.company.domain.model.editor.TransitionWindow
 import com.company.core.media.PREVIEW_FRAME_HEIGHT
 import com.company.core.media.PREVIEW_FRAME_WIDTH
 import com.company.core.media.buildMediaComposition

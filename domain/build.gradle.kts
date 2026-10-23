@@ -8,7 +8,7 @@ plugins {
 kotlin {
 
     android {
-        namespace = "com.company.core.domain"
+        namespace = "com.company.domain"
 
         withDeviceTestBuilder {
             sourceSetTreeName = "test"

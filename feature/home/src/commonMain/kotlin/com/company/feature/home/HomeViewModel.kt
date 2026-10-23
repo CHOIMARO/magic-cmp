@@ -7,9 +7,9 @@ import com.company.core.base.BaseViewModel
 import com.company.core.base.Intent
 import com.company.core.base.SideEffect
 import com.company.core.base.State
-import com.company.core.domain.model.ImageItem
-import com.company.core.domain.usecase.GetImageDetailUseCase
-import com.company.core.domain.usecase.SearchImagesUseCase
+import com.company.domain.model.ImageItem
+import com.company.domain.usecase.GetImageDetailUseCase
+import com.company.domain.usecase.SearchImagesUseCase
 import com.company.ui.UiStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf

@@ -28,10 +28,10 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.company.core.designsystem.component.StripeBox
-import com.company.core.domain.model.editor.Clip
-import com.company.core.domain.model.editor.EditorProject
-import com.company.core.domain.model.editor.ExportOverlay
-import com.company.core.domain.model.editor.clipAt
+import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.EditorProject
+import com.company.domain.model.editor.ExportOverlay
+import com.company.domain.model.editor.clipAt
 import com.company.feature.editor.editor.StageCanvas
 import com.company.feature.editor.editor.StageCaption
 import com.company.feature.editor.editor.StageLayoutCells

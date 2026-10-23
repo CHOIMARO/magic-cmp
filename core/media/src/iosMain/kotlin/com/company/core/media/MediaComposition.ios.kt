@@ -1,13 +1,13 @@
 package com.company.core.media
 
-import com.company.core.domain.model.editor.Clip
-import com.company.core.domain.model.editor.ExportOverlay
-import com.company.core.domain.model.editor.FilterType
-import com.company.core.domain.model.editor.FrameArea
-import com.company.core.domain.model.editor.MAX_VOLUME
-import com.company.core.domain.model.editor.MediaType
-import com.company.core.domain.model.editor.TransitionWindow
-import com.company.core.domain.model.editor.colorMatrix
+import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.ExportOverlay
+import com.company.domain.model.editor.FilterType
+import com.company.domain.model.editor.FrameArea
+import com.company.domain.model.editor.MAX_VOLUME
+import com.company.domain.model.editor.MediaType
+import com.company.domain.model.editor.TransitionWindow
+import com.company.domain.model.editor.colorMatrix
 import kotlin.coroutines.resume
 import kotlin.math.PI
 import kotlin.math.abs

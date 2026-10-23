@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.company.core.designsystem.component.FixedGrid
 import com.company.core.designsystem.component.MagicChip
 import com.company.core.designsystem.component.MagicVideoCard
-import com.company.core.domain.model.editor.VideoSummary
+import com.company.domain.model.editor.VideoSummary
 import com.company.feature.main.LibrarySegment
 import com.company.feature.main.component.TabContentBottomPadding
 import com.company.feature.main.component.TabTitle

@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.dp
 import com.company.core.designsystem.component.FixedGrid
 import com.company.core.designsystem.component.MagicChip
 import com.company.core.designsystem.component.bleedHorizontal
-import com.company.core.domain.model.editor.EditorTemplate
-import com.company.core.domain.model.editor.TemplateKind
+import com.company.domain.model.editor.EditorTemplate
+import com.company.domain.model.editor.TemplateKind
 import com.company.feature.main.TemplateCatalog
 import com.company.feature.main.component.TabContentBottomPadding
 import com.company.feature.main.component.TabTitle

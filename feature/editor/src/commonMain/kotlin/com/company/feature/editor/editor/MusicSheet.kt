@@ -57,8 +57,8 @@ import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.bleedHorizontal
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
-import com.company.core.domain.model.editor.MusicRange
-import com.company.core.domain.model.editor.MusicTrack
+import com.company.domain.model.editor.MusicRange
+import com.company.domain.model.editor.MusicTrack
 import com.company.feature.editor.resources.*
 import com.company.ui.editor.formatTime
 import kotlin.math.abs

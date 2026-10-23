@@ -1,14 +1,14 @@
 package com.company.feature.editor.editor
 
-import com.company.core.domain.model.editor.ClipTransition
-import com.company.core.domain.model.editor.PushDirection
-import com.company.core.domain.model.editor.TransitionSlot
-import com.company.core.domain.model.editor.TransitionType
-import com.company.core.domain.model.editor.clipBoundaries
-import com.company.core.domain.model.editor.nearestTransitionSlot
-import com.company.core.domain.model.editor.setTransition
-import com.company.core.domain.model.editor.setTransitionForAllBoundaries
-import com.company.core.domain.model.editor.transitionAt
+import com.company.domain.model.editor.ClipTransition
+import com.company.domain.model.editor.PushDirection
+import com.company.domain.model.editor.TransitionSlot
+import com.company.domain.model.editor.TransitionType
+import com.company.domain.model.editor.clipBoundaries
+import com.company.domain.model.editor.nearestTransitionSlot
+import com.company.domain.model.editor.setTransition
+import com.company.domain.model.editor.setTransitionForAllBoundaries
+import com.company.domain.model.editor.transitionAt
 import com.company.feature.editor.resources.Res
 import com.company.feature.editor.resources.toast_transition_applied_all
 import com.company.feature.editor.resources.toast_transition_removed_all

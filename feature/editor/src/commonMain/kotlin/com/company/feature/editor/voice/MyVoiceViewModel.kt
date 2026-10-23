@@ -5,8 +5,8 @@ import com.company.core.base.BaseViewModel
 import com.company.core.base.Intent
 import com.company.core.base.SideEffect
 import com.company.core.base.State
-import com.company.core.domain.model.editor.MyVoiceStatus
-import com.company.core.domain.repository.MyVoiceRepository
+import com.company.domain.model.editor.MyVoiceStatus
+import com.company.domain.repository.MyVoiceRepository
 import com.company.feature.editor.resources.Res
 import com.company.feature.editor.resources.toast_my_voice_deleted
 import com.company.feature.editor.resources.toast_my_voice_notify

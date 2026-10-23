@@ -52,8 +52,8 @@ import com.company.core.designsystem.component.MagicToolButton
 import com.company.core.designsystem.component.MagicToolStyle
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
-import com.company.core.domain.model.editor.canChangeSpeed
-import com.company.core.domain.model.editor.dubbingOverflow
+import com.company.domain.model.editor.canChangeSpeed
+import com.company.domain.model.editor.dubbingOverflow
 import com.company.feature.editor.resources.*
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource

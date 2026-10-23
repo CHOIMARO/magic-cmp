@@ -1,7 +1,7 @@
 package com.company.magiccmp.di
 
-import com.company.core.data.di.dataModule
-import com.company.core.domain.di.domainModule
+import com.company.data.di.dataModule
+import com.company.domain.di.domainModule
 import com.company.core.network.di.networkModule
 import com.company.feature.capture.di.captureModule
 import com.company.feature.editor.di.editorModule

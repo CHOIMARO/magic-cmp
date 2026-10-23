@@ -1,16 +1,16 @@
 package com.company.feature.editor.editor
 
-import com.company.core.domain.model.editor.EditorProject
-import com.company.core.domain.model.editor.clipBoundaries
-import com.company.core.domain.model.editor.itemsOf
-import com.company.core.domain.model.editor.moveAudioItem
-import com.company.core.domain.model.editor.moveTextTime
-import com.company.core.domain.model.editor.placedCaptions
-import com.company.core.domain.model.editor.trimCaption
-import com.company.core.domain.model.editor.trimClipEnd
-import com.company.core.domain.model.editor.trimClipStart
-import com.company.core.domain.model.editor.trimTextEnd
-import com.company.core.domain.model.editor.trimTextStart
+import com.company.domain.model.editor.EditorProject
+import com.company.domain.model.editor.clipBoundaries
+import com.company.domain.model.editor.itemsOf
+import com.company.domain.model.editor.moveAudioItem
+import com.company.domain.model.editor.moveTextTime
+import com.company.domain.model.editor.placedCaptions
+import com.company.domain.model.editor.trimCaption
+import com.company.domain.model.editor.trimClipEnd
+import com.company.domain.model.editor.trimClipStart
+import com.company.domain.model.editor.trimTextEnd
+import com.company.domain.model.editor.trimTextStart
 import kotlin.math.abs
 
 /**

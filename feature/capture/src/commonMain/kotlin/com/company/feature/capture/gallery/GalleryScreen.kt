@@ -56,10 +56,10 @@ import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
-import com.company.core.domain.model.editor.EditorTemplate
-import com.company.core.domain.model.editor.LayoutType
-import com.company.core.domain.model.editor.MediaType
-import com.company.core.domain.model.editor.SourceMedia
+import com.company.domain.model.editor.EditorTemplate
+import com.company.domain.model.editor.LayoutType
+import com.company.domain.model.editor.MediaType
+import com.company.domain.model.editor.SourceMedia
 import com.company.feature.capture.resources.*
 import com.company.ui.editor.GalleryMode
 import com.company.ui.editor.displayName

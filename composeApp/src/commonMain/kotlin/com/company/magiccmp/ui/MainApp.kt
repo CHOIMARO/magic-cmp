@@ -20,8 +20,8 @@ import com.company.core.designsystem.component.LocalMagicToast
 import com.company.core.designsystem.component.MagicToastHost
 import com.company.core.designsystem.component.rememberMagicToastState
 import com.company.core.designsystem.theme.MagicColors
-import com.company.core.domain.repository.FontRepository
-import com.company.core.domain.repository.MyVoiceRepository
+import com.company.domain.repository.FontRepository
+import com.company.domain.repository.MyVoiceRepository
 import com.company.feature.editor.navigation.MyVoiceRoute
 import com.company.magiccmp.navigation.AppNavHost
 import com.company.magiccmp.resources.Res

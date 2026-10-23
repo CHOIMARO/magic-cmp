@@ -1,9 +1,9 @@
 package com.company.core.media
 
-import com.company.core.domain.model.editor.ClipTransition
-import com.company.core.domain.model.editor.PushDirection
-import com.company.core.domain.model.editor.TransitionType
-import com.company.core.domain.model.editor.TransitionWindow
+import com.company.domain.model.editor.ClipTransition
+import com.company.domain.model.editor.PushDirection
+import com.company.domain.model.editor.TransitionType
+import com.company.domain.model.editor.TransitionWindow
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals

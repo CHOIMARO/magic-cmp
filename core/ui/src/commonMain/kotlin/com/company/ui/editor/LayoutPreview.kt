@@ -26,8 +26,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.StripeBox
-import com.company.core.domain.model.editor.EditorTemplate
-import com.company.core.domain.model.editor.LayoutType
+import com.company.domain.model.editor.EditorTemplate
+import com.company.domain.model.editor.LayoutType
 import com.company.ui.resources.Res
 import com.company.ui.resources.caption_sample
 import com.company.ui.resources.default_title_text

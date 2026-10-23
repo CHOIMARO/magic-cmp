@@ -8,9 +8,9 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
-import com.company.core.domain.model.editor.Clip
-import com.company.core.domain.model.editor.FilterType
-import com.company.core.domain.model.editor.TransitionWindow
+import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.FilterType
+import com.company.domain.model.editor.TransitionWindow
 import com.company.core.media.PREVIEW_FRAME_HEIGHT
 import com.company.core.media.PREVIEW_FRAME_WIDTH
 import com.company.core.media.buildMediaComposition

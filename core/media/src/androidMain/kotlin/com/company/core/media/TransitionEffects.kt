@@ -18,9 +18,9 @@ import androidx.media3.effect.MatrixTransformation
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.RgbMatrix
 import androidx.media3.effect.SeparableConvolutionShaderProgram
-import com.company.core.domain.model.editor.Clip
-import com.company.core.domain.model.editor.FilterType
-import com.company.core.domain.model.editor.TransitionWindow
+import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.FilterType
+import com.company.domain.model.editor.TransitionWindow
 import kotlin.math.PI
 import kotlin.math.tan
 

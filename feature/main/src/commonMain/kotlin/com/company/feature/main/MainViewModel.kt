@@ -5,15 +5,15 @@ import com.company.core.base.BaseViewModel
 import com.company.core.base.Intent
 import com.company.core.base.SideEffect
 import com.company.core.base.State
-import com.company.core.domain.model.editor.EditorSettings
-import com.company.core.domain.model.editor.MyVoiceStatus
-import com.company.core.domain.model.editor.EditorTemplate
-import com.company.core.domain.model.editor.TemplateKind
-import com.company.core.domain.model.editor.VideoSummary
-import com.company.core.domain.repository.EditorProjectRepository
-import com.company.core.domain.repository.EditorSettingsRepository
-import com.company.core.domain.repository.MyVoiceRepository
-import com.company.core.domain.repository.MyVideoRepository
+import com.company.domain.model.editor.EditorSettings
+import com.company.domain.model.editor.MyVoiceStatus
+import com.company.domain.model.editor.EditorTemplate
+import com.company.domain.model.editor.TemplateKind
+import com.company.domain.model.editor.VideoSummary
+import com.company.domain.repository.EditorProjectRepository
+import com.company.domain.repository.EditorSettingsRepository
+import com.company.domain.repository.MyVoiceRepository
+import com.company.domain.repository.MyVideoRepository
 import kotlinx.coroutines.launch
 
 /** Tab of the main screen. */

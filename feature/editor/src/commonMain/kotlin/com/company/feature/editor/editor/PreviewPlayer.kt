@@ -2,9 +2,9 @@ package com.company.feature.editor.editor
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.company.core.domain.model.editor.Clip
-import com.company.core.domain.model.editor.FilterType
-import com.company.core.domain.model.editor.TransitionWindow
+import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.FilterType
+import com.company.domain.model.editor.TransitionWindow
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 

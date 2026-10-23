@@ -12,7 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.paging.compose.LazyPagingItems
-import com.company.core.domain.model.ImageItem
+import com.company.domain.model.ImageItem
 import com.company.feature.home.component.HomeSearchBarSection
 import com.company.feature.home.component.HomeSearchResultSection
 

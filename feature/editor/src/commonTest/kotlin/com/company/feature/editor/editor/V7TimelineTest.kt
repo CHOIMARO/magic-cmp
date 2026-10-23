@@ -1,14 +1,14 @@
 package com.company.feature.editor.editor
 
-import com.company.core.domain.model.editor.AudioTrack
-import com.company.core.domain.model.editor.CaptionSegment
-import com.company.core.domain.model.editor.Clip
-import com.company.core.domain.model.editor.EditorProject
-import com.company.core.domain.model.editor.PushDirection
-import com.company.core.domain.model.editor.SoundEffectClip
-import com.company.core.domain.model.editor.TextOverlay
-import com.company.core.domain.model.editor.TextStyleType
-import com.company.core.domain.model.editor.TransitionType
+import com.company.domain.model.editor.AudioTrack
+import com.company.domain.model.editor.CaptionSegment
+import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.EditorProject
+import com.company.domain.model.editor.PushDirection
+import com.company.domain.model.editor.SoundEffectClip
+import com.company.domain.model.editor.TextOverlay
+import com.company.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.TransitionType
 import com.company.core.media.CoverColor
 import com.company.core.media.openingLook
 import com.company.core.media.transitionLook

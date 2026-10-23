@@ -9,7 +9,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.ImageBitmap
-import com.company.core.domain.model.editor.MediaType
+import com.company.domain.model.editor.MediaType
 import kotlinx.coroutines.flow.conflate
 import kotlin.math.abs
 import kotlin.math.roundToInt

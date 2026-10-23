@@ -4,7 +4,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
-import com.company.core.domain.model.editor.EditorTemplate
+import com.company.domain.model.editor.EditorTemplate
 import com.company.feature.capture.camera.CameraRoute
 import com.company.feature.capture.gallery.GalleryArgs
 import com.company.feature.capture.gallery.GalleryRoute

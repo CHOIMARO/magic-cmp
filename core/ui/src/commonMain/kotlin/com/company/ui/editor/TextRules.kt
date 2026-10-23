@@ -1,9 +1,9 @@
 package com.company.ui.editor
 
 import androidx.compose.runtime.Immutable
-import com.company.core.domain.model.editor.TextEntrance
-import com.company.core.domain.model.editor.TextExit
-import com.company.core.domain.model.editor.TextFontType
+import com.company.domain.model.editor.TextEntrance
+import com.company.domain.model.editor.TextExit
+import com.company.domain.model.editor.TextFontType
 import kotlin.math.floor
 import kotlin.math.pow
 

@@ -1,7 +1,7 @@
 package com.company.ui.editor
 
-import com.company.core.domain.model.editor.TextFontType
-import com.company.core.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.TextFontType
+import com.company.domain.model.editor.TextStyleType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

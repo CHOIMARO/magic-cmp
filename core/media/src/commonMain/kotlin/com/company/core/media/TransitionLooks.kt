@@ -1,7 +1,7 @@
 package com.company.core.media
 
-import com.company.core.domain.model.editor.PushDirection
-import com.company.core.domain.model.editor.TransitionType
+import com.company.domain.model.editor.PushDirection
+import com.company.domain.model.editor.TransitionType
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sin

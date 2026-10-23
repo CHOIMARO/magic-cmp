@@ -1,9 +1,9 @@
 package com.company.feature.main
 
-import com.company.core.domain.model.editor.CaptionStyleType
-import com.company.core.domain.model.editor.EditorTemplate
-import com.company.core.domain.model.editor.LayoutType
-import com.company.core.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.CaptionStyleType
+import com.company.domain.model.editor.EditorTemplate
+import com.company.domain.model.editor.LayoutType
+import com.company.domain.model.editor.TextStyleType
 
 /** Templates that the template tab and the home tab show. */
 internal object TemplateCatalog {

@@ -1,10 +1,10 @@
 package com.company.feature.editor.export
 
-import com.company.core.domain.model.editor.EditorProject
-import com.company.core.domain.model.editor.LayoutType
-import com.company.core.domain.model.editor.clipAt
-import com.company.core.domain.model.editor.currentWordIndex
-import com.company.core.domain.model.editor.placedCaptions
+import com.company.domain.model.editor.EditorProject
+import com.company.domain.model.editor.LayoutType
+import com.company.domain.model.editor.clipAt
+import com.company.domain.model.editor.currentWordIndex
+import com.company.domain.model.editor.placedCaptions
 import com.company.feature.editor.editor.isVisibleAt
 import com.company.feature.editor.editor.visibleAt
 import com.company.ui.editor.TextAnimation

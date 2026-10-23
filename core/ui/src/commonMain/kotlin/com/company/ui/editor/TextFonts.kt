@@ -7,8 +7,8 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import com.company.core.designsystem.theme.MagicTheme
-import com.company.core.domain.model.editor.TextFontType
-import com.company.core.domain.repository.FontFiles
+import com.company.domain.model.editor.TextFontType
+import com.company.domain.repository.FontFiles
 import com.company.ui.resources.Res
 import com.company.ui.resources.black_han_sans
 import com.company.ui.resources.do_hyeon

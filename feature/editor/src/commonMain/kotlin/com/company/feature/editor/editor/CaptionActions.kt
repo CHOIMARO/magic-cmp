@@ -1,13 +1,13 @@
 package com.company.feature.editor.editor
 
-import com.company.core.domain.model.editor.CaptionSplit
-import com.company.core.domain.model.editor.CaptionStyleType
-import com.company.core.domain.model.editor.addCaptionAt
-import com.company.core.domain.model.editor.captionsFromScript
-import com.company.core.domain.model.editor.removeCaption
-import com.company.core.domain.model.editor.scriptLines
-import com.company.core.domain.model.editor.splitCaption
-import com.company.core.domain.usecase.editor.GenerateCaptionsUseCase
+import com.company.domain.model.editor.CaptionSplit
+import com.company.domain.model.editor.CaptionStyleType
+import com.company.domain.model.editor.addCaptionAt
+import com.company.domain.model.editor.captionsFromScript
+import com.company.domain.model.editor.removeCaption
+import com.company.domain.model.editor.scriptLines
+import com.company.domain.model.editor.splitCaption
+import com.company.domain.usecase.editor.GenerateCaptionsUseCase
 import com.company.feature.editor.resources.*
 import com.company.ui.text.uiText
 import kotlinx.coroutines.Job

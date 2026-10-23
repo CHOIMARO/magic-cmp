@@ -38,8 +38,8 @@ import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.MagicTheme
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
-import com.company.core.domain.model.editor.EditorTemplate
-import com.company.core.domain.model.editor.LayoutType
+import com.company.domain.model.editor.EditorTemplate
+import com.company.domain.model.editor.LayoutType
 import com.company.feature.main.resources.Res
 import com.company.feature.main.resources.app_info_feedback
 import com.company.feature.main.resources.app_info_latest

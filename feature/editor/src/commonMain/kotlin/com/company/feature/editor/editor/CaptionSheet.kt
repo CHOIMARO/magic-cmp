@@ -43,8 +43,8 @@ import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicTheme
-import com.company.core.domain.model.editor.CaptionStyleType
-import com.company.core.domain.model.editor.scriptLines
+import com.company.domain.model.editor.CaptionStyleType
+import com.company.domain.model.editor.scriptLines
 import com.company.feature.editor.resources.*
 import com.company.ui.editor.CaptionText
 import com.company.ui.editor.displayName

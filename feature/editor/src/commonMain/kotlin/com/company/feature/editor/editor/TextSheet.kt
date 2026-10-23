@@ -85,11 +85,11 @@ import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.component.sheetIme
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicTheme
-import com.company.core.domain.model.editor.Decoration
-import com.company.core.domain.model.editor.SIZE_STEP_COUNT
-import com.company.core.domain.model.editor.TextFontType
-import com.company.core.domain.model.editor.TextStyleType
-import com.company.core.domain.model.editor.valuesIn
+import com.company.domain.model.editor.Decoration
+import com.company.domain.model.editor.SIZE_STEP_COUNT
+import com.company.domain.model.editor.TextFontType
+import com.company.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.valuesIn
 import com.company.feature.editor.resources.*
 import com.company.ui.editor.TextFrame
 import com.company.ui.editor.displayName

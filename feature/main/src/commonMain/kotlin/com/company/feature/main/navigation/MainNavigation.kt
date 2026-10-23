@@ -2,7 +2,7 @@ package com.company.feature.main.navigation
 
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import com.company.core.domain.model.editor.EditorTemplate
+import com.company.domain.model.editor.EditorTemplate
 import com.company.feature.main.MainRoute
 import com.company.ui.navigation.onlyWhenResumed
 import kotlinx.serialization.Serializable
