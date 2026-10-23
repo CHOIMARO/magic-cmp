@@ -43,7 +43,7 @@ kotlin {
     
     sourceSets {
         androidMain.dependencies {
-            implementation(compose.preview)
+            implementation(libs.jetbrains.compose.ui.tooling.preview)
             implementation(libs.androidx.activity.compose)
         }
         commonMain.dependencies {
@@ -81,7 +81,7 @@ kotlin {
 
 dependencies {
     // Android KMP 라이브러리 플러그인은 build type이 없으므로 debugImplementation 대신 사용
-    "androidRuntimeClasspath"(compose.uiTooling)
+    "androidRuntimeClasspath"(libs.jetbrains.compose.ui.tooling)
 }
 
 
