@@ -1,7 +1,5 @@
 plugins {
-    alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidKotlinMultiplatformLibrary)
-    alias(libs.plugins.androidLint)
+    alias(libs.plugins.magic.kmp.library)
 }
 
 // 미리보기 재생기(feature:editor)와 내보내기(core:data)가 함께 쓰는 영상 합성 구성.
@@ -10,39 +8,13 @@ kotlin {
 
     android {
         namespace = "com.company.core.media"
-        compileSdk = 37
-        minSdk = 29
-
-        withHostTestBuilder {
-        }
-    }
-
-    val xcfName = "core:mediaKit"
-
-    iosArm64 {
-        binaries.framework {
-            baseName = xcfName
-        }
-    }
-
-    iosSimulatorArm64 {
-        binaries.framework {
-            baseName = xcfName
-        }
     }
 
     sourceSets {
         commonMain {
             dependencies {
-                implementation(libs.kotlin.stdlib)
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(projects.core.domain)
-            }
-        }
-
-        commonTest {
-            dependencies {
-                implementation(libs.kotlin.test)
             }
         }
 

@@ -2,6 +2,9 @@ rootProject.name = "magic-cmp"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
+    // 모듈 공통 설정(Convention Plugin)
+    includeBuild("build-logic")
+
     repositories {
         google {
             mavenContent {

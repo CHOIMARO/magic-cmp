@@ -137,6 +137,10 @@ androidx-media3-inspector-frame = { group = "androidx.media3", name = "media3-in
 # Icons
 jetbrains-compose-material-icons-extended = { group = "org.jetbrains.compose.material", name = "material-icons-extended", version.ref = "composeIcons" }
 
+# build-logic (Convention Plugin 컴파일용)
+android-gradleApiPlugin = { group = "com.android.tools.build", name = "gradle-api", version.ref = "agp" }
+kotlin-gradlePlugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
+
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
@@ -151,3 +155,6 @@ kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", versio
 
 # BuildConfig
 buildKonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildKonfig" }
+
+# Convention Plugin (build-logic)
+magic-kmp-library = { id = "magic.kmp.library" }
