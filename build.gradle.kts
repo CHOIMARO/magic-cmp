@@ -8,4 +8,6 @@ plugins {
     alias(libs.plugins.androidKotlinMultiplatformLibrary) apply false
     alias(libs.plugins.androidLint) apply false
     alias(libs.plugins.androidApplication) apply false
+    // magic.kmp.feature가 id로 적용하므로 classpath에 있어야 한다.
+    alias(libs.plugins.kotlinSerialization) apply false
 }
