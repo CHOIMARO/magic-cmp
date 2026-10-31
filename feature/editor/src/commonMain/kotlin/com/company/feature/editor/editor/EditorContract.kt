@@ -690,13 +690,13 @@ sealed class EditorIntent : Intent() {
     /** Undo : Restores the last undo step. */
     data object Undo : EditorIntent()
 
-    /** Export : Opens the export screen. */
+    /** Export : Opens the export screen. The draft of a new project gets the length and the first clip. */
     data object Export : EditorIntent()
 
     /** Back : Asks the user before the editor closes. The back button and the system back action send it. */
     data object Back : EditorIntent()
 
-    /** ConfirmLeave : Closes the editor. The user confirmed the leave popup. */
+    /** ConfirmLeave : Closes the editor. The user confirmed the leave popup. The draft of a new project gets the length and the first clip. */
     data object ConfirmLeave : EditorIntent()
 
     /** DismissLeave : Closes the leave popup. The user stays in the editor. */

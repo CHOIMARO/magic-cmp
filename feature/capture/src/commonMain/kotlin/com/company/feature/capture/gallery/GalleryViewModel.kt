@@ -13,6 +13,7 @@ import com.company.domain.model.editor.toClip
 import com.company.domain.repository.EditorProjectRepository
 import com.company.domain.repository.MediaLibraryRepository
 import com.company.domain.usecase.editor.ApplyTemplateUseCase
+import com.company.domain.usecase.editor.StartNewProjectUseCase
 import com.company.feature.capture.resources.Res
 import com.company.feature.capture.resources.new_project_name
 import com.company.feature.capture.resources.toast_clips_added
@@ -75,7 +76,7 @@ sealed class GalleryIntent : Intent() {
 
 /** One-time events of the photo and video picker. */
 sealed class GallerySideEffect : SideEffect() {
-    /** OpenEditor : Navigates to the editor with the new project. */
+    /** OpenEditor : Navigates to the editor with the new project. The project is also the newest draft. */
     data object OpenEditor : GallerySideEffect()
 
     /** ReturnToEditor(message) : Goes back to the editor and shows the message. */
@@ -96,6 +97,7 @@ class GalleryViewModel(
     private val mediaLibraryRepository: MediaLibraryRepository,
     private val projectRepository: EditorProjectRepository,
     private val applyTemplate: ApplyTemplateUseCase,
+    private val startNewProject: StartNewProjectUseCase,
     private val strings: StringResolver,
 ) : BaseViewModel<GalleryState, GalleryIntent, GallerySideEffect>(
     initialState = GalleryState(mode = args.mode, template = args.template)
@@ -184,7 +186,7 @@ class GalleryViewModel(
                 val name = strings.resolve(uiText(Res.string.new_project_name))
                 val defaultText = strings.resolve(UiText.Resource(DefaultTitleText))
                 val project = applyTemplate(EditorProject(name = name, clips = clips), state.template, defaultText)
-                projectRepository.start(project)
+                startNewProject(project)
                 postSideEffect { GallerySideEffect.OpenEditor }
             }
         }

@@ -65,7 +65,7 @@ sealed interface MainSheet {
  * @property sheet Open bottom sheet. Null means no sheet.
  * @property templateFilter Template kind filter in the template tab. Null shows all kinds.
  * @property librarySegment Selected list in the library tab.
- * @property drafts Draft projects.
+ * @property drafts Draft projects. The newest draft is first.
  * @property completedVideos Saved videos. The newest video is first.
  * @property settings Editor settings.
  * @property myVoice State of the user's own voice for dubbings.

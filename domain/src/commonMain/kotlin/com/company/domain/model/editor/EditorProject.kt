@@ -22,6 +22,8 @@ import kotlin.random.Random
  * @property soundEffects Short sound effects.
  * @property transitions Transitions between clips. The key is the ID of the clip after the boundary.
  * @property openingTransition Transition at the start of the video, or null.
+ * @property draftId ID of the draft in the "내 영상" list that shows this project, or null. The draft gets the length
+ *   and the thumbnail of the project when the user leaves the editor.
  */
 data class EditorProject(
     val name: String,
@@ -38,6 +40,7 @@ data class EditorProject(
     val soundEffects: List<SoundEffectClip> = emptyList(),
     val transitions: Map<String, ClipTransition> = emptyMap(),
     val openingTransition: ClipTransition? = null,
+    val draftId: String? = null,
 ) {
     /** Length of the project. It is the sum of all clip lengths. */
     val totalDuration: Double

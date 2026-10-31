@@ -4,7 +4,6 @@ import com.company.domain.model.editor.DubbingVoice
 import com.company.domain.model.editor.MusicTrack
 import com.company.domain.model.editor.SoundEffect
 import com.company.domain.model.editor.SoundEffectCategory
-import com.company.domain.model.editor.VideoSummary
 
 /**
  * Sample content of the prototype.
@@ -24,6 +23,16 @@ internal object EditorSampleData {
      * @property hue Hue of the placeholder thumbnail.
      */
     data class SampleVideo(val name: String, val duration: Double, val hue: Int)
+
+    /**
+     * Sample entry of the "내 영상" list.
+     *
+     * @property name Name of the project.
+     * @property duration Length of the project in seconds.
+     * @property thumbnailHue Hue of the placeholder thumbnail.
+     * @property daysAgo Number of days since the user made the project. 0 is today.
+     */
+    data class SampleSummary(val name: String, val duration: Double, val thumbnailHue: Int, val daysAgo: Int)
 
     /** Videos that the sample draft project uses. */
     val SampleVideos: List<SampleVideo> = Hues.mapIndexed { index, hue ->
@@ -71,19 +80,19 @@ internal object EditorSampleData {
         SoundEffect("s16", SoundEffectCategory.DAILY, "알림음", 0.5),
     )
 
-    /** Draft projects. */
-    val Drafts: List<VideoSummary> = listOf(
-        VideoSummary(name = "바닷가 주말", duration = 18.0, thumbnailHue = 35),
-        VideoSummary(name = "작업실 투어", duration = 42.0, thumbnailHue = 200),
-        VideoSummary(name = "말차 레시피", duration = 27.0, thumbnailHue = 150),
-        VideoSummary(name = "러닝 크루", duration = 15.0, thumbnailHue = 20),
+    /** Draft projects at app start. */
+    val Drafts: List<SampleSummary> = listOf(
+        SampleSummary(name = "바닷가 주말", duration = 18.0, thumbnailHue = 35, daysAgo = 0),
+        SampleSummary(name = "작업실 투어", duration = 42.0, thumbnailHue = 200, daysAgo = 6),
+        SampleSummary(name = "말차 레시피", duration = 27.0, thumbnailHue = 150, daysAgo = 1),
+        SampleSummary(name = "러닝 크루", duration = 15.0, thumbnailHue = 20, daysAgo = 13),
     )
 
     /** Completed videos at app start. */
-    val CompletedVideos: List<VideoSummary> = listOf(
-        VideoSummary(name = "벚꽃 산책", duration = 21.0, thumbnailHue = 330),
-        VideoSummary(name = "첫 출근 브이로그", duration = 34.0, thumbnailHue = 60),
-        VideoSummary(name = "고양이 낮잠", duration = 12.0, thumbnailHue = 100),
+    val CompletedVideos: List<SampleSummary> = listOf(
+        SampleSummary(name = "벚꽃 산책", duration = 21.0, thumbnailHue = 330, daysAgo = 3),
+        SampleSummary(name = "첫 출근 브이로그", duration = 34.0, thumbnailHue = 60, daysAgo = 9),
+        SampleSummary(name = "고양이 낮잠", duration = 12.0, thumbnailHue = 100, daysAgo = 20),
     )
 
     /** Lines that the fake speech recognition "hears". */

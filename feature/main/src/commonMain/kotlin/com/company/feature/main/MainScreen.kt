@@ -29,6 +29,8 @@ import com.company.feature.main.tab.HomeTab
 import com.company.feature.main.tab.LibraryTab
 import com.company.feature.main.tab.MyTab
 import com.company.feature.main.tab.TemplateTab
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 /**
  * Main tab screen. It only draws [state] and sends user actions to [onIntent].
@@ -112,23 +114,33 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
 /** Space between the handle and the content, and between the content items, of a main sheet. */
 private val SHEET_SPACING = 14.dp
 
+/** Preview entry that the user made [daysAgo] days before now. */
+@OptIn(ExperimentalTime::class)
+private fun previewVideo(name: String, duration: Double, hue: Int, daysAgo: Int) = VideoSummary(
+    id = name,
+    name = name,
+    duration = duration,
+    thumbnailHue = hue,
+    createdAt = Clock.System.now().toEpochMilliseconds() - daysAgo * 24L * 60 * 60 * 1000,
+)
+
 private val PreviewDrafts = listOf(
-    VideoSummary(name = "바닷가 주말", duration = 18.0, thumbnailHue = 35),
-    VideoSummary(name = "작업실 투어", duration = 42.0, thumbnailHue = 200),
-    VideoSummary(name = "말차 레시피", duration = 27.0, thumbnailHue = 150),
-    VideoSummary(name = "러닝 크루", duration = 15.0, thumbnailHue = 20),
+    previewVideo("바닷가 주말", 18.0, 35, daysAgo = 0),
+    previewVideo("말차 레시피", 27.0, 150, daysAgo = 1),
+    previewVideo("작업실 투어", 42.0, 200, daysAgo = 6),
+    previewVideo("러닝 크루", 15.0, 20, daysAgo = 13),
 )
 
 private val PreviewCompletedVideos = listOf(
-    VideoSummary(name = "벚꽃 산책", duration = 21.0, thumbnailHue = 330),
-    VideoSummary(name = "첫 출근 브이로그", duration = 34.0, thumbnailHue = 60),
+    previewVideo("벚꽃 산책", 21.0, 330, daysAgo = 3),
+    previewVideo("첫 출근 브이로그", 34.0, 60, daysAgo = 9),
 )
 
 @Composable
-private fun MainScreenPreview(tab: MainTab) {
+private fun MainScreenPreview(tab: MainTab, drafts: List<VideoSummary> = PreviewDrafts) {
     MagicPreview {
         MainScreen(
-            state = MainState(tab = tab, drafts = PreviewDrafts, completedVideos = PreviewCompletedVideos),
+            state = MainState(tab = tab, drafts = drafts, completedVideos = PreviewCompletedVideos),
             onIntent = {},
         )
     }
@@ -137,6 +149,10 @@ private fun MainScreenPreview(tab: MainTab) {
 @Preview(name = "홈", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
 @Composable
 private fun MainHomePreview() = MainScreenPreview(MainTab.HOME)
+
+@Preview(name = "홈 · 최근 작업 없음", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun MainHomeEmptyPreview() = MainScreenPreview(MainTab.HOME, drafts = emptyList())
 
 @Preview(name = "템플릿", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
 @Composable

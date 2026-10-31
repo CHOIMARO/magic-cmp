@@ -12,22 +12,45 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+
+/** One day in milliseconds. */
+private const val DAY_MILLIS = 24L * 60 * 60 * 1000
+
+/** Time between two sample entries of the same day, in milliseconds. It keeps the sample order stable. */
+private const val SAMPLE_STEP_MILLIS = 10L * 60 * 1000
 
 /**
- * Keeps the drafts and the completed videos in memory.
+ * Keeps the drafts and the completed videos in memory. Both lists keep the newest entry first.
  *
  * Every draft opens the same sample project, as in the prototype.
  */
 class InMemoryMyVideoRepository(
     private val captionRepository: CaptionRepository,
 ) : MyVideoRepository {
-    private val _drafts = MutableStateFlow(EditorSampleData.Drafts)
+    private val _drafts = MutableStateFlow(EditorSampleData.Drafts.toSummaries(now()))
     override val drafts: StateFlow<List<VideoSummary>> = _drafts.asStateFlow()
 
-    private val _completedVideos = MutableStateFlow(EditorSampleData.CompletedVideos)
+    private val _completedVideos = MutableStateFlow(EditorSampleData.CompletedVideos.toSummaries(now()))
     override val completedVideos: StateFlow<List<VideoSummary>> = _completedVideos.asStateFlow()
 
-    override fun addCompletedVideo(video: VideoSummary) {
+    override fun addDraft(name: String, duration: Double, thumbnailHue: Int): VideoSummary {
+        val draft = VideoSummary(newEditorId(), name, duration, thumbnailHue, createdAt = now())
+        _drafts.update { listOf(draft) + it }
+        return draft
+    }
+
+    override fun updateDraft(id: String, duration: Double, thumbnailHue: Int?) {
+        _drafts.update { list ->
+            list.map { draft ->
+                if (draft.id == id) draft.copy(duration = duration, thumbnailHue = thumbnailHue ?: draft.thumbnailHue) else draft
+            }
+        }
+    }
+
+    override fun addCompletedVideo(name: String, duration: Double, thumbnailHue: Int) {
+        val video = VideoSummary(newEditorId(), name, duration, thumbnailHue, createdAt = now())
         _completedVideos.update { listOf(video) + it }
     }
 
@@ -63,3 +86,19 @@ class InMemoryMyVideoRepository(
         return project.copy(captions = captionRepository.generateCaptions(project.totalDuration))
     }
 }
+
+/** Current time in milliseconds since 1970-01-01 UTC. */
+@OptIn(ExperimentalTime::class)
+private fun now(): Long = Clock.System.now().toEpochMilliseconds()
+
+/** Makes the list entries of the samples, with the newest entry first. */
+private fun List<EditorSampleData.SampleSummary>.toSummaries(now: Long): List<VideoSummary> =
+    mapIndexed { index, sample ->
+        VideoSummary(
+            id = newEditorId(),
+            name = sample.name,
+            duration = sample.duration,
+            thumbnailHue = sample.thumbnailHue,
+            createdAt = now - sample.daysAgo * DAY_MILLIS - index * SAMPLE_STEP_MILLIS,
+        )
+    }.sortedByDescending { it.createdAt }

@@ -11,12 +11,12 @@ import com.company.domain.model.editor.ExportRequest
 import com.company.domain.model.editor.ExportStatus
 import com.company.domain.model.editor.FrameArea
 import com.company.domain.model.editor.GalleryAccessDeniedException
-import com.company.domain.model.editor.VideoSummary
 import com.company.domain.model.editor.transitionWindows
 import com.company.domain.repository.EditorProjectRepository
 import com.company.domain.repository.EditorSettingsRepository
 import com.company.domain.repository.MyVideoRepository
 import com.company.domain.repository.VideoExportRepository
+import com.company.domain.usecase.editor.DEFAULT_THUMBNAIL_HUE
 import com.company.feature.editor.resources.Res
 import com.company.feature.editor.resources.export_quality_best
 import com.company.feature.editor.resources.export_quality_light
@@ -277,11 +277,9 @@ class ExportViewModel(
     private fun finish() {
         val project = currentState.project
         myVideoRepository.addCompletedVideo(
-            VideoSummary(
-                name = project.name,
-                duration = project.totalDuration,
-                thumbnailHue = project.clips.firstOrNull()?.thumbnailHue ?: 300,
-            )
+            name = project.name,
+            duration = project.totalDuration,
+            thumbnailHue = project.clips.firstOrNull()?.thumbnailHue ?: DEFAULT_THUMBNAIL_HUE,
         )
         reduce { copy(phase = ExportPhase.DONE, progress = 100) }
     }

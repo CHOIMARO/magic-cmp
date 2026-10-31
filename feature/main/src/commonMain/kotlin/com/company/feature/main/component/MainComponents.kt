@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -131,24 +132,26 @@ internal fun TabTitle(text: String, modifier: Modifier = Modifier) {
  * Section title with a round arrow button that opens the full list.
  *
  * @param title Section title.
- * @param onShowAll Action of the arrow button.
+ * @param onShowAll Action of the arrow button, or null to hide the button. The header keeps its height.
  */
 @Composable
-internal fun SectionHeader(title: String, onShowAll: () -> Unit) {
+internal fun SectionHeader(title: String, onShowAll: (() -> Unit)?) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 30.dp, bottom = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 30.dp, bottom = 12.dp).heightIn(min = 40.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text = title, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.03).em)
-        MagicIconButton(
-            icon = Icons.AutoMirrored.Rounded.ArrowForward,
-            contentDescription = stringResource(Res.string.show_all, title),
-            onClick = onShowAll,
-            style = MagicIconButtonStyle.SURFACE,
-            size = 40.dp,
-            iconSize = 20.dp,
-        )
+        if (onShowAll != null) {
+            MagicIconButton(
+                icon = Icons.AutoMirrored.Rounded.ArrowForward,
+                contentDescription = stringResource(Res.string.show_all, title),
+                onClick = onShowAll,
+                style = MagicIconButtonStyle.SURFACE,
+                size = 40.dp,
+                iconSize = 20.dp,
+            )
+        }
     }
 }
 

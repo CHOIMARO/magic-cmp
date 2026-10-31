@@ -27,6 +27,7 @@ import com.company.domain.repository.FontRepository
 import com.company.domain.repository.MediaLibraryRepository
 import com.company.domain.repository.MyVoiceRepository
 import com.company.domain.usecase.editor.GenerateCaptionsUseCase
+import com.company.domain.usecase.editor.UpdateDraftUseCase
 import com.company.feature.editor.resources.Res
 import com.company.feature.editor.resources.toast_deleted_undoable
 import com.company.feature.editor.resources.toast_duplicated
@@ -101,6 +102,7 @@ class EditorViewModel(
     fontRepository: FontRepository,
     dubbingRepository: DubbingRepository,
     private val myVoiceRepository: MyVoiceRepository,
+    private val updateDraft: UpdateDraftUseCase,
     private val stringResolver: StringResolver,
 ) : BaseViewModel<EditorState, EditorIntent, EditorSideEffect>(
     initialState = EditorState(
@@ -343,6 +345,7 @@ class EditorViewModel(
             EditorIntent.Undo -> undo()
             EditorIntent.Export -> {
                 pause()
+                updateDraft()
                 postSideEffect { EditorSideEffect.OpenExport }
             }
             EditorIntent.Back -> {
@@ -351,6 +354,7 @@ class EditorViewModel(
             }
             EditorIntent.ConfirmLeave -> {
                 reduce { copy(leaveDialog = false) }
+                updateDraft()
                 postSideEffect { EditorSideEffect.Close }
             }
             EditorIntent.DismissLeave -> reduce { copy(leaveDialog = false) }

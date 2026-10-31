@@ -14,6 +14,16 @@
     <string name="home_new_video">새 영상\n만들기</string>
     <string name="home_camera">촬영</string>
     <string name="home_recent">최근 작업</string>
+    <string name="home_empty_title">첫 영상을 만들어 볼까요?</string>
+    <string name="home_empty_body">찍어 둔 영상이나 사진 몇 개만 고르면 바로 편집할 수 있어요. 만든 영상은 여기에 모여요.</string>
+    <string name="home_empty_action">영상·사진 고르기</string>
+    <string name="library_empty_drafts">아직 작업 중인 영상이 없어요</string>
+    <string name="library_empty_completed">아직 완성한 영상이 없어요</string>
+    <!-- 최근 작업·내 영상 카드의 만든 날 -->
+    <string name="created_today">오늘</string>
+    <string name="created_yesterday">어제</string>
+    <string name="created_days_ago">%1$d일 전</string>
+    <string name="created_date">%1$d월 %2$d일</string>
     <string name="template_use">이 템플릿으로 만들기</string>
     <string name="app_info_version">버전 1.0.0 (100)</string>
     <string name="app_info_latest">최신 버전이에요</string>

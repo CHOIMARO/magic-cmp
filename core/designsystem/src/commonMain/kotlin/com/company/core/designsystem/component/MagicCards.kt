@@ -159,6 +159,7 @@ private val Grayscale = ColorFilter.colorMatrix(ColorMatrix().apply { setToSatur
  * @param onClick Action on click.
  * @param modifier Modifier for the card. Give it a width.
  * @param enabled Set to false for the disabled state.
+ * @param caption Short line above the title, for example "어제", or null.
  */
 @Composable
 fun MagicVideoCard(
@@ -168,6 +169,7 @@ fun MagicVideoCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    caption: String? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -201,18 +203,25 @@ fun MagicVideoCard(
             )
             Icon(Icons.Rounded.NorthEast, contentDescription = null, tint = light, modifier = Modifier.size(18.dp))
         }
-        Text(
-            text = title,
+        Column(
             modifier = Modifier.align(Alignment.BottomStart).padding(14.dp),
-            fontSize = 20.sp,
-            fontWeight = FontWeight.ExtraBold,
-            lineHeight = 1.2.em,
-            letterSpacing = (-0.03).em,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-            // 제목 줄 길이를 고르게 나눈다(CSS text-wrap: balance).
-            style = LocalTextStyle.current.copy(lineBreak = LineBreak.Heading),
-        )
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (caption != null) {
+                Text(text = caption, color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Text(
+                text = title,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold,
+                lineHeight = 1.2.em,
+                letterSpacing = (-0.03).em,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                // 제목 줄 길이를 고르게 나눈다(CSS text-wrap: balance).
+                style = LocalTextStyle.current.copy(lineBreak = LineBreak.Heading),
+            )
+        }
     }
 }
 

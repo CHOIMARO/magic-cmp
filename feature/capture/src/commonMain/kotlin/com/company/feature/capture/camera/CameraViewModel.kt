@@ -8,7 +8,7 @@ import com.company.core.base.State
 import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.EditorProject
 import com.company.domain.model.editor.newEditorId
-import com.company.domain.repository.EditorProjectRepository
+import com.company.domain.usecase.editor.StartNewProjectUseCase
 import com.company.feature.capture.resources.Res
 import com.company.feature.capture.resources.camera_clip_name
 import com.company.feature.capture.resources.new_recording_name
@@ -66,7 +66,7 @@ sealed class CameraIntent : Intent() {
 
 /** One-time events of the camera screen. */
 sealed class CameraSideEffect : SideEffect() {
-    /** OpenEditor : Navigates to the editor with the new project. */
+    /** OpenEditor : Navigates to the editor with the new project. The project is also the newest draft. */
     data object OpenEditor : CameraSideEffect()
 }
 
@@ -76,7 +76,7 @@ sealed class CameraSideEffect : SideEffect() {
  * The prototype has no real camera. A timer simulates the recording.
  */
 class CameraViewModel(
-    private val projectRepository: EditorProjectRepository,
+    private val startNewProject: StartNewProjectUseCase,
     private val strings: StringResolver,
 ) : BaseViewModel<CameraState, CameraIntent, CameraSideEffect>(
     initialState = CameraState()
@@ -158,7 +158,7 @@ class CameraViewModel(
                     thumbnailHue = segment.hue,
                 )
             }
-            projectRepository.start(EditorProject(name = strings.resolve(uiText(Res.string.new_recording_name)), clips = clips))
+            startNewProject(EditorProject(name = strings.resolve(uiText(Res.string.new_recording_name)), clips = clips))
             postSideEffect { CameraSideEffect.OpenEditor }
         }
     }

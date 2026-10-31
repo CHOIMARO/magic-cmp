@@ -30,14 +30,18 @@ data class SourceMedia(
 /**
  * Short summary of a project in the "내 영상" list.
  *
+ * @property id Unique ID in its list.
  * @property name Name of the project.
  * @property duration Length of the project in seconds.
  * @property thumbnailHue Hue of the placeholder thumbnail.
+ * @property createdAt Time when the user made the project or saved the video, in milliseconds since 1970-01-01 UTC.
  */
 data class VideoSummary(
+    val id: String,
     val name: String,
     val duration: Double,
     val thumbnailHue: Int,
+    val createdAt: Long,
 )
 
 /**
