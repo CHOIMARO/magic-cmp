@@ -46,6 +46,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -102,6 +103,8 @@ import org.jetbrains.compose.resources.stringResource
  * @param onIntent Called with each user action.
  * @param modifier Modifier for the stage. Give it a size.
  * @param video Video surface of the preview player, or null to show placeholders.
+ * @param fullScreen True for the full-screen preview. The stage then has square corners, and it has no edit
+ *   actions: a tap does not play or pause, and the texts cannot be selected or moved.
  */
 @Composable
 internal fun EditorStage(
@@ -109,18 +112,25 @@ internal fun EditorStage(
     onIntent: (EditorIntent) -> Unit,
     modifier: Modifier = Modifier,
     video: (@Composable (Modifier) -> Unit)? = null,
+    fullScreen: Boolean = false,
 ) {
     val project = state.project
     val current = project.clipAt(state.time)
 
     BoxWithConstraints(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(if (fullScreen) RectangleShape else RoundedCornerShape(16.dp))
             .background(MagicColors.Surface)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = { onIntent(EditorIntent.TogglePlay) },
+            .then(
+                if (fullScreen) {
+                    Modifier
+                } else {
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { onIntent(EditorIntent.TogglePlay) },
+                    )
+                },
             ),
     ) {
         val stageWidth = constraints.maxWidth.toFloat()
@@ -193,7 +203,9 @@ internal fun EditorStage(
         }
 
         // 선택한 글자가 무대에 보이면, 무대 어디에서든 두 손가락으로 그 글자의 크기와 각도를 바꾼다.
-        val transformTarget by rememberUpdatedState(project.texts.find { it.id == state.selectedTextId && it.isVisibleAt(state.time) })
+        val transformTarget by rememberUpdatedState(
+            project.texts.find { it.id == state.selectedTextId && it.isVisibleAt(state.time) }.takeUnless { fullScreen },
+        )
         // 글자 시트가 열려 있으면 그 글자를 재생 위치와 상관없이 보여 주고, 입력 중인 문구와 꾸미기를 바로 반영한다.
         val draft = state.textDraft?.takeIf { state.sheet == EditorSheet.TEXT }
         val textPlaceholder = stringResource(Res.string.stage_text_placeholder)
@@ -215,11 +227,11 @@ internal fun EditorStage(
                             state.playing -> overlay.frameAt(state.time)
                             else -> TextFrame.Static
                         },
-                        selected = overlay.id == state.selectedTextId && !state.playing && draft == null,
+                        selected = overlay.id == state.selectedTextId && !state.playing && draft == null && !fullScreen,
                         stageWidth = stageWidth,
                         stageHeight = stageHeight,
                         onIntent = onIntent,
-                        interactive = overlay.id != DRAFT_TEXT_ID,
+                        interactive = overlay.id != DRAFT_TEXT_ID && !fullScreen,
                     )
                 }
             }
@@ -228,7 +240,7 @@ internal fun EditorStage(
             if (state.watermark) StageWatermark()
         }
 
-        if (!state.playing && current != null && state.sheet == null && state.activeDrag == null) {
+        if (!state.playing && current != null && state.sheet == null && state.activeDrag == null && !fullScreen) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)

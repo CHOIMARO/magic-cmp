@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -81,22 +82,28 @@ internal fun EditorScreen(
                     .padding(vertical = 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                EditorStage(
-                    state = state,
-                    onIntent = onIntent,
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .heightIn(max = 400.dp)
-                        .aspectRatio(9f / 16f, matchHeightConstraintsFirst = true)
-                        // 미리보기 시트가 열려 있으면 무대를 시트 위 빈 곳에 맞춰 줄여 그린다.
-                        .onGloballyPositioned(stageFit::updateStage)
-                        .graphicsLayer { stageFit.applyTo(this) },
-                    video = video,
-                )
+                // 전체 화면일 때는 무대를 전체 화면 쪽에만 그린다. 영상 화면은 한 번에 한 곳에만 둘 수 있다.
+                if (state.fullScreen == null) {
+                    EditorStage(
+                        state = state,
+                        onIntent = onIntent,
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .heightIn(max = 400.dp)
+                            .aspectRatio(9f / 16f, matchHeightConstraintsFirst = true)
+                            // 미리보기 시트가 열려 있으면 무대를 시트 위 빈 곳에 맞춰 줄여 그린다.
+                            .onGloballyPositioned(stageFit::updateStage)
+                            .graphicsLayer { stageFit.applyTo(this) },
+                        video = video,
+                    )
+                }
             }
             PlaybackRow(state = state, onIntent = onIntent)
             EditorTimeline(state = state, onIntent = onIntent)
             EditorTools(state = state, onIntent = onIntent)
+        }
+        if (state.fullScreen != null) {
+            FullScreenPreview(state = state, onIntent = onIntent, video = video)
         }
 
         // 미리보기가 보이도록 메인 시트보다 옅은 scrim을 쓴다. 미리보기 시트는 무대에서 바로 확인하도록 scrim이 없다.
@@ -183,10 +190,20 @@ private fun EditorTopBar(state: EditorState, onIntent: (EditorIntent) -> Unit) {
             onClick = { onIntent(EditorIntent.Undo) },
             enabled = state.canUndo,
         )
+        // 클립이 하나도 없으면 볼 것도, 저장할 것도 없다.
+        val hasClips = state.project.clips.isNotEmpty()
+        MagicIconButton(
+            icon = Icons.Rounded.Fullscreen,
+            contentDescription = stringResource(Res.string.fullscreen_open),
+            onClick = { onIntent(EditorIntent.OpenFullScreen) },
+            enabled = hasClips,
+            iconSize = 26.dp,
+        )
         MagicButton(
             text = stringResource(Res.string.editor_finish),
             onClick = { onIntent(EditorIntent.Export) },
             style = MagicButtonStyle.PRIMARY_SMALL,
+            enabled = hasClips,
         )
     }
 }
@@ -240,4 +257,10 @@ private fun EditorPhotoSelectedPreview() = EditorScreenPreview(
 @Composable
 private fun EditorTextSelectedPreview() = EditorScreenPreview(
     EditorState(project = EditorPreviewData.project, time = 1.0, selectedTextId = "t1", musicTracks = EditorPreviewData.musicTracks),
+)
+
+@Preview(name = "편집기 - 전체 화면", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun EditorFullScreenPreview() = EditorScreenPreview(
+    EditorState(project = EditorPreviewData.project, time = 2.4, musicTracks = EditorPreviewData.musicTracks, fullScreen = FullScreenState()),
 )

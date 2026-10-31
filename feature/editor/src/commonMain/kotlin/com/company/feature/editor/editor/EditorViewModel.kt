@@ -39,6 +39,8 @@ import com.company.ui.text.StringResolver
 import com.company.ui.text.UiText
 import com.company.ui.text.uiText
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -162,6 +164,9 @@ class EditorViewModel(
     /** True while the dragged part is snapped. A new snap gives [EditorSideEffect.Snapped]. */
     private var dragSnapped = false
 
+    /** Timer that hides the controls of the full-screen preview. */
+    private var fullScreenControlsJob: Job? = null
+
     init {
         viewModelScope.launch {
             projectRepository.project.collect { project ->
@@ -199,7 +204,10 @@ class EditorViewModel(
      */
     override fun handleIntent(intent: EditorIntent) {
         when (intent) {
-            EditorIntent.TogglePlay -> if (currentState.playing) pause() else play()
+            EditorIntent.TogglePlay -> {
+                if (currentState.playing) pause() else play()
+                showFullScreenControls(autoHide = true)
+            }
             EditorIntent.Pause -> pause()
             is EditorIntent.Scrub -> if (!currentState.playing && currentState.activeDrag == null) {
                 reduce { copy(time = intent.time.coerceIn(0.0, totalDuration), scrubbing = true) }
@@ -208,7 +216,24 @@ class EditorViewModel(
             is EditorIntent.PlaybackProgress -> if (currentState.playing) {
                 reduce { copy(time = intent.time.coerceIn(0.0, totalDuration)) }
             }
-            EditorIntent.PlaybackEnded -> reduce { copy(time = totalDuration, playing = false) }
+            EditorIntent.PlaybackEnded -> {
+                reduce { copy(time = totalDuration, playing = false) }
+                showFullScreenControls(autoHide = false)
+            }
+
+            EditorIntent.OpenFullScreen -> openFullScreen()
+            EditorIntent.CloseFullScreen -> closeFullScreen()
+            EditorIntent.ToggleFullScreenControls -> if (currentState.fullScreen?.controlsVisible == true) {
+                hideFullScreenControls()
+            } else {
+                showFullScreenControls(autoHide = true)
+            }
+            EditorIntent.ShowFullScreenControls -> showFullScreenControls(autoHide = true)
+            is EditorIntent.StartFullScreenSeek -> startFullScreenSeek(intent.time)
+            is EditorIntent.MoveFullScreenSeek -> if (currentState.fullScreen?.seeking == true) {
+                reduce { copy(time = intent.time.coerceIn(0.0, totalDuration)) }
+            }
+            EditorIntent.EndFullScreenSeek -> endFullScreenSeek()
 
             is EditorIntent.SelectClip -> {
                 pause()
@@ -343,7 +368,7 @@ class EditorViewModel(
             EditorIntent.DismissDialog -> reduce { copy(dialog = null) }
 
             EditorIntent.Undo -> undo()
-            EditorIntent.Export -> {
+            EditorIntent.Export -> if (currentState.project.clips.isNotEmpty()) {
                 pause()
                 updateDraft()
                 postSideEffect { EditorSideEffect.OpenExport }
@@ -375,6 +400,72 @@ class EditorViewModel(
 
     private fun pause() {
         if (currentState.playing) reduce { copy(playing = false) }
+    }
+
+    // =====================================================================
+    // Full-screen preview
+    // =====================================================================
+
+    /** Shows the full-screen preview and plays it. The controls show first and hide after a short time. */
+    private fun openFullScreen() {
+        if (currentState.project.clips.isEmpty() || currentState.fullScreen != null) return
+        pause()
+        closeSheet()
+        reduce { copy(fullScreen = FullScreenState(), activeDrag = null) }
+        play()
+        showFullScreenControls(autoHide = true)
+    }
+
+    private fun closeFullScreen() {
+        fullScreenControlsJob?.cancel()
+        pause()
+        reduce { copy(fullScreen = null) }
+    }
+
+    /**
+     * Shows the controls of the full-screen preview. Nothing happens when the full-screen preview is closed.
+     *
+     * @param autoHide True to hide the controls after [FULL_SCREEN_CONTROLS_MILLIS] without a touch. A seek keeps
+     *   them visible until it ends.
+     */
+    private fun showFullScreenControls(autoHide: Boolean) {
+        val fullScreen = currentState.fullScreen ?: return
+        fullScreenControlsJob?.cancel()
+        if (!fullScreen.controlsVisible) reduce { copy(fullScreen = fullScreen.copy(controlsVisible = true)) }
+        if (!autoHide) return
+        fullScreenControlsJob = viewModelScope.launch {
+            delay(FULL_SCREEN_CONTROLS_MILLIS)
+            val current = currentState.fullScreen ?: return@launch
+            if (!current.seeking) reduce { copy(fullScreen = current.copy(controlsVisible = false)) }
+        }
+    }
+
+    private fun hideFullScreenControls() {
+        val fullScreen = currentState.fullScreen ?: return
+        fullScreenControlsJob?.cancel()
+        reduce { copy(fullScreen = fullScreen.copy(controlsVisible = false)) }
+    }
+
+    /** Pauses the preview while the finger is on the seek bar. The preview plays again after the seek if it played before. */
+    private fun startFullScreenSeek(seekTime: Double) {
+        val fullScreen = currentState.fullScreen ?: return
+        fullScreenControlsJob?.cancel()
+        val resume = currentState.playing
+        pause()
+        reduce {
+            copy(
+                time = seekTime.coerceIn(0.0, totalDuration),
+                fullScreen = fullScreen.copy(controlsVisible = true, seeking = true, resumeAfterSeek = resume),
+            )
+        }
+    }
+
+    private fun endFullScreenSeek() {
+        val fullScreen = currentState.fullScreen ?: return
+        if (!fullScreen.seeking) return
+        reduce { copy(fullScreen = fullScreen.copy(seeking = false, resumeAfterSeek = false)) }
+        if (fullScreen.resumeAfterSeek && currentState.time < currentState.totalDuration - END_MARGIN) play()
+        showFullScreenControls(autoHide = true)
     }
 
     // =====================================================================
@@ -652,5 +743,8 @@ class EditorViewModel(
     private companion object {
         /** A playhead this close to the end, in seconds, counts as the end. */
         const val END_MARGIN = 0.05
+
+        /** Time without a touch before the controls of the full-screen preview hide. */
+        const val FULL_SCREEN_CONTROLS_MILLIS = 1_500L
     }
 }

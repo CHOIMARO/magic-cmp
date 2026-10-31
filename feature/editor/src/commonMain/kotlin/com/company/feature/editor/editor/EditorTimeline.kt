@@ -301,6 +301,8 @@ internal fun EditorTimeline(state: EditorState, onIntent: (EditorIntent) -> Unit
     ) {
         val playheadX = (maxWidth / 2 - 8.dp).coerceAtLeast(HandleInset)
         val contentWidth = secondWidth * total.toFloat() + TrailingSpace
+        // 재생선은 0초부터 영상 끝까지만 움직인다(F11). 스크롤 폭을 영상 길이에 화면 폭을 더한 만큼으로 둔다.
+        val scrollWidth = secondWidth * total.toFloat() + maxWidth
         val playheadXPx = with(density) { playheadX.toPx() }
         val viewportWidthPx = constraints.maxWidth.toFloat()
         // 클립이 시작하는 타임라인 시간을 받아, 화면에 보이는 부분을 클립 왼쪽 기준 픽셀 범위로 돌려준다.
@@ -308,10 +310,11 @@ internal fun EditorTimeline(state: EditorState, onIntent: (EditorIntent) -> Unit
             val clipLeft = playheadXPx + clipStart.toFloat() * pixelsPerSecond + dragShiftPx
             (scrollState.value - clipLeft)..(scrollState.value + viewportWidthPx - clipLeft)
         }
-        Box(modifier = Modifier.fillMaxSize().horizontalScroll(scrollState)) {
+        // 끝에서 더 끌어도 늘어나거나 튕기지 않게 오버스크롤 효과를 끈다.
+        Box(modifier = Modifier.fillMaxSize().horizontalScroll(scrollState, overscrollEffect = null)) {
             Box(
                 modifier = Modifier
-                    .width(contentWidth + playheadX * 2)
+                    .width(scrollWidth)
                     .fillMaxHeight()
                     .graphicsLayer { translationX = dragShiftPx },
             ) {

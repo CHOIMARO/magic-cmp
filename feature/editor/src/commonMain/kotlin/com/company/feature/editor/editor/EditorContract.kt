@@ -284,6 +284,19 @@ sealed interface DialogAction {
 // =====================================================================
 
 /**
+ * State of the full-screen preview (S11-8).
+ *
+ * @property controlsVisible True while the floating controls show.
+ * @property seeking True while the user touches the seek bar. The controls do not hide then.
+ * @property resumeAfterSeek True when the preview played before the seek. It plays again when the seek ends.
+ */
+data class FullScreenState(
+    val controlsVisible: Boolean = true,
+    val seeking: Boolean = false,
+    val resumeAfterSeek: Boolean = false,
+)
+
+/**
  * State of the editor screen.
  *
  * @property project Project that the user edits.
@@ -322,6 +335,7 @@ sealed interface DialogAction {
  * @property dialog Open popup, or null.
  * @property leaveDialog True while the popup that asks before the editor closes shows.
  * @property watermark True to show the "magic" watermark on the stage.
+ * @property fullScreen Full-screen preview, or null when the editor shows.
  */
 data class EditorState(
     val project: EditorProject = EditorProject(name = ""),
@@ -357,6 +371,7 @@ data class EditorState(
     val dialog: EditorDialog? = null,
     val leaveDialog: Boolean = false,
     val watermark: Boolean = false,
+    val fullScreen: FullScreenState? = null,
 ) : State() {
     /** Length of the project in seconds. */
     val totalDuration: Double
@@ -406,8 +421,34 @@ sealed class EditorIntent : Intent() {
     /** PlaybackProgress(time) : Moves the playhead to the position of the playing preview. Ignored when the preview does not play. */
     data class PlaybackProgress(val time: Double) : EditorIntent()
 
-    /** PlaybackEnded : Stops the preview at the end of the project. */
+    /** PlaybackEnded : Stops the preview at the end of the project. The full-screen preview then shows its controls. */
     data object PlaybackEnded : EditorIntent()
+
+    // ----- Full-screen preview -----
+
+    /**
+     * OpenFullScreen : Shows the project on the full screen and plays it from the playhead, or from the start at the end.
+     * It closes the sheet and clears the selection. Ignored when the project has no clips.
+     */
+    data object OpenFullScreen : EditorIntent()
+
+    /** CloseFullScreen : Closes the full-screen preview and pauses it. The playhead stays where the preview stopped. */
+    data object CloseFullScreen : EditorIntent()
+
+    /** ToggleFullScreenControls : Hides the floating controls, or shows them again. The playback does not change. */
+    data object ToggleFullScreenControls : EditorIntent()
+
+    /** ShowFullScreenControls : Shows the floating controls. They hide after 1.5 seconds without a touch. */
+    data object ShowFullScreenControls : EditorIntent()
+
+    /** StartFullScreenSeek(time) : The user touched the seek bar. The preview pauses and moves to [time]. */
+    data class StartFullScreenSeek(val time: Double) : EditorIntent()
+
+    /** MoveFullScreenSeek(time) : The user moved the finger on the seek bar. The preview moves to [time]. */
+    data class MoveFullScreenSeek(val time: Double) : EditorIntent()
+
+    /** EndFullScreenSeek : The user lifted the finger from the seek bar. The preview plays again if it played before. */
+    data object EndFullScreenSeek : EditorIntent()
 
     // ----- Selection and timeline drags -----
 
