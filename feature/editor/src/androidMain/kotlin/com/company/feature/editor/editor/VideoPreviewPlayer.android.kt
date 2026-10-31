@@ -23,7 +23,6 @@ import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.transformer.CompositionPlayer
 import com.company.domain.model.editor.Clip
-import com.company.domain.model.editor.FilterType
 import com.company.domain.model.editor.TransitionWindow
 import com.company.core.media.PREVIEW_FRAME_HEIGHT
 import com.company.core.media.PREVIEW_FRAME_WIDTH
@@ -74,11 +73,10 @@ private class AndroidVideoPreviewPlayer(context: Context) : VideoPreviewPlayer {
     override val ended: Boolean
         get() = player.playbackState == Player.STATE_ENDED
 
-    override fun setClips(clips: List<Clip>, filter: FilterType, transitions: List<TransitionWindow>, time: Double) {
+    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, time: Double) {
         if (clips.isEmpty()) return
         val composition = buildMediaComposition(
             clips = clips,
-            filter = filter,
             frameWidth = PREVIEW_FRAME_WIDTH,
             frameHeight = PREVIEW_FRAME_HEIGHT,
             transitions = transitions,

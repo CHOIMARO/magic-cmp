@@ -188,9 +188,6 @@ private val NeonGlowFar = Color(0xFFD852F5)
 private val MarkerYellow = Color(0xFFFDDC5B)
 private val PopYellow = Color(0xFFFBD35F)
 private val ImpactYellow = Color(0xFFFFE14D)
-private val RetroCream = Color(0xFFFFF3D6)
-private val RetroRed = Color(0xFFFF5A5F)
-private val CutePurple = Color(0xFF7B4FD6)
 
 // Thumbnail looks. The colors, the outline widths, and the 3D shadows come from pixels of a reference thumbnail.
 private val ShoutRed = Color(0xFFF83C23)
@@ -258,19 +255,6 @@ fun TextStyleType.look(
         animation = TextAnimation(TextEntrance.POP, entranceMillis = 350, exitMillis = TITLE_EXIT_MILLIS),
     )
     val look = when (this) {
-        TextStyleType.BOLD -> base
-        TextStyleType.BOX -> base.copy(
-            color = Color(0xFF111111), background = Color.White, fontSize = 18f,
-            fontWeight = FontWeight.Bold, shadows = emptyList(),
-            paddingVertical = 6f, paddingHorizontal = 11f,
-            animation = TextAnimation(TextEntrance.SLIDE_UP, entranceMillis = 400, exitMillis = TITLE_EXIT_MILLIS),
-        )
-        TextStyleType.OUTLINE -> base.copy(shadows = emptyList(), outline = true)
-        TextStyleType.SERIF -> base.copy(
-            font = TextFontType.GOWUN_BATANG, fontWeight = FontWeight.Bold, fontSize = 22f,
-            shadows = listOf(LookShadow(Color.Black.copy(alpha = 0.45f), offsetY = 2f, blur = 14f)),
-            animation = TextAnimation(TextEntrance.FADE, entranceMillis = 900, exitMillis = TITLE_EXIT_MILLIS),
-        )
         TextStyleType.NEON -> base.copy(
             color = NeonText,
             shadows = listOf(LookShadow(NeonGlowNear, 0f, 6f), LookShadow(NeonGlowFar, 0f, 16f)),
@@ -281,32 +265,11 @@ fun TextStyleType.look(
             paddingVertical = 2f, paddingHorizontal = 8f, cornerRadius = 2f, shadows = emptyList(),
             animation = TextAnimation(TextEntrance.MARKER_SWEEP, entranceMillis = 550, exitMillis = TITLE_EXIT_MILLIS),
         )
-        TextStyleType.TAG -> base.copy(
-            color = MagicColors.OnAccent, background = MagicColors.Accent, fontSize = 14f,
-            fontWeight = FontWeight.Bold, paddingVertical = 5f, paddingHorizontal = 12f,
-            cornerRadius = 99f, shadows = emptyList(), letterSpacingEm = 0.03f, maxLines = 1,
-            animation = TextAnimation(TextEntrance.POP, entranceMillis = 300, exitMillis = TITLE_EXIT_MILLIS),
-        )
-        TextStyleType.HAND -> base.copy(
-            font = TextFontType.NANUM_PEN, fontWeight = FontWeight.Normal, fontSize = 35f,
-            shadows = listOf(LookShadow(Color.Black.copy(alpha = 0.45f), offsetY = 1.5f, blur = 7f)),
-            animation = TextAnimation(TextEntrance.WRITE, entranceMillis = 1000, exitMillis = TITLE_EXIT_MILLIS),
-        )
         TextStyleType.IMPACT -> base.copy(
             font = TextFontType.BLACK_HAN_SANS, fontSize = 30f, color = ImpactYellow,
             outline = true, outlineWidth = 3.7f, shadows = listOf(LookShadow(Color.Black, offsetY = 2.5f, blur = 0f)),
             rotation = -4f,
             animation = TextAnimation(TextEntrance.STAMP, entranceMillis = 380, exitMillis = TITLE_EXIT_MILLIS),
-        )
-        TextStyleType.RETRO -> base.copy(
-            font = TextFontType.DO_HYEON, fontSize = 29f, color = RetroCream,
-            letterSpacingEm = 0.016f, shadows = listOf(LookShadow(RetroRed, offsetY = 2f, blur = 0f, offsetX = 2f)),
-            animation = TextAnimation(TextEntrance.BOUNCE, entranceMillis = 700, exitMillis = TITLE_EXIT_MILLIS),
-        )
-        TextStyleType.CUTE -> base.copy(
-            font = TextFontType.JUA, fontSize = 25f,
-            outline = true, outlineColor = CutePurple, shadows = listOf(LookShadow(CutePurple, offsetY = 1.7f, blur = 0f)),
-            animation = TextAnimation(TextEntrance.BOUNCE, entranceMillis = 650, exitMillis = TITLE_EXIT_MILLIS),
         )
         TextStyleType.MINIMAL -> base.copy(
             fontWeight = FontWeight.Medium, fontSize = 12f, letterSpacingEm = 0.115f,

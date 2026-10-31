@@ -30,17 +30,9 @@
     <string name="layout_desc_cinema">위아래에 검은 띠를 둬서 영화처럼 보여요.</string>
 
     <!-- 글자 템플릿 -->
-    <string name="text_style_bold">굵게</string>
-    <string name="text_style_box">박스</string>
-    <string name="text_style_outline">테두리</string>
-    <string name="text_style_serif">감성 세리프</string>
+    <string name="text_style_impact">예능</string>
     <string name="text_style_neon">네온</string>
     <string name="text_style_marker">형광펜</string>
-    <string name="text_style_tag">라벨</string>
-    <string name="text_style_hand">손글씨</string>
-    <string name="text_style_impact">예능</string>
-    <string name="text_style_retro">레트로</string>
-    <string name="text_style_cute">말랑</string>
     <string name="text_style_minimal">미니멀</string>
     <string name="text_style_shout">버럭</string>
     <string name="text_style_flame">불꽃</string>
@@ -118,15 +110,6 @@
     <string name="caption_style_minimal">미니멀</string>
     <string name="caption_style_serif">세리프</string>
     <string name="caption_style_big">크게</string>
-
-    <!-- 필터 -->
-    <string name="filter_none">원본</string>
-    <string name="filter_warm">노을</string>
-    <string name="filter_fade">필름</string>
-    <string name="filter_cool">청량</string>
-    <string name="filter_punch">쨍하게</string>
-    <string name="filter_cine">영화처럼</string>
-    <string name="filter_mono">흑백</string>
 
     <!-- 템플릿 시트·그리드 -->
     <string name="template_kind_layout">레이아웃 템플릿</string>

@@ -205,7 +205,6 @@ internal val PushDirection.icon: ImageVector
  * @param fromHue Hue of the scene before the boundary.
  * @param toHue Hue of the scene after the boundary.
  * @param modifier Modifier for the scenes. Give it a size.
- * @param colorFilter Filter of both scenes, for example the video filter.
  * @param stripeOffset Stripe shift of both scenes.
  */
 @Composable
@@ -214,12 +213,11 @@ internal fun TransitionScenes(
     fromHue: Float,
     toHue: Float,
     modifier: Modifier = Modifier,
-    colorFilter: ColorFilter? = null,
     stripeOffset: Dp = 0.dp,
 ) {
     Box(modifier = modifier.clip(RoundedCornerShape(0.dp)).background(Color.Black)) {
-        if (!look.fromIsBlack) Scene(look.from, fromHue, colorFilter, stripeOffset)
-        Scene(look.to, toHue, colorFilter, stripeOffset)
+        if (!look.fromIsBlack) Scene(look.from, fromHue, stripeOffset)
+        Scene(look.to, toHue, stripeOffset)
         if (look.coverAlpha > 0f) {
             val cover = if (look.cover == CoverColor.WHITE) Color.White else Color.Black
             Box(modifier = Modifier.matchParentSize().background(cover.copy(alpha = look.coverAlpha.coerceIn(0f, 1f))))
@@ -229,13 +227,12 @@ internal fun TransitionScenes(
 
 /** One striped scene with the opacity, the size, the move, the skew, the blur, and the colors of [look]. */
 @Composable
-private fun BoxScope.Scene(look: SceneLook, hue: Float, colorFilter: ColorFilter?, stripeOffset: Dp) {
+private fun BoxScope.Scene(look: SceneLook, hue: Float, stripeOffset: Dp) {
     if (look.alpha <= 0f) return
-    val filter = look.colorFilter() ?: colorFilter
     StripeBox(
         hue = hue,
         lightness = 0.5f,
-        colorFilter = filter,
+        colorFilter = look.colorFilter(),
         stripeOffset = stripeOffset,
         modifier = Modifier
             .matchParentSize()

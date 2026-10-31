@@ -16,24 +16,24 @@ class TextV7RulesTest {
 
     @Test
     fun sizeStep_multipliesTheFontSize_andChangesTheLineLength() {
-        val normal = TextStyleType.BOLD.look()
-        val large = TextStyleType.BOLD.look(sizeStep = 5)
+        val normal = TextStyleType.NEON.look()
+        val large = TextStyleType.NEON.look(sizeStep = 5)
         assertEquals(normal.fontSize * 1.5f, large.fontSize, 1e-4f)
         assertTrue(large.maxCharsPerLine < normal.maxCharsPerLine)
-        assertEquals(normal.fontSize * 0.6f, TextStyleType.BOLD.look(sizeStep = 1).fontSize, 1e-4f)
+        assertEquals(normal.fontSize * 0.6f, TextStyleType.NEON.look(sizeStep = 1).fontSize, 1e-4f)
     }
 
     @Test
     fun boldAndOutlineDecorations_makeTheLettersWider() {
         val decorations = listOf(DecorationRange(0, 2, Decoration(bold = true, outline = true)))
-        val decorated = TextStyleType.BOLD.look(decorations = decorations)
+        val decorated = TextStyleType.NEON.look(decorations = decorations)
         assertEquals(1.1f, decorated.widthFactor, 1e-4f)
-        assertTrue(decorated.maxCharsPerLine <= TextStyleType.BOLD.look().maxCharsPerLine)
+        assertTrue(decorated.maxCharsPerLine <= TextStyleType.NEON.look().maxCharsPerLine)
     }
 
     @Test
     fun withChoices_usesThePickedAnimations_andShortensThemForAShortText() {
-        val style = TextStyleType.BOLD.look().animation
+        val style = TextStyleType.NEON.look().animation
         val picked = style.withChoices(TextEntrance.FADE, 800, TextExit.SHRINK, 400, lengthSeconds = 3.0)
         assertEquals(TextEntrance.FADE, picked.entrance)
         assertEquals(800, picked.entranceMillis)
@@ -59,7 +59,7 @@ class TextV7RulesTest {
     @Test
     fun overlayLook_appliesTheAnimationChoices() {
         val overlay = TextOverlay(
-            id = "t", text = "a", start = 0.0, length = 3.0, style = TextStyleType.BOLD, x = 50.0, y = 50.0,
+            id = "t", text = "a", start = 0.0, length = 3.0, style = TextStyleType.NEON, x = 50.0, y = 50.0,
             exit = TextExit.FLY_UP, exitMillis = 600,
         )
         assertEquals(TextExit.FLY_UP, overlay.look().animation.exit)
@@ -69,11 +69,11 @@ class TextV7RulesTest {
     @Test
     fun everyFont_hasALineLimit_andNarrowFontsFitMoreLetters() {
         TextFontType.entries.forEach { font ->
-            assertTrue(TextStyleType.BOLD.look(font = font).maxCharsPerLine >= 1, font.name)
+            assertTrue(TextStyleType.NEON.look(font = font).maxCharsPerLine >= 1, font.name)
         }
-        val pretendard = TextStyleType.BOLD.look().maxCharsPerLine
-        assertTrue(TextStyleType.BOLD.look(font = TextFontType.NEUJOH).maxCharsPerLine > pretendard)
-        assertTrue(TextStyleType.BOLD.look(font = TextFontType.MONA12).maxCharsPerLine < pretendard)
+        val pretendard = TextStyleType.NEON.look().maxCharsPerLine
+        assertTrue(TextStyleType.NEON.look(font = TextFontType.NEUJOH).maxCharsPerLine > pretendard)
+        assertTrue(TextStyleType.NEON.look(font = TextFontType.MONA12).maxCharsPerLine < pretendard)
     }
 
     @Test

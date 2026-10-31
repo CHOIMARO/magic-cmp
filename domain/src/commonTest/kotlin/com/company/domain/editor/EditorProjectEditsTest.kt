@@ -51,9 +51,9 @@ class EditorProjectEditsTest {
         // 프로젝트 길이는 5초다.
         val withTexts = project.copy(
             texts = listOf(
-                TextOverlay("past", "hi", 3.0, 4.0, TextStyleType.BOLD, 50.0, 50.0),
-                TextOverlay("inside", "hi", 0.0, 2.0, TextStyleType.BOLD, 50.0, 50.0),
-                TextOverlay("after", "hi", 6.0, 1.0, TextStyleType.BOLD, 50.0, 50.0, layer = 1),
+                TextOverlay("past", "hi", 3.0, 4.0, TextStyleType.IMPACT, 50.0, 50.0),
+                TextOverlay("inside", "hi", 0.0, 2.0, TextStyleType.IMPACT, 50.0, 50.0),
+                TextOverlay("after", "hi", 6.0, 1.0, TextStyleType.IMPACT, 50.0, 50.0, layer = 1),
             ),
         )
         assertEquals(2.0, withTexts.cutTextAtEnd("past").texts.first { it.id == "past" }.length, 1e-9)
@@ -109,7 +109,7 @@ class EditorProjectEditsTest {
 
     @Test
     fun trimText_keepsOtherEdgeAndMinimumLength() {
-        val withText = project.addText("hi", TextStyleType.BOLD, time = 1.0)
+        val withText = project.addText("hi", TextStyleType.IMPACT, time = 1.0)
         val id = withText.texts.single().id
 
         val shorter = withText.trimTextStart(id, 2.0).texts.single()
@@ -127,7 +127,7 @@ class EditorProjectEditsTest {
 
     @Test
     fun moveTextTime_keepsLengthInsideProject() {
-        val withText = project.addText("hi", TextStyleType.BOLD, time = 1.0)
+        val withText = project.addText("hi", TextStyleType.IMPACT, time = 1.0)
         val id = withText.texts.single().id
 
         assertEquals(2.0, withText.moveTextTime(id, 2.0).texts.single().start)
@@ -138,7 +138,7 @@ class EditorProjectEditsTest {
 
     @Test
     fun duplicateText_putsCopyAfterOriginalInsideProject() {
-        val withText = project.addText("hi", TextStyleType.BOLD, time = 0.0)
+        val withText = project.addText("hi", TextStyleType.IMPACT, time = 0.0)
         val id = withText.texts.single().id
 
         val (duplicated, copyId) = assertNotNull(withText.duplicateText(id))
@@ -151,20 +151,20 @@ class EditorProjectEditsTest {
 
     @Test
     fun textFont_staysWithTextAndItsCopy() {
-        val withText = project.addText("hi", TextStyleType.BOLD, time = 0.0, font = TextFontType.JUA)
+        val withText = project.addText("hi", TextStyleType.IMPACT, time = 0.0, font = TextFontType.JUA)
         val id = withText.texts.single().id
         assertEquals(TextFontType.JUA, withText.texts.single().font)
         assertEquals(TextFontType.JUA, assertNotNull(withText.duplicateText(id)).first.texts.last().font)
-        assertEquals(TextFontType.DO_HYEON, withText.updateText(id, "hi", TextStyleType.BOX, TextFontType.DO_HYEON).texts.single().font)
+        assertEquals(TextFontType.DO_HYEON, withText.updateText(id, "hi", TextStyleType.NEON, TextFontType.DO_HYEON).texts.single().font)
         // null이면 스타일의 글꼴을 쓴다.
-        assertNull(withText.updateText(id, "hi", TextStyleType.BOX, font = null).texts.single().font)
+        assertNull(withText.updateText(id, "hi", TextStyleType.NEON, font = null).texts.single().font)
     }
 
     /** Project of 5 seconds with texts at 0~3 seconds (row 0), 1~4 seconds (row 1), and 3~5 seconds (row 0). */
     private fun layeredProject(): EditorProject = project
-        .addText("a", TextStyleType.BOLD, time = 0.0)
-        .addText("b", TextStyleType.BOLD, time = 1.0)
-        .addText("c", TextStyleType.BOLD, time = 3.0)
+        .addText("a", TextStyleType.IMPACT, time = 0.0)
+        .addText("b", TextStyleType.IMPACT, time = 1.0)
+        .addText("c", TextStyleType.IMPACT, time = 3.0)
 
     private fun EditorProject.text(name: String) = texts.single { it.text == name }
 
@@ -177,7 +177,7 @@ class EditorProjectEditsTest {
         // 3초에 끝나는 글자와 닿기만 하므로 첫 줄.
         assertEquals(0, texts.text("c").layer)
         // 2~5초는 두 줄 모두와 겹치므로 새 줄.
-        assertEquals(2, texts.addText("d", TextStyleType.BOLD, time = 2.0).text("d").layer)
+        assertEquals(2, texts.addText("d", TextStyleType.IMPACT, time = 2.0).text("d").layer)
         assertEquals(2, texts.textLayerCount)
     }
 
@@ -218,7 +218,7 @@ class EditorProjectEditsTest {
 
     @Test
     fun removeText_movesRowsBelowEmptyRowUp() {
-        val texts = layeredProject().addText("d", TextStyleType.BOLD, time = 2.0)
+        val texts = layeredProject().addText("d", TextStyleType.IMPACT, time = 2.0)
         val removed = texts.removeText(texts.text("b").id)
         assertEquals(1, removed.text("d").layer)
         assertEquals(2, removed.textLayerCount)
@@ -226,14 +226,14 @@ class EditorProjectEditsTest {
 
     @Test
     fun addText_limitsLengthToProject() {
-        val added = project.addText("hi", TextStyleType.BOLD, time = 4.6).texts.single()
+        val added = project.addText("hi", TextStyleType.IMPACT, time = 4.6).texts.single()
         assertEquals(4.0, added.start)
         assertEquals(1.0, added.length)
     }
 
     @Test
     fun moveText_staysInsideSafeArea() {
-        val overlay = TextOverlay("t", "hi", 0.0, 1.0, TextStyleType.BOLD, 50.0, 50.0)
+        val overlay = TextOverlay("t", "hi", 0.0, 1.0, TextStyleType.IMPACT, 50.0, 50.0)
         val moved = project.copy(texts = listOf(overlay)).moveText("t", 0.0, 100.0).texts.single()
         assertEquals(12.0, moved.x)
         assertEquals(94.0, moved.y)
@@ -241,7 +241,7 @@ class EditorProjectEditsTest {
 
     @Test
     fun transformText_keepsScaleInRangeAndNormalizesAngle() {
-        val withText = project.addText("hi", TextStyleType.BOLD, time = 0.0)
+        val withText = project.addText("hi", TextStyleType.IMPACT, time = 0.0)
         val id = withText.texts.single().id
         assertEquals(1.0, withText.texts.single().scale)
         assertEquals(0.0, withText.texts.single().rotation)
@@ -257,11 +257,11 @@ class EditorProjectEditsTest {
 
     @Test
     fun transformText_staysWithTextAndItsCopy() {
-        val withText = project.addText("hi", TextStyleType.BOLD, time = 0.0)
+        val withText = project.addText("hi", TextStyleType.IMPACT, time = 0.0)
         val id = withText.texts.single().id
         val changed = withText.transformText(id, scale = 1.8, rotation = -15.0)
         // 글자를 고치거나 복제해도 크기와 각도는 그대로다.
-        val updated = changed.updateText(id, "hello", TextStyleType.BOX).texts.single()
+        val updated = changed.updateText(id, "hello", TextStyleType.NEON).texts.single()
         assertEquals(1.8, updated.scale)
         assertEquals(-15.0, updated.rotation)
         val copy = assertNotNull(changed.duplicateText(id)).first.texts.last()
@@ -290,7 +290,7 @@ class EditorProjectEditsTest {
     fun templateKey_roundTrips() {
         val templates = listOf(
             EditorTemplate.Layout(LayoutType.POLAROID),
-            EditorTemplate.Text(TextStyleType.TAG),
+            EditorTemplate.Text(TextStyleType.MARKER),
             EditorTemplate.Caption(CaptionStyleType.MINIMAL),
         )
         templates.forEach { assertEquals(it, EditorTemplate.fromKey(it.key)) }

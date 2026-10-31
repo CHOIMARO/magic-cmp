@@ -112,7 +112,7 @@ val LayoutType.spec: LayoutSpec
  * @param cellHue Hue of the placeholder stripes for each cell index.
  * @param modifier Modifier for the stage.
  * @param defaultBackground Stage color when [LayoutSpec.background] is null.
- * @param colorFilter Optional video filter for the cells.
+ * @param colorFilter Optional color filter for the cells.
  * @param stripeOffset Stripe shift for each cell index. Use it to animate playback.
  * @param labelFontSize Font size of the labels in sp.
  * @param labelPadding Horizontal and vertical padding of the labels.

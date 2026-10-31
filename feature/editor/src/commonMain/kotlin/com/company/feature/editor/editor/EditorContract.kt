@@ -14,7 +14,6 @@ import com.company.domain.model.editor.DubbingSpeed
 import com.company.domain.model.editor.DubbingVoice
 import com.company.domain.model.editor.EditorProject
 import com.company.domain.model.editor.ElementClipboard
-import com.company.domain.model.editor.FilterType
 import com.company.domain.model.editor.LayoutType
 import com.company.domain.model.editor.MusicRange
 import com.company.domain.model.editor.MusicTrack
@@ -48,9 +47,6 @@ enum class EditorSheet {
 
     /** MUSIC : Background music, the part of the track, the volume, and the fade. */
     MUSIC,
-
-    /** FILTER : Color filters. */
-    FILTER,
 
     /** SPEED : Play speed of the selected clip. */
     SPEED,
@@ -554,9 +550,6 @@ sealed class EditorIntent : Intent() {
 
     /** PickLayout(layout) : Applies the layout. */
     data class PickLayout(val layout: LayoutType) : EditorIntent()
-
-    /** PickFilter(filter) : Applies the filter. */
-    data class PickFilter(val filter: FilterType) : EditorIntent()
 
     /** PickSpeed(speed) : Sets the play speed of the selected clip. */
     data class PickSpeed(val speed: Double) : EditorIntent()

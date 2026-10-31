@@ -2,7 +2,6 @@ package com.company.data.editor
 
 import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.EditorProject
-import com.company.domain.model.editor.FilterType
 import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.VideoSummary
@@ -54,13 +53,12 @@ class InMemoryMyVideoRepository(
                     text = EditorSampleData.SampleTitle,
                     start = 0.2,
                     length = 2.8,
-                    style = TextStyleType.BOX,
+                    style = TextStyleType.IMPACT,
                     x = 50.0,
                     y = 24.0,
                 )
             ),
             musicId = EditorSampleData.SampleMusicId,
-            filter = FilterType.WARM,
         )
         return project.copy(captions = captionRepository.generateCaptions(project.totalDuration))
     }

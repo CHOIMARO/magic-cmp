@@ -4,7 +4,6 @@ import com.company.domain.model.editor.CaptionSegment
 import com.company.domain.model.editor.CaptionStyleType
 import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.EditorProject
-import com.company.domain.model.editor.FilterType
 import com.company.domain.model.editor.MediaType
 import com.company.domain.model.editor.DubbingVoice
 import com.company.domain.model.editor.MusicTrack
@@ -36,10 +35,9 @@ internal object EditorPreviewData {
         ),
         captionStyle = CaptionStyleType.POP,
         texts = listOf(
-            TextOverlay(id = "t1", text = "바닷가 주말", start = 0.2, length = 2.8, style = TextStyleType.BOX, x = 50.0, y = 24.0),
+            TextOverlay(id = "t1", text = "바닷가 주말", start = 0.2, length = 2.8, style = TextStyleType.IMPACT, x = 50.0, y = 24.0),
         ),
         musicId = "m5",
-        filter = FilterType.WARM,
         captions = listOf(
             CaptionSegment(id = "k1", text = "자 오늘은", start = 0.0, length = 1.4),
             CaptionSegment(id = "k2", text = "바닷가로 떠나볼게요", start = 1.5, length = 1.6),

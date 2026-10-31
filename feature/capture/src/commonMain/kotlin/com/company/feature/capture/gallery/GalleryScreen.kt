@@ -129,12 +129,14 @@ internal fun GalleryScreen(
                 )
             }
         }
-        Text(
-            text = galleryHint(state),
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
-            fontSize = 13.sp,
-            color = MagicColors.OnSurface60,
-        )
+        galleryHint(state)?.let { hint ->
+            Text(
+                text = hint,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                fontSize = 13.sp,
+                color = MagicColors.OnSurface60,
+            )
+        }
         if (useEmbeddedPicker) {
             EmbeddedMediaPicker(
                 controller = pickerController,
@@ -163,9 +165,9 @@ internal fun GalleryScreen(
     }
 }
 
-/** Guide text under the header. */
+/** Guide text under the header, or null when the screen needs no guide. */
 @Composable
-private fun galleryHint(state: GalleryState): String {
+private fun galleryHint(state: GalleryState): String? {
     val layout = (state.template as? EditorTemplate.Layout)?.layout
     return when {
         state.mode == GalleryMode.APPEND -> stringResource(Res.string.gallery_hint_append)
@@ -173,7 +175,7 @@ private fun galleryHint(state: GalleryState): String {
             val name = layout.displayName
             stringResource(Res.string.gallery_hint_layout, name, name.topicParticle(), layout.clipCount)
         }
-        else -> stringResource(Res.string.gallery_hint_default)
+        else -> null
     }
 }
 

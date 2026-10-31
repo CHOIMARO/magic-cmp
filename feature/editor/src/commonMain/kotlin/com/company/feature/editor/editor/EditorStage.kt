@@ -46,7 +46,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -83,7 +82,6 @@ import com.company.ui.editor.centeredAt
 import com.company.ui.editor.formatTime
 import com.company.ui.editor.frameAt
 import com.company.ui.editor.look
-import com.company.ui.editor.toColorFilter
 import com.company.ui.media.MediaThumbnail
 import com.company.ui.media.rememberExactVideoFrame
 import kotlin.math.PI
@@ -114,7 +112,6 @@ internal fun EditorStage(
 ) {
     val project = state.project
     val current = project.clipAt(state.time)
-    val filter = remember(project.filter) { project.filter.toColorFilter() }
 
     BoxWithConstraints(
         modifier = modifier
@@ -148,7 +145,6 @@ internal fun EditorStage(
                                 hue = clip.thumbnailHue,
                                 modifier = Modifier.matchParentSize(),
                                 time = clip.inPoint,
-                                colorFilter = filter,
                             )
                         }
                     }
@@ -157,7 +153,6 @@ internal fun EditorStage(
                         project = project,
                         clipIndex = current.index,
                         modifier = Modifier.fillMaxSize(),
-                        colorFilter = filter,
                         stripeOffset = { index -> (state.time * 26 + index * 40).dp },
                     )
                 }
@@ -189,12 +184,12 @@ internal fun EditorStage(
 
         // 손잡이를 끄는 동안 자르는 위치의 프레임을 무대 전체에 보여 준다. 글자와 자막은 그 위에 그린다.
         state.trimEdgeFrame()?.let { (uri, time) ->
-            TrimEdgeFrame(uri = uri, time = time, colorFilter = filter, modifier = Modifier.fillMaxSize())
+            TrimEdgeFrame(uri = uri, time = time, modifier = Modifier.fillMaxSize())
         }
 
         // 재생 중 화면 전환: 원본 파일이 없는 샘플 클립은 줄무늬 장면으로 전환을 보여 준다. 실제 영상은 재생기가 그린다.
         if (video == null && state.playing && current != null) {
-            PlaceholderTransition(project = project, time = state.time, filter = filter)
+            PlaceholderTransition(project = project, time = state.time)
         }
 
         // 선택한 글자가 무대에 보이면, 무대 어디에서든 두 손가락으로 그 글자의 크기와 각도를 바꾼다.
@@ -271,14 +266,13 @@ private fun EditorState.trimEdgeFrame(): Pair<String, Double>? {
 
 /** Exact video frame at the trim edge. Until the first frame loads, the stage below stays visible. */
 @Composable
-private fun TrimEdgeFrame(uri: String, time: Double, colorFilter: ColorFilter?, modifier: Modifier) {
+private fun TrimEdgeFrame(uri: String, time: Double, modifier: Modifier) {
     val image = rememberExactVideoFrame(uri, time) ?: return
     Image(
         bitmap = image,
         contentDescription = null,
         modifier = modifier,
         contentScale = ContentScale.Crop,
-        colorFilter = colorFilter,
     )
 }
 
@@ -638,10 +632,9 @@ private fun rememberAnimationDemo(state: EditorState): TextFrame? {
  *
  * @param project Project with the clips and the transitions.
  * @param time Playhead position.
- * @param filter Color filter of the project.
  */
 @Composable
-private fun PlaceholderTransition(project: EditorProject, time: Double, filter: ColorFilter?) {
+private fun PlaceholderTransition(project: EditorProject, time: Double) {
     val window = remember(project.clips, project.transitions, project.openingTransition) { project.transitionWindows() }
         .firstOrNull { time >= it.start && time < it.end } ?: return
     val progress = window.progressAt(time).toFloat()
@@ -657,7 +650,6 @@ private fun PlaceholderTransition(project: EditorProject, time: Double, filter: 
         fromHue = fromHue.toFloat(),
         toHue = project.clips[window.toClip].thumbnailHue.toFloat(),
         modifier = Modifier.fillMaxSize(),
-        colorFilter = filter,
         stripeOffset = (time * 26).dp,
     )
 }

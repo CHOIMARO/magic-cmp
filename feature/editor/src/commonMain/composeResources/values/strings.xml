@@ -24,7 +24,6 @@
     <string name="menu_sound_effect">효과음</string>
     <string name="menu_dubbing">더빙</string>
     <string name="menu_transition">전환</string>
-    <string name="menu_filter">필터</string>
     <string name="menu_layout">레이아웃</string>
     <string name="menu_speed">속도</string>
     <string name="menu_volume">볼륨</string>

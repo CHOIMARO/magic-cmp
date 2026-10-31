@@ -232,7 +232,6 @@ class ExportViewModel(
         val request = ExportRequest(
             name = project.name,
             clips = project.clips,
-            filter = project.filter,
             width = resolution.width,
             height = resolution.height,
             videoArea = project.layout.spec.cells.first().toFrameArea(),

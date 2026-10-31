@@ -9,7 +9,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import com.company.domain.model.editor.Clip
-import com.company.domain.model.editor.FilterType
 import com.company.domain.model.editor.TransitionWindow
 import com.company.core.media.PREVIEW_FRAME_HEIGHT
 import com.company.core.media.PREVIEW_FRAME_WIDTH
@@ -98,14 +97,14 @@ private class IosVideoPreviewPlayer(private val scope: CoroutineScope) : VideoPr
             return if (seconds.isNaN()) targetTime else seconds
         }
 
-    override fun setClips(clips: List<Clip>, filter: FilterType, transitions: List<TransitionWindow>, time: Double) {
+    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, time: Double) {
         if (clips.isEmpty()) return
         targetTime = time
         ended = false
         loading = true
         loadJob?.cancel()
         loadJob = scope.launch {
-            val item = buildPlayerItem(clips, filter, transitions)
+            val item = buildPlayerItem(clips, transitions)
             loading = false
             if (item == null) {
                 NSLog("Preview: cannot build the player item")
@@ -207,10 +206,9 @@ private class PlayerLayerView(player: AVPlayer) : UIView(frame = CGRectMake(0.0,
 
 /** Makes the player item of the clips with the same composition as the export. */
 @OptIn(ExperimentalForeignApi::class)
-private suspend fun buildPlayerItem(clips: List<Clip>, filter: FilterType, transitions: List<TransitionWindow>): AVPlayerItem? {
+private suspend fun buildPlayerItem(clips: List<Clip>, transitions: List<TransitionWindow>): AVPlayerItem? {
     val composition = buildMediaComposition(
         clips = clips,
-        filter = filter,
         frameWidth = PREVIEW_FRAME_WIDTH,
         frameHeight = PREVIEW_FRAME_HEIGHT,
         transitions = transitions,

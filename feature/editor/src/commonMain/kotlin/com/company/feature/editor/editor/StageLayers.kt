@@ -13,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -78,7 +77,6 @@ internal fun EditorProject.cellClip(clipIndex: Int, cell: Int): Clip = clips[(cl
  * @param project Project with the layout and the clips.
  * @param clipIndex Index of the clip at the playhead.
  * @param modifier Modifier for the cells. Fill the stage with it.
- * @param colorFilter Filter for the placeholder stripes.
  * @param stripeOffset Stripe shift for each cell index.
  * @param cellContent Content of each cell with its clip, or null to draw placeholder stripes.
  */
@@ -87,7 +85,6 @@ internal fun StageLayoutCells(
     project: EditorProject,
     clipIndex: Int,
     modifier: Modifier = Modifier,
-    colorFilter: ColorFilter? = null,
     stripeOffset: (Int) -> Dp = { 0.dp },
     cellContent: (@Composable BoxScope.(index: Int, clip: Clip) -> Unit)? = null,
 ) {
@@ -96,7 +93,6 @@ internal fun StageLayoutCells(
         cellHue = { index -> project.cellClip(clipIndex, index).thumbnailHue },
         modifier = modifier,
         defaultBackground = StageBackground,
-        colorFilter = colorFilter,
         stripeOffset = stripeOffset,
         labelFontSize = 13f,
         labelPadding = 8.dp to 3.dp,

@@ -19,7 +19,6 @@ import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.RgbMatrix
 import androidx.media3.effect.SeparableConvolutionShaderProgram
 import com.company.domain.model.editor.Clip
-import com.company.domain.model.editor.FilterType
 import com.company.domain.model.editor.TransitionWindow
 import kotlin.math.PI
 import kotlin.math.tan
@@ -64,7 +63,6 @@ private const val BLUR_KERNEL_DEVIATIONS = 2f
  * @param clips Clips of the composition.
  * @param transitions Transitions in time order.
  * @param clipStartsUs Start time of each clip in microseconds, as Media3 places the clip.
- * @param filter Color filter of the video.
  * @param frameWidth Width of the output frame in pixels.
  * @param frameHeight Height of the output frame in pixels.
  * @param areaWidth Width of the video area in pixels.
@@ -75,7 +73,6 @@ internal fun transitionEffects(
     clips: List<Clip>,
     transitions: List<TransitionWindow>,
     clipStartsUs: List<Long>,
-    filter: FilterType,
     frameWidth: Int,
     frameHeight: Int,
     areaWidth: Int,
@@ -89,7 +86,7 @@ internal fun transitionEffects(
         if (layers.shape) add(LiveShape(timeline))
         if (layers.color) add(LiveColor(timeline))
         if (layers.still) {
-            val stills = StillFrames(clips, timeline, frameWidth, frameHeight, areaWidth, areaHeight, filter)
+            val stills = StillFrames(clips, timeline, frameWidth, frameHeight, areaWidth, areaHeight)
             add(StillEffect(StillOverlay(timeline, stills), stills))
         }
         if (layers.cover) add(CoverTint(timeline))

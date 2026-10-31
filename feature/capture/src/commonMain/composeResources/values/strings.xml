@@ -14,7 +14,6 @@
     <string name="gallery_template_banner">%1$s 템플릿으로 시작해요</string>
     <string name="gallery_hint_append">고른 순서대로 타임라인 맨 뒤에 붙어요</string>
     <string name="gallery_hint_layout">%1$s%2$s %3$d개를 고르면 딱 맞아요 · 누른 순서대로 들어가요</string>
-    <string name="gallery_hint_default">여러 개 고를 수 있어요 · 누른 순서대로 들어가요</string>
     <string name="gallery_pick_more">더 고르기</string>
     <string name="gallery_next_empty">영상이나 사진을 골라주세요</string>
     <string name="gallery_next_append">%1$d개 붙이기</string>

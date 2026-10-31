@@ -42,7 +42,7 @@ private val StripeWidth = 7.dp
  * @param modifier Modifier for the box.
  * @param lightness OKLCH lightness of the light stripe. The dark stripe is 0.06 darker.
  * @param shape Shape that clips the stripes.
- * @param colorFilter Optional filter for the stripes, for example a video filter preview.
+ * @param colorFilter Optional filter for the stripes, for example a gray look for a disabled card.
  * @param stripeOffset Horizontal shift of the stripes. Use it to animate playback.
  * @param content Content on top of the stripes.
  */

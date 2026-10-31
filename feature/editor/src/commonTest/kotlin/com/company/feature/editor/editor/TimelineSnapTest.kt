@@ -37,8 +37,8 @@ class TimelineSnapTest {
         name = "p",
         clips = listOf(Clip(id = "c", name = "c", sourceDuration = 10.0, inPoint = 0.0, outPoint = 10.0, thumbnailHue = 0)),
         texts = listOf(
-            TextOverlay(id = "a", text = "a", start = 0.0, length = 3.0, style = TextStyleType.BOLD, x = 50.0, y = 50.0, layer = 0),
-            TextOverlay(id = "b", text = "b", start = 5.0, length = 2.0, style = TextStyleType.BOLD, x = 50.0, y = 50.0, layer = 1),
+            TextOverlay(id = "a", text = "a", start = 0.0, length = 3.0, style = TextStyleType.IMPACT, x = 50.0, y = 50.0, layer = 0),
+            TextOverlay(id = "b", text = "b", start = 5.0, length = 2.0, style = TextStyleType.IMPACT, x = 50.0, y = 50.0, layer = 1),
         ),
     )
 

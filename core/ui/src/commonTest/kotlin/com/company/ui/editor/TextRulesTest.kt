@@ -14,15 +14,15 @@ class TextRulesTest {
 
     @Test
     fun shortTitle_staysOnOneLine() {
-        val lines = TextStyleType.BOLD.look().breakLines("바닷가 주말".splitWords())
+        val lines = TextStyleType.NEON.look().breakLines("바닷가 주말".splitWords())
         assertEquals(listOf(listOf("바닷가", "주말")), lines.lines)
         assertEquals(1f, lines.fontScale)
     }
 
     @Test
     fun longTitle_breaksIntoLinesOfSimilarLength() {
-        // 굵게는 한 줄에 8자, 최대 2줄이다.
-        val look = TextStyleType.BOLD.look()
+        // 네온은 한 줄에 8자, 최대 2줄이다.
+        val look = TextStyleType.NEON.look()
         assertEquals(8, look.maxCharsPerLine)
         val lines = look.breakLines("처음 가본 동네 빵집 투어 브이로그".splitWords())
         assertEquals(listOf(listOf("처음", "가본", "동네"), listOf("빵집", "투어", "브이로그")), lines.lines)
@@ -32,25 +32,19 @@ class TextRulesTest {
     @Test
     fun tooLongTitle_getsSmallerToSeventyPercent() {
         // 24자는 2줄 16자를 넘어서 글자를 줄인다. 16/24는 70%보다 작으므로 70%에서 멈춘다.
-        val lines = TextStyleType.BOLD.look().breakLines("가나다라 마바사아 자차카타 파하가나 다라마바 사아자차".splitWords())
+        val lines = TextStyleType.NEON.look().breakLines("가나다라 마바사아 자차카타 파하가나 다라마바 사아자차".splitWords())
         assertEquals(0.7f, lines.fontScale)
         assertEquals(2, lines.lines.size)
     }
 
     @Test
-    fun tag_staysOnOneLine() {
-        val lines = TextStyleType.TAG.look().breakLines("아주 긴 라벨 문구를 한 줄로 보여 줘요".splitWords())
-        assertEquals(1, lines.lines.size)
-    }
-
-    @Test
     fun font_replacesFontOfStyleAndChangesLineLength() {
-        assertEquals(TextFontType.GOWUN_BATANG, TextStyleType.SERIF.look().font)
+        assertEquals(TextFontType.BLACK_HAN_SANS, TextStyleType.IMPACT.look().font)
         assertEquals(TextFontType.GOWUN_BATANG, CaptionStyleType.SERIF.look().font)
-        assertEquals(TextFontType.JUA, TextStyleType.SERIF.look(font = TextFontType.JUA).font)
+        assertEquals(TextFontType.JUA, TextStyleType.IMPACT.look(font = TextFontType.JUA).font)
         // 나눔손글씨 펜은 글자 폭이 좁아서, 같은 크기에서 한 줄에 더 많은 글자가 들어간다.
-        val pen = TextStyleType.BOLD.look(font = TextFontType.NANUM_PEN)
-        assertTrue(pen.maxCharsPerLine > TextStyleType.BOLD.look().maxCharsPerLine)
+        val pen = TextStyleType.NEON.look(font = TextFontType.NANUM_PEN)
+        assertTrue(pen.maxCharsPerLine > TextStyleType.NEON.look().maxCharsPerLine)
     }
 
     /** Checks that the frame is the look without animation. Float math can leave a very small offset. */
@@ -81,8 +75,8 @@ class TextRulesTest {
             assertTrue(animation.previewFrameAt(exitEnd + 100L).hidden, style.name)
             assertEquals(animation.previewFrameAt(100L), animation.previewFrameAt(exitEnd + 300L + 100L), style.name)
         }
-        // 퇴장 중에는 반쯤 보인다.
-        val fading = TextStyleType.BOLD.look().animation.previewFrameAt(350L + 1000L + 100L).alpha
+        // 퇴장 중에는 반쯤 보인다. 버럭은 팝 350ms로 등장한다.
+        val fading = TextStyleType.SHOUT.look().animation.previewFrameAt(350L + 1000L + 100L).alpha
         assertTrue(fading > 0f && fading < 1f)
     }
 
@@ -119,7 +113,7 @@ class TextRulesTest {
 
     @Test
     fun pop_startsSmallAndInvisibleAndEndsStatic() {
-        val animation = TextStyleType.BOLD.look().animation
+        val animation = TextStyleType.SHOUT.look().animation
         val start = animation.frameAt(elapsed = 0.0, remaining = 3.0)
         assertEquals(0f, start.alpha)
         assertEquals(0.6f, start.scale, 1e-4f)
@@ -130,7 +124,7 @@ class TextRulesTest {
 
     @Test
     fun exit_fadesOutAtTheEnd() {
-        val animation = TextStyleType.BOLD.look().animation
+        val animation = TextStyleType.NEON.look().animation
         assertEquals(0f, animation.frameAt(elapsed = 3.0, remaining = 0.0).alpha)
         val half = animation.frameAt(elapsed = 3.0, remaining = 0.1).alpha
         assertTrue(half > 0f && half < 1f)

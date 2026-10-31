@@ -62,7 +62,7 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
         val overlay = host.state.project.texts.find { it.id == textId }
         val draft = overlay?.let {
             TextDraft(id = it.id, text = it.text, style = it.style, font = it.font, sizeStep = it.sizeStep, decorations = it.decorations)
-        } ?: TextDraft(id = null, text = "", style = TextStyleType.BOLD)
+        } ?: TextDraft(id = null, text = "", style = TextStyleType.IMPACT)
         host.reduce { copy(sheet = EditorSheet.TEXT, textDraft = draft) }
     }
 
@@ -74,7 +74,7 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
     fun openCaptionEditor(captionId: String) {
         host.pause()
         val caption = host.state.project.placedCaptions.find { it.id == captionId } ?: return
-        val draft = TextDraft(id = null, text = caption.text, style = TextStyleType.BOLD, decorations = caption.decorations, captionId = caption.id)
+        val draft = TextDraft(id = null, text = caption.text, style = TextStyleType.IMPACT, decorations = caption.decorations, captionId = caption.id)
         host.reduce { copy(sheet = EditorSheet.TEXT, textDraft = draft, selectedTrackItem = TrackSelection.Caption(caption.id)) }
     }
 

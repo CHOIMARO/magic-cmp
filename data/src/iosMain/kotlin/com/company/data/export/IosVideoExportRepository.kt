@@ -46,7 +46,6 @@ internal class IosVideoExportRepository : VideoExportRepository {
         if (!requestAddAccess()) throw GalleryAccessDeniedException()
         val composition = buildMediaComposition(
             clips = request.clips,
-            filter = request.filter,
             frameWidth = request.width,
             frameHeight = request.height,
             videoArea = request.videoArea,

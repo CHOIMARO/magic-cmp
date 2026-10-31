@@ -284,9 +284,6 @@ class EditorViewModel(
             is EditorIntent.OpenSheet -> openSheet(intent.sheet)
             EditorIntent.CloseSheet -> closeSheet()
             is EditorIntent.PickLayout -> pickLayout(intent.layout)
-            is EditorIntent.PickFilter -> if (currentState.project.filter != intent.filter) {
-                projectRepository.commit { it.copy(filter = intent.filter) }
-            }
             is EditorIntent.PickSpeed -> currentState.selectedClip?.let { clip ->
                 if (clip.speed != intent.speed) projectRepository.commit { it.setClipSpeed(clip.id, intent.speed) }
             }

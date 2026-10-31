@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,7 +42,6 @@ import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.SegmentOption
 import com.company.core.designsystem.component.SegmentedControl
 import com.company.core.designsystem.component.SheetHeader
-import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.bleedHorizontal
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.component.selectionRing
@@ -54,12 +52,10 @@ import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.domain.model.editor.DubbingSpeed
 import com.company.domain.model.editor.EditorTemplate
-import com.company.domain.model.editor.FilterType
 import com.company.domain.model.editor.LayoutType
 import com.company.domain.model.editor.MusicRange
 import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.TransitionSlot
-import com.company.domain.model.editor.clipAt
 import com.company.feature.editor.preview.EditorPreviewData
 import com.company.feature.editor.resources.*
 import com.company.ui.editor.OverlayText
@@ -67,7 +63,6 @@ import com.company.ui.editor.TemplatePreview
 import com.company.ui.editor.TextFrame
 import com.company.ui.editor.TextLook
 import com.company.ui.editor.displayName
-import com.company.ui.editor.toColorFilter
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
 
@@ -122,7 +117,6 @@ internal fun ColumnScope.EditorSheetContent(
         EditorSheet.LAYOUT -> LayoutSheet(state, onIntent)
         EditorSheet.TEXT -> TextSheet(state, onIntent, onClose)
         EditorSheet.MUSIC -> MusicSheet(state, onIntent)
-        EditorSheet.FILTER -> FilterSheet(state, onIntent)
         EditorSheet.SPEED -> SpeedSheet(state, onIntent)
         EditorSheet.CAPTIONS -> CaptionSheet(state, onIntent)
         EditorSheet.ANIMATION -> AnimationSheet(state, onIntent)
@@ -139,7 +133,6 @@ internal fun ColumnScope.EditorSheetContent(
 private fun EditorSheet.title(state: EditorState): String? = when (this) {
     EditorSheet.TEXT -> null
     EditorSheet.MUSIC -> stringResource(Res.string.menu_music)
-    EditorSheet.FILTER -> stringResource(Res.string.menu_filter)
     EditorSheet.SPEED -> stringResource(Res.string.menu_speed)
     EditorSheet.CAPTIONS -> stringResource(if (state.captionScript != null) Res.string.sheet_title_caption_script else Res.string.menu_caption)
     EditorSheet.LAYOUT -> stringResource(Res.string.menu_layout)
@@ -165,11 +158,8 @@ private fun EditorSheet.intro(state: EditorState): String? = when (this) {
     else -> null
 }
 
-/** Hue of the clip at the playhead. The filter previews use it. */
-private fun EditorState.currentHue(): Int = project.clipAt(time)?.clip?.thumbnailHue ?: 35
-
 // =====================================================================
-// Layout, filter, speed
+// Layout, speed
 // =====================================================================
 
 @Composable
@@ -210,42 +200,6 @@ private fun LayoutSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
                     color = if (selected) MagicColors.OnSurface else MagicColors.OnSurface60,
                     maxLines = 1,
                     softWrap = false,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun FilterSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
-    val hue = state.currentHue().toFloat()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .bleedHorizontal(SheetPadding)
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = SheetPadding, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        FilterType.entries.forEach { filter ->
-            val selected = state.project.filter == filter
-            Column(
-                modifier = Modifier.pressClickable { onIntent(EditorIntent.PickFilter(filter)) },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                StripeBox(
-                    hue = hue,
-                    lightness = 0.56f,
-                    shape = RoundedCornerShape(14.dp),
-                    colorFilter = remember(filter) { filter.toColorFilter() },
-                    modifier = Modifier.size(width = 70.dp, height = 96.dp).selectionRing(selected, 14.dp),
-                )
-                Text(
-                    text = filter.displayName,
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (selected) MagicColors.OnSurface else MagicColors.OnSurface55,
                 )
             }
         }
@@ -411,7 +365,7 @@ private fun LayoutSheetPreview() = EditorSheetPreview(EditorSheet.LAYOUT)
 @Composable
 private fun TextSheetPreview() = EditorSheetPreview(
     EditorSheet.TEXT,
-    PreviewSheetState.copy(textDraft = TextDraft(id = null, text = "오늘의 기록", style = TextStyleType.BOLD)),
+    PreviewSheetState.copy(textDraft = TextDraft(id = null, text = "오늘의 기록", style = TextStyleType.IMPACT)),
 )
 
 @Preview(name = "시트 - 글자 꾸미기", widthDp = PHONE_PREVIEW_WIDTH)
@@ -419,7 +373,7 @@ private fun TextSheetPreview() = EditorSheetPreview(
 private fun TextDecorationSheetPreview() = EditorSheetPreview(
     EditorSheet.TEXT,
     PreviewSheetState.copy(
-        textDraft = TextDraft(id = "t1", text = "바닷가 주말", style = TextStyleType.BOX, tab = TextSheetTab.DECORATION),
+        textDraft = TextDraft(id = "t1", text = "바닷가 주말", style = TextStyleType.IMPACT, tab = TextSheetTab.DECORATION),
     ),
 )
 
@@ -432,9 +386,6 @@ private fun MusicSheetPreview() = EditorSheetPreview(
     ),
 )
 
-@Preview(name = "시트 - 필터", widthDp = PHONE_PREVIEW_WIDTH)
-@Composable
-private fun FilterSheetPreview() = EditorSheetPreview(EditorSheet.FILTER)
 
 @Preview(name = "시트 - 속도", widthDp = PHONE_PREVIEW_WIDTH)
 @Composable

@@ -3,8 +3,6 @@ package com.company.core.media
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
@@ -16,9 +14,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.BitmapUtil
 import com.company.domain.model.editor.Clip
-import com.company.domain.model.editor.FilterType
 import com.company.domain.model.editor.MediaType
-import com.company.domain.model.editor.colorMatrix
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
@@ -56,7 +52,6 @@ private const val PHOTO_MAX_SIDE = 4096
  * @property areaWidth Width of the video area in pixels.
  * @property areaHeight Height of the video area in pixels.
  * @property blurRadius Blur radius in pixels of the video area. 0 means no blur.
- * @property filter Color filter of the video.
  */
 internal data class StillKey(
     val uri: String,
@@ -67,7 +62,6 @@ internal data class StillKey(
     val areaWidth: Int,
     val areaHeight: Int,
     val blurRadius: Float,
-    val filter: FilterType,
 )
 
 /**
@@ -82,7 +76,6 @@ internal data class StillKey(
  * @param frameHeight Height of the output frame in pixels.
  * @param areaWidth Width of the video area in pixels.
  * @param areaHeight Height of the video area in pixels.
- * @param filter Color filter of the video. The still gets the same filter as the live frame.
  */
 internal class StillFrames(
     clips: List<Clip>,
@@ -91,7 +84,6 @@ internal class StillFrames(
     frameHeight: Int,
     areaWidth: Int,
     areaHeight: Int,
-    filter: FilterType,
 ) {
     private val keys: Map<StillRef, StillKey> = timeline.stillRefs.mapNotNull { ref ->
         val clip = clips.getOrNull(ref.clipIndex) ?: return@mapNotNull null
@@ -110,7 +102,6 @@ internal class StillFrames(
             areaWidth = areaWidth,
             areaHeight = areaHeight,
             blurRadius = timeline.stillBlur(ref) * areaWidth,
-            filter = filter,
         )
     }.toMap()
 
@@ -220,14 +211,14 @@ internal object StillFrameCache {
 }
 
 // =====================================================================
-// Decode, crop, filter, and blur of one still frame
+// Decode, crop, and blur of one still frame
 // =====================================================================
 
 /**
  * Makes the still bitmap of [key]. It looks like the live frame after the item effects of the composition.
  *
  * The bitmap fills the video area: Media3 cuts the source to the frame, and then to the area. The still gets the same
- * cuts, the same color filter, and the blur of [StillKey.blurRadius].
+ * cuts and the blur of [StillKey.blurRadius].
  */
 @OptIn(UnstableApi::class)
 private fun loadStillFrame(context: Context, key: StillKey): Bitmap {
@@ -242,7 +233,7 @@ private fun loadStillFrame(context: Context, key: StillKey): Bitmap {
         val left = (source.width - cropWidth) / 2f
         val top = (source.height - cropHeight) / 2f
         val size = stillBitmapSize(key.areaWidth, key.areaHeight, key.blurRadius)
-        val still = drawScaled(source, RectF(left, top, left + cropWidth, top + cropHeight), size, key.filter)
+        val still = drawScaled(source, RectF(left, top, left + cropWidth, top + cropHeight), size)
         if (key.blurRadius > 0f) {
             val pixels = IntArray(still.width * still.height)
             still.getPixels(pixels, 0, still.width, 0, 0, still.width, still.height)
@@ -273,11 +264,11 @@ private fun decodePhoto(context: Context, key: StillKey): Bitmap {
 }
 
 /**
- * Draws the [region] of [source] into a new bitmap of [size] with the color filter.
+ * Draws the [region] of [source] into a new bitmap of [size].
  *
  * A large scale-down halves the image in steps. One step of more than half skips pixels and makes jagged edges.
  */
-private fun drawScaled(source: Bitmap, region: RectF, size: PixelSize, filter: FilterType): Bitmap {
+private fun drawScaled(source: Bitmap, region: RectF, size: PixelSize): Bitmap {
     val smoothPaint = Paint(Paint.FILTER_BITMAP_FLAG)
     var image = source
     var part = region
@@ -290,11 +281,8 @@ private fun drawScaled(source: Bitmap, region: RectF, size: PixelSize, filter: F
         image = half
         part = RectF(0f, 0f, half.width.toFloat(), half.height.toFloat())
     }
-    val paint = Paint(Paint.FILTER_BITMAP_FLAG).apply {
-        filter.colorMatrix()?.let { colorFilter = ColorMatrixColorFilter(ColorMatrix(it)) }
-    }
     val output = Bitmap.createBitmap(size.width, size.height, Bitmap.Config.ARGB_8888)
-    Canvas(output).drawBitmap(image, part.toRect(), Rect(0, 0, size.width, size.height), paint)
+    Canvas(output).drawBitmap(image, part.toRect(), Rect(0, 0, size.width, size.height), smoothPaint)
     if (image !== source) image.recycle()
     return output
 }

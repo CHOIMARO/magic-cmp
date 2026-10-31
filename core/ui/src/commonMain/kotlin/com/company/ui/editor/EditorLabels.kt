@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import com.company.domain.model.editor.CaptionStyleType
 import com.company.domain.model.editor.DubbingSpeed
 import com.company.domain.model.editor.EditorTemplate
-import com.company.domain.model.editor.FilterType
 import com.company.domain.model.editor.LayoutType
 import com.company.domain.model.editor.PushDirection
 import com.company.domain.model.editor.SoundEffectCategory
@@ -64,17 +63,9 @@ val LayoutType.description: String
 val TextStyleType.displayName: String
     @Composable get() = stringResource(
         when (this) {
-            TextStyleType.BOLD -> Res.string.text_style_bold
-            TextStyleType.BOX -> Res.string.text_style_box
-            TextStyleType.OUTLINE -> Res.string.text_style_outline
-            TextStyleType.SERIF -> Res.string.text_style_serif
+            TextStyleType.IMPACT -> Res.string.text_style_impact
             TextStyleType.NEON -> Res.string.text_style_neon
             TextStyleType.MARKER -> Res.string.text_style_marker
-            TextStyleType.TAG -> Res.string.text_style_tag
-            TextStyleType.HAND -> Res.string.text_style_hand
-            TextStyleType.IMPACT -> Res.string.text_style_impact
-            TextStyleType.RETRO -> Res.string.text_style_retro
-            TextStyleType.CUTE -> Res.string.text_style_cute
             TextStyleType.MINIMAL -> Res.string.text_style_minimal
             TextStyleType.SHOUT -> Res.string.text_style_shout
             TextStyleType.FLAME -> Res.string.text_style_flame
@@ -198,20 +189,6 @@ val CaptionStyleType.displayName: String
             CaptionStyleType.MINIMAL -> Res.string.caption_style_minimal
             CaptionStyleType.SERIF -> Res.string.caption_style_serif
             CaptionStyleType.BIG -> Res.string.caption_style_big
-        }
-    )
-
-/** Display name of the filter. */
-val FilterType.displayName: String
-    @Composable get() = stringResource(
-        when (this) {
-            FilterType.NONE -> Res.string.filter_none
-            FilterType.WARM -> Res.string.filter_warm
-            FilterType.FADE -> Res.string.filter_fade
-            FilterType.COOL -> Res.string.filter_cool
-            FilterType.PUNCH -> Res.string.filter_punch
-            FilterType.CINE -> Res.string.filter_cine
-            FilterType.MONO -> Res.string.filter_mono
         }
     )
 

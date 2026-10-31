@@ -13,7 +13,6 @@ import kotlin.random.Random
  * @property captionStyle Style of the captions.
  * @property texts Text overlays.
  * @property musicId ID of the background music. Null means no music.
- * @property filter Color filter for all clips.
  * @property captions Caption segments. A caption that is bound to a clip gets its time from the clip.
  *   Use [placedCaptions] for the times on the timeline.
  * @property musicRange Part of the music track that plays from the project start, or null for the whole track.
@@ -31,7 +30,6 @@ data class EditorProject(
     val captionStyle: CaptionStyleType = CaptionStyleType.POP,
     val texts: List<TextOverlay> = emptyList(),
     val musicId: String? = null,
-    val filter: FilterType = FilterType.NONE,
     val captions: List<CaptionSegment> = emptyList(),
     val musicRange: MusicRange? = null,
     val musicFade: Boolean = true,

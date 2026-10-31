@@ -43,8 +43,8 @@ class OverlayTimelineTest {
 
     @Test
     fun text_givesOneSpanPerAnimationFrameAndOneStaticSpan() {
-        // 굵게: 팝 350ms 등장, 페이드 200ms 퇴장.
-        val text = TextOverlay(id = "t", text = "hi", start = 0.5, length = 2.0, style = TextStyleType.BOLD, x = 50.0, y = 50.0)
+        // 버럭: 팝 350ms 등장, 페이드 200ms 퇴장.
+        val text = TextOverlay(id = "t", text = "hi", start = 0.5, length = 2.0, style = TextStyleType.SHOUT, x = 50.0, y = 50.0)
         val spans = project.copy(texts = listOf(text)).textSpans(watermark = false)
         assertCovers(spans, 0.5, 2.5)
         val static = spans.single { it.end - it.start > 0.5 }

@@ -60,7 +60,6 @@ internal class AndroidVideoExportRepository(private val context: Context) : Vide
         try {
             val composition = buildMediaComposition(
                 clips = request.clips,
-                filter = request.filter,
                 frameWidth = request.width,
                 frameHeight = request.height,
                 videoArea = request.videoArea,

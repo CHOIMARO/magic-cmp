@@ -28,7 +28,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.MusicNote
-import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Speed
@@ -133,7 +132,6 @@ internal fun EditorTools(state: EditorState, onIntent: (EditorIntent) -> Unit) {
                 ScrollTool(Icons.Outlined.GraphicEq, stringResource(Res.string.menu_sound_effect)) { onIntent(EditorIntent.OpenSheet(EditorSheet.SOUND_EFFECT)) }
                 ScrollTool(Icons.Outlined.RecordVoiceOver, stringResource(Res.string.menu_dubbing)) { onIntent(EditorIntent.OpenSheet(EditorSheet.DUBBING)) }
                 ScrollTool(Icons.Outlined.SwapHoriz, stringResource(Res.string.menu_transition)) { onIntent(EditorIntent.OpenNearestTransition) }
-                ScrollTool(Icons.Outlined.Palette, stringResource(Res.string.menu_filter)) { onIntent(EditorIntent.OpenSheet(EditorSheet.FILTER)) }
                 ScrollTool(Icons.Outlined.Dashboard, stringResource(Res.string.menu_layout)) { onIntent(EditorIntent.OpenSheet(EditorSheet.LAYOUT)) }
             }
         }

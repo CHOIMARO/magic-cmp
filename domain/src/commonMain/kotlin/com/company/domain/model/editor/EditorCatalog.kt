@@ -32,11 +32,11 @@ enum class LayoutType(val clipCount: Int) {
 }
 
 /**
- * Look of a text overlay.
+ * Look of a text overlay. The order is the order of the template lists. A new text uses [IMPACT].
  *
  * SHOUT, FLAME, SPARK, and DASH are the thumbnail looks: heavy letters with an outline and a solid 3D shadow.
  */
-enum class TextStyleType { BOLD, BOX, OUTLINE, SERIF, NEON, MARKER, TAG, HAND, IMPACT, RETRO, CUTE, MINIMAL, SHOUT, FLAME, SPARK, DASH }
+enum class TextStyleType { IMPACT, NEON, MARKER, MINIMAL, SHOUT, FLAME, SPARK, DASH }
 
 /**
  * Font of a text overlay. The downloadable fonts use the SIL Open Font License 1.1. The license notices of the fonts
@@ -244,9 +244,6 @@ enum class SoundEffectCategory {
 
 /** Look of the automatic captions. */
 enum class CaptionStyleType { BASIC, POP, BOX, MINIMAL, SERIF, BIG }
-
-/** Color filter for the video. */
-enum class FilterType { NONE, WARM, FADE, COOL, PUNCH, CINE, MONO }
 
 /** Kind of an [EditorTemplate]. */
 enum class TemplateKind { LAYOUT, TEXT, CAPTION }

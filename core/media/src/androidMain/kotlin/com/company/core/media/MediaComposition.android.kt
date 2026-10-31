@@ -19,19 +19,16 @@ import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.MatrixTransformation
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.Presentation
-import androidx.media3.effect.RgbMatrix
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
 import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.ExportOverlay
-import com.company.domain.model.editor.FilterType
 import com.company.domain.model.editor.FrameArea
 import com.company.domain.model.editor.MAX_VOLUME
 import com.company.domain.model.editor.MediaType
 import com.company.domain.model.editor.TransitionWindow
-import com.company.domain.model.editor.colorMatrix
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -46,11 +43,10 @@ private const val MAX_AUDIO_CHANNELS = 8
  *
  * Every clip fills a [frameWidth] × [frameHeight] frame first. When [videoArea] is not the whole
  * frame, the clip then fills the area, and the area moves to its place in the frame. The parts
- * outside are cut off. The filter and the transitions change only the video. The overlay tracks go on top of
+ * outside are cut off. The transitions change only the video. The overlay tracks go on top of
  * the whole frame. The volume of each video clip changes only the sound of that clip.
  *
  * @param clips Clips in play order. All clips must have a source file.
- * @param filter Color filter for the video.
  * @param frameWidth Width of the output frame in pixels.
  * @param frameHeight Height of the output frame in pixels.
  * @param videoArea Area of the frame that shows the video.
@@ -61,7 +57,6 @@ private const val MAX_AUDIO_CHANNELS = 8
 @OptIn(UnstableApi::class, ExperimentalApi::class)
 fun buildMediaComposition(
     clips: List<Clip>,
-    filter: FilterType,
     frameWidth: Int,
     frameHeight: Int,
     videoArea: FrameArea = FrameArea.FULL,
@@ -75,7 +70,6 @@ fun buildMediaComposition(
         if (!videoArea.isFullFrame) {
             add(Presentation.createForWidthAndHeight(areaWidth, areaHeight, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP))
         }
-        filter.colorMatrix()?.let { add(it.toRgbMatrix()) }
     }
     val compositionEffects = buildList<Effect> {
         // 전환은 영상 칸만 바꾼다. 칸을 제자리로 옮기기 전에 두어야 레이아웃과 글자 오버레이가 그대로 남는다.
@@ -84,7 +78,6 @@ fun buildMediaComposition(
                 clips = clips,
                 transitions = transitions,
                 clipStartsUs = clips.compositionStartsUs(),
-                filter = filter,
                 frameWidth = frameWidth,
                 frameHeight = frameHeight,
                 areaWidth = areaWidth,
@@ -179,24 +172,6 @@ private class ConstantSpeedProvider(private val speed: Float) : SpeedProvider {
     override fun getSpeed(timeUs: Long): Float = speed
 
     override fun getNextSpeedChangeTimeUs(timeUs: Long): Long = C.TIME_UNSET
-}
-
-/**
- * Converts a 4x5 color matrix to a Media3 [RgbMatrix].
- *
- * Media3 multiplies the column-major 4x4 matrix with (r, g, b, 1). The last column holds the offsets in 0..1.
- * With the default working color space, SDR colors stay gamma-encoded, as in the Compose filter.
- */
-@OptIn(UnstableApi::class)
-private fun FloatArray.toRgbMatrix(): RgbMatrix {
-    val m = this
-    val matrix = floatArrayOf(
-        m[0], m[5], m[10], 0f,
-        m[1], m[6], m[11], 0f,
-        m[2], m[7], m[12], 0f,
-        m[4] / 255f, m[9] / 255f, m[14] / 255f, 1f,
-    )
-    return RgbMatrix { _, _ -> matrix }
 }
 
 /**

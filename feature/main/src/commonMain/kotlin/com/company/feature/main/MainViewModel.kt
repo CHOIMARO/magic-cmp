@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 
 /** Tab of the main screen. */
 enum class MainTab {
-    /** Start cards, template shortcuts, and recent drafts. */
+    /** Start cards and recent drafts. */
     HOME,
 
     /** All templates with a kind filter. */
@@ -101,9 +101,6 @@ sealed class MainIntent : Intent() {
     /** SelectLibrarySegment(segment) : Shows the drafts or the completed videos. */
     data class SelectLibrarySegment(val segment: LibrarySegment) : MainIntent()
 
-    /** ShowAllTemplates : Opens the template tab with all kinds. */
-    data object ShowAllTemplates : MainIntent()
-
     /** ShowAllDrafts : Opens the library tab with the drafts. */
     data object ShowAllDrafts : MainIntent()
 
@@ -179,7 +176,6 @@ class MainViewModel(
             MainIntent.CloseSheet -> reduce { copy(sheet = null) }
             is MainIntent.SelectTemplateFilter -> reduce { copy(templateFilter = intent.kind) }
             is MainIntent.SelectLibrarySegment -> reduce { copy(librarySegment = intent.segment) }
-            MainIntent.ShowAllTemplates -> reduce { copy(tab = MainTab.TEMPLATES, templateFilter = null) }
             MainIntent.ShowAllDrafts -> reduce { copy(tab = MainTab.LIBRARY, librarySegment = LibrarySegment.DRAFTS) }
             is MainIntent.ToggleSetting -> toggleSetting(intent.key)
             MainIntent.StartNewVideo -> openGallery(template = null)

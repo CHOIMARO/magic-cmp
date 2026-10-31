@@ -62,7 +62,6 @@ import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
 import com.company.feature.editor.preview.EditorPreviewData
 import com.company.feature.editor.resources.*
 import com.company.ui.editor.formatTime
-import com.company.ui.editor.toColorFilter
 import com.company.ui.media.MediaThumbnail
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -104,7 +103,6 @@ internal fun ExportScreen(state: ExportState, onIntent: (ExportIntent) -> Unit) 
 private fun ExportThumbnail(state: ExportState) {
     val project = state.project
     val shape = RoundedCornerShape(18.dp)
-    val filter = remember(project.filter) { project.filter.toColorFilter() }
     BoxWithConstraints(
         modifier = Modifier
             .width(176.dp)
@@ -121,7 +119,6 @@ private fun ExportThumbnail(state: ExportState) {
                 hue = firstClip.thumbnailHue,
                 modifier = Modifier.fillMaxSize(),
                 time = firstClip.inPoint,
-                colorFilter = filter,
             )
         }
         project.texts.firstOrNull()?.let { overlay ->

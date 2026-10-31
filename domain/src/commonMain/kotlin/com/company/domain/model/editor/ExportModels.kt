@@ -36,7 +36,6 @@ class ExportOverlay(val start: Double, val end: Double, val png: ByteArray)
  *
  * @property name Name of the project. The file name uses it.
  * @property clips Clips in play order. All clips must have a source file.
- * @property filter Color filter for the video.
  * @property width Width of the output frame in pixels.
  * @property height Height of the output frame in pixels.
  * @property videoArea Area of the frame that shows the video.
@@ -47,7 +46,6 @@ class ExportOverlay(val start: Double, val end: Double, val png: ByteArray)
 data class ExportRequest(
     val name: String,
     val clips: List<Clip>,
-    val filter: FilterType,
     val width: Int,
     val height: Int,
     val videoArea: FrameArea = FrameArea.FULL,

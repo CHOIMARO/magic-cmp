@@ -25,7 +25,7 @@ class V7TimelineTest {
     private val project = EditorProject(
         name = "p",
         clips = listOf(clip("a", 4.0), clip("b", 4.0)),
-        texts = listOf(TextOverlay(id = "t", text = "t", start = 6.0, length = 1.0, style = TextStyleType.BOLD, x = 50.0, y = 50.0)),
+        texts = listOf(TextOverlay(id = "t", text = "t", start = 6.0, length = 1.0, style = TextStyleType.IMPACT, x = 50.0, y = 50.0)),
         captions = listOf(CaptionSegment("k1", "하나", start = 0.0, length = 2.0), CaptionSegment("k2", "둘", start = 5.0, length = 1.0)),
         soundEffects = listOf(SoundEffectClip(id = "s", effectId = "s1", name = "띠링", start = 1.0, length = 0.5)),
     )

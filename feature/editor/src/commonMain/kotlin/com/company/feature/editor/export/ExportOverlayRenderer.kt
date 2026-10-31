@@ -19,7 +19,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
@@ -41,7 +40,6 @@ import com.company.feature.editor.editor.isVisibleAt
 import com.company.ui.editor.OverlayText
 import com.company.ui.editor.centeredAt
 import com.company.ui.editor.look
-import com.company.ui.editor.toColorFilter
 import com.company.ui.media.MediaThumbnailLoader
 import com.company.ui.media.rememberMediaThumbnailLoader
 import kotlinx.coroutines.Dispatchers
@@ -145,7 +143,6 @@ internal fun ExportOverlayRenderer(
  */
 @Composable
 private fun ExportLayoutFrame(project: EditorProject, time: Double, thumbnails: Map<String, ImageBitmap>) {
-    val filter = remember(project.filter) { project.filter.toColorFilter() }
     StageCanvas(modifier = Modifier.fillMaxSize()) {
         StageLayoutCells(
             project = project,
@@ -155,7 +152,7 @@ private fun ExportLayoutFrame(project: EditorProject, time: Double, thumbnails: 
             if (index == 0) {
                 Box(modifier = Modifier.matchParentSize().drawBehind { drawRect(Color.Black, blendMode = BlendMode.Clear) })
             } else {
-                CellThumbnail(clip = clip, image = thumbnails[clip.id], filter = filter, modifier = Modifier.matchParentSize())
+                CellThumbnail(clip = clip, image = thumbnails[clip.id], modifier = Modifier.matchParentSize())
             }
         }
     }
@@ -188,15 +185,14 @@ private fun ExportTextFrame(project: EditorProject, time: Double, watermark: Boo
 
 /** Thumbnail of a clip in a layout cell. It looks like the cell of the editor stage. */
 @Composable
-private fun CellThumbnail(clip: Clip, image: ImageBitmap?, filter: ColorFilter?, modifier: Modifier) {
-    StripeBox(hue = clip.thumbnailHue.toFloat(), modifier = modifier, colorFilter = filter) {
+private fun CellThumbnail(clip: Clip, image: ImageBitmap?, modifier: Modifier) {
+    StripeBox(hue = clip.thumbnailHue.toFloat(), modifier = modifier) {
         if (image != null) {
             Image(
                 bitmap = image,
                 contentDescription = null,
                 modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Crop,
-                colorFilter = filter,
             )
         }
     }

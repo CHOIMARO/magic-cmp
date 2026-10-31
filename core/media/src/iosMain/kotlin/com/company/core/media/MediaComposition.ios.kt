@@ -2,12 +2,10 @@ package com.company.core.media
 
 import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.ExportOverlay
-import com.company.domain.model.editor.FilterType
 import com.company.domain.model.editor.FrameArea
 import com.company.domain.model.editor.MAX_VOLUME
 import com.company.domain.model.editor.MediaType
 import com.company.domain.model.editor.TransitionWindow
-import com.company.domain.model.editor.colorMatrix
 import kotlin.coroutines.resume
 import kotlin.math.PI
 import kotlin.math.abs
@@ -112,7 +110,7 @@ private const val STILL_FRAME_TOLERANCE = 0.5
  * Composition of the clips for AVFoundation.
  *
  * @property asset Video and audio tracks of all clips.
- * @property videoComposition Draws each frame: upright, filled, filtered, with the transitions, and with the overlays.
+ * @property videoComposition Draws each frame: upright, filled, with the transitions, and with the overlays.
  * @property audioMix Volume of the sound of each clip, or null when all clips use the full volume.
  */
 class MediaComposition(
@@ -126,18 +124,17 @@ class MediaComposition(
  *
  * Every clip fills a [frameWidth] × [frameHeight] frame first. When [videoArea] is not the whole
  * frame, the clip then fills the area, and the area moves to its place in the frame. The parts
- * outside are cut off. The filter changes only the video. The overlay tracks go on top of the whole frame.
+ * outside are cut off. The overlay tracks go on top of the whole frame.
  *
  * A photo range uses a short black video as a placeholder track, and the frame handler draws the photo there.
  *
- * A transition changes the filled and filtered video in the video area. The overlay tracks do not change. During a
+ * A transition changes the filled video in the video area. The overlay tracks do not change. During a
  * boundary transition, the clip at the time plays, and the other clip shows a still frame. Before the boundary, it is
  * the first frame of the next clip. After the boundary, it is the last frame of the previous clip.
  *
  * The volume of each clip goes into the audio mix of the composition.
  *
  * @param clips Clips in play order. All clips must have a source file.
- * @param filter Color filter for the video.
  * @param frameWidth Width of the output frame in pixels.
  * @param frameHeight Height of the output frame in pixels.
  * @param videoArea Area of the frame that shows the video.
@@ -148,7 +145,6 @@ class MediaComposition(
 @OptIn(ExperimentalForeignApi::class)
 suspend fun buildMediaComposition(
     clips: List<Clip>,
-    filter: FilterType,
     frameWidth: Int,
     frameHeight: Int,
     videoArea: FrameArea = FrameArea.FULL,
@@ -207,7 +203,6 @@ suspend fun buildMediaComposition(
         frameWidth = frameWidth.toDouble(),
         frameHeight = frameHeight.toDouble(),
         videoArea = videoArea,
-        matrix = filter.colorMatrix(),
         overlayTracks = overlayTracks.map { track ->
             track.map { OverlayImage(it.start, it.end, it.png.toNSData()?.let { data -> CIImage.imageWithData(data) }) }
         },
@@ -450,7 +445,7 @@ private class TransitionFrames(val window: TransitionWindow, val lastFrame: CIIm
 /**
  * Draws the frames of the composition. AVFoundation calls [render] on its own threads, so the class keeps no changing state.
  *
- * @param transitions Transitions with upright still frames. The renderer fills and filters the still frames one time.
+ * @param transitions Transitions with upright still frames. The renderer fills the still frames one time.
  */
 @OptIn(ExperimentalForeignApi::class)
 private class FrameRenderer(
@@ -458,7 +453,6 @@ private class FrameRenderer(
     private val frameWidth: Double,
     private val frameHeight: Double,
     private val videoArea: FrameArea,
-    private val matrix: FloatArray?,
     private val overlayTracks: List<List<OverlayImage>>,
     transitions: List<TransitionFrames>,
 ) {
@@ -473,7 +467,7 @@ private class FrameRenderer(
     private val areaBlack = CIImage.imageWithColor(CIColor.blackColor).imageByCroppingToRect(areaRect)
     private val areaWhite = CIImage.imageWithColor(CIColor.whiteColor).imageByCroppingToRect(areaRect)
 
-    /** Transitions with still scenes: the still frames, filled to the video area and filtered. */
+    /** Transitions with still scenes: the still frames, filled to the video area. */
     private val transitionScenes = transitions.map { transition ->
         TransitionFrames(
             window = transition.window,
@@ -511,7 +505,7 @@ private class FrameRenderer(
     }
 
     /**
-     * Fills the frame with the image, then fills the video area, then applies the filter.
+     * Fills the frame with the image, then fills the video area.
      *
      * @param frame Upright frame, or null for black.
      * @return The scene. It has the size of the video area, and it is at the origin.
@@ -519,7 +513,6 @@ private class FrameRenderer(
     private fun sceneImage(frame: CIImage?): CIImage {
         var scene = frame?.takeUnless { CGRectIsInfinite(it.extent) }?.fill(frameWidth, frameHeight) ?: blackImage()
         if (!videoArea.isFullFrame) scene = scene.fill(areaWidth, areaHeight)
-        if (matrix != null) scene = scene.applyColorMatrix(matrix)
         return scene
     }
 

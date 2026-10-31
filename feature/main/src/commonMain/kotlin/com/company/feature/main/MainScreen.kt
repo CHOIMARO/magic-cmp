@@ -47,8 +47,6 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
                 drafts = state.drafts,
                 onNewVideo = { onIntent(MainIntent.StartNewVideo) },
                 onOpenCamera = { onIntent(MainIntent.OpenCamera) },
-                onShowAllTemplates = { onIntent(MainIntent.ShowAllTemplates) },
-                onOpenTemplate = { onIntent(MainIntent.OpenTemplate(it)) },
                 onShowAllDrafts = { onIntent(MainIntent.ShowAllDrafts) },
                 onOpenProject = { onIntent(MainIntent.OpenProject(it)) },
             )

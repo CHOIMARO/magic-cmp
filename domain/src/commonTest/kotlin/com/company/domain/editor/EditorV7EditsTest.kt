@@ -202,7 +202,7 @@ class EditorV7EditsTest {
 
     @Test
     fun paste_keepsTheOffsetAndTheLength_andSkipsShortClips() {
-        val text = TextOverlay(id = "t", text = "제목", start = 0.5, length = 1.0, style = TextStyleType.BOLD, x = 50.0, y = 30.0)
+        val text = TextOverlay(id = "t", text = "제목", start = 0.5, length = 1.0, style = TextStyleType.IMPACT, x = 50.0, y = 30.0)
         val withText = project.copy(texts = listOf(text))
         val clipboard = assertNotNull(withText.copyElement(CopiedElement.Text(text), text.start, text.length))
         val options = assertNotNull(withText.pasteOptions(clipboard, time = 0.0))

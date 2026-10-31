@@ -172,9 +172,6 @@ internal enum class TemplateCardSize(
     val nameLetterSpacing: TextUnit,
     val showSubLabel: Boolean,
 ) {
-    /** Small card in the horizontal row of the home tab. */
-    SMALL(0.5f, 18.dp, 8.dp, 14.sp, FontWeight.Bold, 0.sp, showSubLabel = false),
-
     /** Card in the two-column grid of the template tab. */
     LARGE(0.7f, 20.dp, 10.dp, 16.sp, FontWeight.ExtraBold, (-0.02).em, showSubLabel = true),
 }
