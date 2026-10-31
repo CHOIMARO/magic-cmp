@@ -13,6 +13,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.rememberNavController
@@ -23,6 +26,7 @@ import com.company.core.designsystem.theme.MagicColors
 import com.company.domain.repository.FontRepository
 import com.company.domain.repository.MyVoiceRepository
 import com.company.feature.editor.navigation.MyVoiceRoute
+import com.company.feature.main.splash.MagicSplash
 import com.company.magiccmp.navigation.AppNavHost
 import com.company.magiccmp.resources.Res
 import com.company.magiccmp.resources.my_voice_ready
@@ -45,19 +49,27 @@ fun MainApp() {
         }
     }
 
+    // 스플래시는 앱을 시작할 때 한 번만 보여 준다. 끝난 뒤에는 화면을 회전해도 다시 나오지 않는다.
+    var showSplash by rememberSaveable { mutableStateOf(true) }
+
     CompositionLocalProvider(LocalMagicToast provides toastState, LocalDownloadedFonts provides downloadedFonts) {
-        // 위쪽 inset만 여기서 처리한다. 아래쪽은 각 화면이 배경색을 이어서 직접 처리한다.
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MagicColors.Background)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
-        ) {
-            AppNavHost(
-                modifier = Modifier.fillMaxSize(),
-                navController = navHostController,
-            )
-            MagicToastHost(state = toastState)
+        Box(modifier = Modifier.fillMaxSize().background(MagicColors.Background)) {
+            // 위쪽 inset만 여기서 처리한다. 아래쪽은 각 화면이 배경색을 이어서 직접 처리한다.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+            ) {
+                AppNavHost(
+                    modifier = Modifier.fillMaxSize(),
+                    navController = navHostController,
+                )
+                MagicToastHost(state = toastState)
+            }
+            // 스플래시는 상태 표시줄까지 화면 전체를 덮고, 흐려지면서 아래의 홈 화면이 비쳐 보인다.
+            if (showSplash) {
+                MagicSplash(onFinished = { showSplash = false }, modifier = Modifier.fillMaxSize())
+            }
         }
     }
 }

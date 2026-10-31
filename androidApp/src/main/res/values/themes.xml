@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.MagicCmp" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Base.Theme.MagicCmp" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- 앱 화면이 뜨기 전 창 배경을 앱 배경색과 같게 해서, 시작할 때 흰 화면이 번쩍이지 않게 한다. -->
+        <item name="android:windowBackground">@color/magic_background</item>
+    </style>
+
+    <style name="Theme.MagicCmp" parent="Base.Theme.MagicCmp" />
 </resources>

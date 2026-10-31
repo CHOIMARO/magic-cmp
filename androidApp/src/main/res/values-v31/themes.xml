@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+        Android 12 이상은 앱을 시작할 때 시스템이 앱 아이콘 화면을 먼저 띄운다.
+        아이콘을 숨기고 배경만 앱 배경색으로 맞춰서, 바로 이어지는 앱의 스플래시(MagicSplash)와 한 화면처럼 보이게 한다.
+    -->
+    <style name="Theme.MagicCmp" parent="Base.Theme.MagicCmp">
+        <item name="android:windowSplashScreenBackground">@color/magic_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon_empty</item>
+    </style>
+</resources>
