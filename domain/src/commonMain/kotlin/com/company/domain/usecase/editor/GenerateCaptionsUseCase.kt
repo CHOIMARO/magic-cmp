@@ -10,7 +10,9 @@ class GenerateCaptionsUseCase(
 ) {
     /**
      * @param clips Clips of the project in play order.
+     * @param from Time on the timeline where the captions start, for example the playhead. The speech before it is
+     *   not used.
      */
-    suspend operator fun invoke(clips: List<Clip>): List<CaptionSegment> =
-        captionRepository.generateSpeechCaptions(clips)
+    suspend operator fun invoke(clips: List<Clip>, from: Double = 0.0): List<CaptionSegment> =
+        captionRepository.generateSpeechCaptions(clips, from)
 }

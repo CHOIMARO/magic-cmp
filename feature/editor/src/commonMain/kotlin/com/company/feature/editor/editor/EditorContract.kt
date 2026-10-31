@@ -269,8 +269,8 @@ data class EditorDialog(val title: UiText, val message: UiText, val confirmLabel
 
 /** Change that a popup asks about. */
 sealed interface DialogAction {
-    /** ReplaceWithSpeechCaptions : Removes the captions and makes new captions from the speech. */
-    data object ReplaceWithSpeechCaptions : DialogAction
+    /** ReplaceWithSpeechCaptions(from) : Removes the captions after [from] and makes new captions from the speech after [from]. */
+    data class ReplaceWithSpeechCaptions(val from: Double) : DialogAction
 
     /** InsertScript(checkExisting) : Puts the script lines into the clips. [checkExisting] asks first when captions exist. */
     data class InsertScript(val checkExisting: Boolean) : DialogAction
@@ -318,6 +318,9 @@ data class FullScreenState(
  * @property recentColors Colors that the user picked with the color picker, newest first.
  * @property captionProgress Progress of the caption generation from 0 to 100, or null when it does not run.
  * @property captionScript Script of the caption sheet, or null when the sheet does not show the script field.
+ * @property captionFromPlayhead True when the caption sheet makes captions from the playhead. False makes them from
+ *   the start of the video (0:00).
+ * @property captionMoving True while the user drags a caption up or down on the stage. All captions move together.
  * @property musicTracks Music tracks that the user can pick.
  * @property musicDraft Music that the user tries in the music sheet, or null.
  * @property voices Voices for dubbings. The user's own voice is not in the list.
@@ -355,6 +358,8 @@ data class EditorState(
     val recentColors: List<Int> = emptyList(),
     val captionProgress: Int? = null,
     val captionScript: String? = null,
+    val captionFromPlayhead: Boolean = false,
+    val captionMoving: Boolean = false,
     val musicTracks: List<MusicTrack> = emptyList(),
     val musicDraft: MusicDraft? = null,
     val voices: List<DubbingVoice> = emptyList(),
@@ -600,8 +605,14 @@ sealed class EditorIntent : Intent() {
     /** PickCaptionStyle(style) : Applies the caption style. */
     data class PickCaptionStyle(val style: CaptionStyleType) : EditorIntent()
 
-    /** GenerateCaptions : Makes captions from the speech. When captions exist, a popup asks first. */
+    /**
+     * GenerateCaptions : Makes captions from the speech, from the playhead when [EditorState.captionFromPlayhead] is
+     * true. When the new captions replace captions, a popup asks first.
+     */
     data object GenerateCaptions : EditorIntent()
+
+    /** ToggleCaptionFromPlayhead : Switches between captions from the playhead and from the start. Ignored while captions are made. */
+    data object ToggleCaptionFromPlayhead : EditorIntent()
 
     /** RemoveCaptions : Removes all captions. */
     data object RemoveCaptions : EditorIntent()
@@ -615,11 +626,23 @@ sealed class EditorIntent : Intent() {
     /** ChangeCaptionScript(script) : Changes the script. Each line is one caption. */
     data class ChangeCaptionScript(val script: String) : EditorIntent()
 
-    /** InsertCaptionScript : Puts the script lines into the clips. A popup asks first when lines are left over or captions exist. */
+    /**
+     * InsertCaptionScript : Puts the script lines into the clips, from the playhead when [EditorState.captionFromPlayhead]
+     * is true. A popup asks first when lines are left over or when the new captions replace captions.
+     */
     data object InsertCaptionScript : EditorIntent()
 
-    /** AddCaptionAtPlayhead : Adds a caption at the playhead and opens it in the text sheet. */
-    data object AddCaptionAtPlayhead : EditorIntent()
+    /** StartCaptionMove : The user started to drag a caption up or down on the stage. It is one undo step. */
+    data object StartCaptionMove : EditorIntent()
+
+    /** MoveCaption(position) : Moves all captions to [position], the height from the bottom of the screen in percent. */
+    data class MoveCaption(val position: Double) : EditorIntent()
+
+    /** EndCaptionMove : The user lifted the finger from the caption. */
+    data object EndCaptionMove : EditorIntent()
+
+    /** ResetCaptionPosition : Moves all captions back to the height of the caption style. */
+    data object ResetCaptionPosition : EditorIntent()
 
     /** OpenCaptionEditor(captionId) : Opens the text sheet for one caption. */
     data class OpenCaptionEditor(val captionId: String) : EditorIntent()

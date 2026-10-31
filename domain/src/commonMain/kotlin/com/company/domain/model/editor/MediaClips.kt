@@ -81,3 +81,12 @@ fun List<Clip>.speechRanges(): List<TimelineRange> {
     }
     return ranges
 }
+
+/**
+ * Parts of [speechRanges] from [from]. A part that starts before [from] starts at [from]. Parts shorter than
+ * [MIN_CAPTION_LENGTH] are left out, because they are too short for a caption.
+ *
+ * @param from Time on the timeline. 0 gives all parts.
+ */
+fun List<Clip>.speechRangesFrom(from: Double): List<TimelineRange> =
+    speechRanges().map { TimelineRange(maxOf(it.start, from), it.end) }.filter { it.length >= MIN_CAPTION_LENGTH }

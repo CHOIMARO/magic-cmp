@@ -20,10 +20,15 @@ import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.TransitionSlot
 import com.company.domain.model.editor.TransitionType
-import com.company.domain.model.editor.addCaptionAt
+import com.company.domain.model.editor.MediaType
+import com.company.domain.model.editor.ScriptStart
+import com.company.domain.model.editor.TimelineRange
 import com.company.domain.model.editor.addDubbing
 import com.company.domain.model.editor.addSoundEffect
 import com.company.domain.model.editor.afterTextChange
+import com.company.domain.model.editor.captionCountFrom
+import com.company.domain.model.editor.captionPositionFor
+import com.company.domain.model.editor.captionsBefore
 import com.company.domain.model.editor.captionsFromScript
 import com.company.domain.model.editor.copyElement
 import com.company.domain.model.editor.currentWordIndex
@@ -40,8 +45,10 @@ import com.company.domain.model.editor.placedCaptions
 import com.company.domain.model.editor.removeAudioItem
 import com.company.domain.model.editor.removeClip
 import com.company.domain.model.editor.scriptLines
+import com.company.domain.model.editor.scriptStart
 import com.company.domain.model.editor.setTransition
 import com.company.domain.model.editor.setTransitionForAllBoundaries
+import com.company.domain.model.editor.speechRangesFrom
 import com.company.domain.model.editor.splitCaption
 import com.company.domain.model.editor.transitionLength
 import com.company.domain.model.editor.transitionWindows
@@ -125,12 +132,70 @@ class EditorV7EditsTest {
     }
 
     @Test
-    fun addCaptionAt_stopsAtTheNextCaption_andRefusesAnOccupiedTime() {
-        val withCaption = project.copy(captions = listOf(CaptionSegment("k", "자막", start = 2.0, length = 1.0)))
-        val (added, id) = assertNotNull(withCaption.addCaptionAt(1.0, "새 자막"))
-        assertEquals(1.0, added.captions.first { it.id == id }.length)
-        assertNull(withCaption.addCaptionAt(2.5, "새 자막"))
-        assertNull(withCaption.addCaptionAt(1.8, "새 자막"))
+    fun captionsBefore_keepsEarlierCaptions_cutsTheOneAcross_andDropsLaterOnes() {
+        val withCaptions = project.copy(
+            captions = listOf(
+                CaptionSegment("before", "앞", start = 0.0, length = 1.0),
+                CaptionSegment("across", "걸침", start = 1.5, length = 2.0),
+                CaptionSegment("short", "짧음", start = 2.4, length = 1.0),
+                CaptionSegment("after", "뒤", start = 4.0, length = 1.0),
+            ),
+        )
+        // 재생선 2.5초: 걸친 자막은 1초로 잘리고, 0.1초만 남는 자막과 뒤 자막은 없어진다.
+        val kept = withCaptions.captionsBefore(2.5)
+        assertEquals(listOf("before", "across"), kept.map { it.id })
+        assertEquals(1.0, kept[1].length, 1e-9)
+        assertEquals(3, withCaptions.captionCountFrom(2.5))
+        assertTrue(withCaptions.captionsBefore(0.0).isEmpty())
+        assertEquals(4, withCaptions.captionCountFrom(0.0))
+    }
+
+    @Test
+    fun captionsBefore_givesACutClipCaptionAFixedTime() {
+        val withCaptions = project.copy(captions = project.captionsFromScript(listOf("첫", "둘")))
+        val kept = withCaptions.captionsBefore(2.0)
+        assertEquals(1, kept.size)
+        assertNull(kept.single().clipId)
+        assertEquals(0.0, kept.single().start)
+        assertEquals(2.0, kept.single().length, 1e-9)
+    }
+
+    @Test
+    fun scriptStart_startsInTheClipAtThePlayhead_orInTheNextClipNearTheEnd() {
+        assertEquals(ScriptStart(clipIndex = 0, offset = 0.0, time = 0.0), project.scriptStart(0.0))
+        assertEquals(ScriptStart(clipIndex = 0, offset = 1.5, time = 1.5), project.scriptStart(1.5))
+        // 클립 끝 0.3초 안에 있으면 다음 클립 처음부터 넣는다.
+        assertEquals(ScriptStart(clipIndex = 1, offset = 0.0, time = 4.0), project.scriptStart(3.8))
+        // 마지막 클립 끝이면 넣을 클립이 없다.
+        assertEquals(3, project.scriptStart(8.9).clipIndex)
+    }
+
+    @Test
+    fun captionsFromScript_startsTheFirstLineAtTheOffset_andThenUsesTheNextClips() {
+        val withCaptions = project.copy(captions = project.captionsFromScript(listOf("x", "y", "z"), firstClip = 0, firstOffset = 1.5))
+        val placed = withCaptions.placedCaptions
+        assertEquals(listOf(1.5, 4.0, 6.0), placed.map { it.start })
+        assertEquals(listOf(2.5, 2.0, 3.0), placed.map { it.length })
+        val fromSecond = project.captionsFromScript(listOf("x", "y", "z"), firstClip = 1)
+        assertEquals(listOf("b", "c"), fromSecond.map { it.clipId })
+    }
+
+    @Test
+    fun captionPositionFor_staysInTheRange_andSnapsToTheStyle() {
+        assertEquals(6.0, captionPositionFor(-10.0, stylePosition = 17.0))
+        assertEquals(76.0, captionPositionFor(95.0, stylePosition = 17.0))
+        assertNull(captionPositionFor(18.9, stylePosition = 17.0))
+        assertEquals(30.3, captionPositionFor(30.26, stylePosition = 17.0))
+    }
+
+    @Test
+    fun speechRangesFrom_startsAtTheTime_andLeavesOutShortParts() {
+        val mixed = listOf(clip("a", 4.0), clip("p", 2.0).copy(type = MediaType.PHOTO), clip("c", 3.0))
+        assertEquals(listOf(TimelineRange(0.0, 4.0), TimelineRange(6.0, 9.0)), mixed.speechRangesFrom(0.0))
+        assertEquals(listOf(TimelineRange(2.5, 4.0), TimelineRange(6.0, 9.0)), mixed.speechRangesFrom(2.5))
+        // 영상 끝 0.2초만 남으면 그 부분은 버린다.
+        assertEquals(listOf(TimelineRange(6.0, 9.0)), mixed.speechRangesFrom(3.8))
+        assertTrue(mixed.speechRangesFrom(8.9).isEmpty())
     }
 
     @Test

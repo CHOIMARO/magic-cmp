@@ -1,5 +1,8 @@
 package com.company.domain.model.editor
 
+import kotlin.math.abs
+import kotlin.math.roundToInt
+
 // =====================================================================
 // Captions (F04): typed scripts, the caption track, and caption edits
 // =====================================================================
@@ -7,14 +10,23 @@ package com.company.domain.model.editor
 /** Shortest caption length after a trim or an addition, in seconds. */
 const val MIN_CAPTION_LENGTH = 0.3
 
-/** Length of a caption that the user adds at the playhead, in seconds. */
-const val NEW_CAPTION_LENGTH = 2.0
-
 /** A caption split must be at least this far from the caption edges, in seconds. */
 const val CAPTION_SPLIT_MARGIN = 0.2
 
 /** Shortest length of a bound caption that still shows, in seconds. */
 private const val MIN_PLACED_CAPTION_LENGTH = 0.05
+
+/** A script that starts this near to a clip start, in seconds, starts at the clip start. */
+private const val SCRIPT_OFFSET_MIN = 0.05
+
+/** Lowest caption height from the bottom of the screen, in percent. */
+const val CAPTION_POSITION_MIN = 6.0
+
+/** Highest caption height from the bottom of the screen, in percent. The top safe area (12 %) stays free. */
+const val CAPTION_POSITION_MAX = 76.0
+
+/** A caption height this near to the height of the caption style, in percent, snaps to the style height. */
+const val CAPTION_POSITION_SNAP = 2.5
 
 /**
  * Times of the clip boundaries on the timeline: 0, the end of each clip, and the project end.
@@ -79,14 +91,100 @@ val EditorProject.placedCaptions: List<CaptionSegment>
 fun scriptLines(script: String): List<String> = script.lines().map { it.trim() }.filter { it.isNotEmpty() }
 
 /**
- * Makes captions from script lines. The n-th line goes to the n-th clip and covers the whole clip. Lines after the
- * last clip are not used. Clips after the last line get no caption.
+ * Makes captions from script lines. The n-th line goes to the n-th clip from [firstClip] and covers the rest of the
+ * clip. Lines after the last clip are not used. Clips after the last line get no caption.
  *
  * @param lines Caption lines.
+ * @param firstClip Index of the clip of the first line.
+ * @param firstOffset Time in the first clip where the first line starts. 0 starts at the clip start.
  * @return Captions bound to the clips.
  */
-fun EditorProject.captionsFromScript(lines: List<String>): List<CaptionSegment> =
-    lines.zip(clips) { text, clip -> CaptionSegment(id = newEditorId(), text = text, start = 0.0, length = 0.0, clipId = clip.id) }
+fun EditorProject.captionsFromScript(lines: List<String>, firstClip: Int = 0, firstOffset: Double = 0.0): List<CaptionSegment> =
+    lines.zip(clips.drop(firstClip)).mapIndexed { index, (text, clip) ->
+        if (index == 0 && firstOffset > 0.0) {
+            CaptionSegment(
+                id = newEditorId(), text = text, start = 0.0, length = 0.0,
+                clipId = clip.id, clipOffset = firstOffset, clipLength = clip.duration - firstOffset,
+            )
+        } else {
+            CaptionSegment(id = newEditorId(), text = text, start = 0.0, length = 0.0, clipId = clip.id)
+        }
+    }
+
+/**
+ * Place where the script lines start when the user makes captions from the playhead.
+ *
+ * @property clipIndex Index of the clip of the first line. It is the number of clips when no clip is left.
+ * @property offset Time in that clip where the first line starts.
+ * @property time The same place on the timeline.
+ */
+data class ScriptStart(val clipIndex: Int, val offset: Double, val time: Double)
+
+/**
+ * Finds where the script lines start for captions from [time] (F04).
+ *
+ * The first line starts at [time] in the clip at [time]. When [time] is less than [MIN_CAPTION_LENGTH] before the
+ * end of that clip, the first line goes to the next clip. A time at 0 starts at the first clip.
+ *
+ * @param time Playhead position.
+ */
+fun EditorProject.scriptStart(time: Double): ScriptStart {
+    if (clips.isEmpty() || time <= TIME_EPSILON) return ScriptStart(clipIndex = 0, offset = 0.0, time = 0.0)
+    val boundaries = clipBoundaries()
+    var clipIndex = clipAt(time)?.index ?: 0
+    var offset = time - boundaries[clipIndex]
+    if (offset > clips[clipIndex].duration - MIN_CAPTION_LENGTH) {
+        clipIndex++
+        offset = 0.0
+    }
+    if (offset <= SCRIPT_OFFSET_MIN) offset = 0.0
+    val start = if (clipIndex < clips.size) boundaries[clipIndex] + offset else totalDuration
+    return ScriptStart(clipIndex = clipIndex, offset = offset, time = start)
+}
+
+/**
+ * Captions that stay when new captions start at [time]. The captions before [time] stay. A caption across [time] ends
+ * at [time] and gets a fixed time, or goes away when it gets shorter than [MIN_CAPTION_LENGTH]. The captions after
+ * [time] go away.
+ *
+ * @param time Start of the new captions. At 0, no caption stays.
+ */
+fun EditorProject.captionsBefore(time: Double): List<CaptionSegment> {
+    if (time <= TIME_EPSILON) return emptyList()
+    val placed = placedCaptions.associateBy { it.id }
+    return captions.mapNotNull { caption ->
+        val position = placed[caption.id] ?: return@mapNotNull null
+        when {
+            position.start >= time - TIME_EPSILON -> null
+            position.end <= time + TIME_EPSILON -> caption
+            time - position.start < MIN_CAPTION_LENGTH -> null
+            else -> caption.copy(start = position.start, length = time - position.start, clipId = null, clipOffset = null, clipLength = null)
+        }
+    }
+}
+
+/**
+ * Number of captions that new captions from [time] replace or cut: the captions that end after [time].
+ *
+ * @param time Start of the new captions.
+ */
+fun EditorProject.captionCountFrom(time: Double): Int = placedCaptions.count { it.end > time + TIME_EPSILON }
+
+/**
+ * Height of all captions after the user drags a caption on the stage (F04 caption move).
+ *
+ * The height stays between [CAPTION_POSITION_MIN] and [CAPTION_POSITION_MAX]. Near the height of the caption style,
+ * it snaps to the style height.
+ *
+ * @param position Height from the bottom of the screen that the drag gives, in percent.
+ * @param stylePosition Height of the caption style, in percent.
+ * @return The height rounded to 0.1, or null for the height of the caption style.
+ */
+fun captionPositionFor(position: Double, stylePosition: Double): Double? {
+    val clamped = position.coerceIn(CAPTION_POSITION_MIN, CAPTION_POSITION_MAX)
+    if (abs(clamped - stylePosition) < CAPTION_POSITION_SNAP) return null
+    return (clamped * 10).roundToInt() / 10.0
+}
 
 /**
  * Index of the word that the speaker says at [time].
@@ -127,24 +225,6 @@ fun EditorProject.updateCaption(captionId: String, text: String, decorations: Li
  * @param captionId ID of the caption.
  */
 fun EditorProject.removeCaption(captionId: String): EditorProject = copy(captions = captions.filterNot { it.id == captionId })
-
-/**
- * Adds an empty caption at [time]. It stays until the next caption, for [NEW_CAPTION_LENGTH] at most.
- *
- * @param time Time on the timeline.
- * @param text Text of the new caption.
- * @return The changed project and the ID of the new caption, or null when a caption is at [time] or the space is
- *   shorter than [MIN_CAPTION_LENGTH].
- */
-fun EditorProject.addCaptionAt(time: Double, text: String): Pair<EditorProject, String>? {
-    val placed = placedCaptions
-    if (placed.any { time >= it.start - TIME_EPSILON && time < it.end }) return null
-    val next = placed.filter { it.start > time }.minOfOrNull { it.start } ?: totalDuration
-    val length = minOf(NEW_CAPTION_LENGTH, minOf(next, totalDuration) - time)
-    if (length < MIN_CAPTION_LENGTH) return null
-    val caption = CaptionSegment(id = newEditorId(), text = text, start = time, length = length)
-    return copy(captions = captions + caption) to caption.id
-}
 
 /** Result of a caption split. */
 sealed interface CaptionSplit {

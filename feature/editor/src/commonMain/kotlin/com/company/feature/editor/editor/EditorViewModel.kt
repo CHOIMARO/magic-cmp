@@ -317,12 +317,18 @@ class EditorViewModel(
 
             is EditorIntent.PickCaptionStyle -> captions.pickStyle(intent.style)
             EditorIntent.GenerateCaptions -> captions.generate()
+            EditorIntent.ToggleCaptionFromPlayhead -> if (currentState.captionProgress == null) {
+                reduce { copy(captionFromPlayhead = !captionFromPlayhead) }
+            }
             EditorIntent.RemoveCaptions -> captions.removeAll()
             EditorIntent.OpenCaptionScript -> captions.openScript()
             EditorIntent.CloseCaptionScript -> captions.closeScript()
             is EditorIntent.ChangeCaptionScript -> reduce { copy(captionScript = intent.script) }
             EditorIntent.InsertCaptionScript -> captions.insertScript()
-            EditorIntent.AddCaptionAtPlayhead -> captions.addAtPlayhead { texts.openCaptionEditor(it) }
+            EditorIntent.StartCaptionMove -> captions.startMove()
+            is EditorIntent.MoveCaption -> captions.move(intent.position)
+            EditorIntent.EndCaptionMove -> captions.endMove()
+            EditorIntent.ResetCaptionPosition -> captions.resetPosition()
             is EditorIntent.OpenCaptionEditor -> texts.openCaptionEditor(intent.captionId)
             EditorIntent.SplitCaption -> captions.splitSelected()
 
@@ -704,7 +710,8 @@ class EditorViewModel(
             EditorSheet.ANIMATION -> texts.openAnimationSheet()
             else -> {
                 pause()
-                reduce { copy(sheet = sheet, captionScript = null) }
+                // 자막 시트는 열 때마다 영상 처음부터 만드는 상태로 시작한다.
+                reduce { copy(sheet = sheet, captionScript = null, captionFromPlayhead = false) }
             }
         }
     }
@@ -730,7 +737,7 @@ class EditorViewModel(
         val dialog = currentState.dialog ?: return
         reduce { copy(dialog = null) }
         when (val action = dialog.action) {
-            DialogAction.ReplaceWithSpeechCaptions -> captions.startGeneration()
+            is DialogAction.ReplaceWithSpeechCaptions -> captions.startGeneration(action.from)
             is DialogAction.InsertScript -> captions.putScript(action.checkExisting)
             is DialogAction.PasteReplacingCaption -> clipboard.pasteNow(action.target, replaceCaptions = true)
         }

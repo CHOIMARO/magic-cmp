@@ -1,5 +1,7 @@
 package com.company.feature.editor.editor
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -9,11 +11,20 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -21,6 +32,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicTheme
 import com.company.domain.model.editor.CaptionSegment
 import com.company.domain.model.editor.CaptionStyleType
@@ -38,6 +50,7 @@ import com.company.ui.editor.TextFrame
 import com.company.ui.editor.frameAt
 import com.company.ui.editor.look
 import com.company.ui.editor.spec
+import kotlin.math.abs
 import org.jetbrains.compose.resources.stringResource
 
 /** Background of the stage outside the layout cells. */
@@ -125,15 +138,46 @@ internal fun CaptionSegment.frameAt(time: Double, style: CaptionStyleType): Text
 internal data class CaptionPreview(val id: String, val text: String, val decorations: List<DecorationRange>)
 
 /**
+ * Drag of the caption on the editor stage. A drag up or down moves all captions together. A tap selects the caption.
+ *
+ * @property moving True while the user drags a caption. The caption then has a dashed frame.
+ * @property selectedId ID of the selected caption, or null. The selected caption has a dashed frame.
+ * @property onTap Called with the caption ID after a tap without a drag.
+ * @property onStart Called when the finger moved far enough to start the drag.
+ * @property onMove Called with the height from the bottom of the screen that the finger gives, in percent.
+ * @property onEnd Called when the drag ends.
+ */
+internal class CaptionMove(
+    val moving: Boolean,
+    val selectedId: String?,
+    val onTap: (String) -> Unit,
+    val onStart: () -> Unit,
+    val onMove: (Double) -> Unit,
+    val onEnd: () -> Unit,
+)
+
+/** Finger distance before a caption drag starts. */
+private val CaptionMoveSlop = 6.dp
+
+/**
  * Shows the caption at [time] with the highlight of the caption style and its decorations.
+ *
+ * The caption is at [EditorProject.captionPosition], or at the height of the caption style.
  *
  * @param project Project with the captions and the caption style.
  * @param time Playhead position in seconds.
  * @param animate True to show the entrance and the exit. False shows the caption without them.
  * @param preview Caption that the text sheet changes, or null. It shows in place of the caption at [time].
+ * @param move Drag of the caption on the editor stage, or null when the caption does not take touches.
  */
 @Composable
-internal fun StageCaption(project: EditorProject, time: Double, animate: Boolean, preview: CaptionPreview? = null) {
+internal fun StageCaption(
+    project: EditorProject,
+    time: Double,
+    animate: Boolean,
+    preview: CaptionPreview? = null,
+    move: CaptionMove? = null,
+) {
     val captions = project.placedCaptions
     val placed = preview?.let { p -> captions.find { it.id == p.id } } ?: captions.visibleAt(time) ?: return
     val captionPlaceholder = stringResource(Res.string.stage_caption_placeholder)
@@ -144,8 +188,14 @@ internal fun StageCaption(project: EditorProject, time: Double, animate: Boolean
         placed
     }
     val look = project.captionStyle.look(decorations = segment.decorations)
+    val position = project.captionPosition?.toFloat() ?: look.bottomPercent
+    // 끌기 중에 자막 위치가 바뀌어 다시 그려도 듣고 있던 손가락을 놓치지 않게, 최신 값을 참조한다.
+    val latestMove by rememberUpdatedState(move)
+    val latestPosition by rememberUpdatedState(position)
     BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         val sideMargin = maxWidth * 0.06f
+        val stageHeight = constraints.maxHeight.toFloat()
+        val outlined = move != null && (move.moving || move.selectedId == segment.id)
         CaptionText(
             text = segment.text,
             decorations = segment.decorations,
@@ -153,7 +203,56 @@ internal fun StageCaption(project: EditorProject, time: Double, animate: Boolean
             currentWord = if (preview != null) Int.MAX_VALUE else segment.currentWordIndex(time),
             look = look,
             frame = if (animate && preview == null) segment.frameAt(time, project.captionStyle) else TextFrame.Static,
-            modifier = Modifier.padding(start = sideMargin, end = sideMargin, bottom = maxHeight * (look.bottomPercent / 100f)),
+            modifier = Modifier
+                .padding(start = sideMargin, end = sideMargin, bottom = maxHeight * (position / 100f))
+                .drawWithContent {
+                    drawContent()
+                    if (outlined) {
+                        val inset = 4.dp.toPx()
+                        drawRoundRect(
+                            color = MagicColors.Accent,
+                            topLeft = Offset(-inset, -inset),
+                            size = Size(size.width + inset * 2, size.height + inset * 2),
+                            cornerRadius = CornerRadius(6.dp.toPx()),
+                            style = Stroke(
+                                width = 1.5.dp.toPx(),
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx())),
+                            ),
+                        )
+                    }
+                }
+                .then(
+                    if (move == null) {
+                        Modifier
+                    } else {
+                        Modifier.pointerInput(segment.id) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown()
+                                // 누른 자막은 무대 누르기(재생·일시정지)로 넘기지 않는다.
+                                down.consume()
+                                val start = latestPosition.toDouble()
+                                var dy = 0f
+                                var moving = false
+                                var released = false
+                                while (true) {
+                                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                                    change.consume()
+                                    if (!change.pressed) {
+                                        released = true
+                                        break
+                                    }
+                                    dy += change.positionChange().y
+                                    if (!moving && abs(dy) > CaptionMoveSlop.toPx()) {
+                                        moving = true
+                                        latestMove?.onStart?.invoke()
+                                    }
+                                    if (moving) latestMove?.onMove?.invoke(start - dy / stageHeight * 100.0)
+                                }
+                                if (moving) latestMove?.onEnd?.invoke() else if (released) latestMove?.onTap?.invoke(segment.id)
+                            }
+                        }
+                    },
+                ),
         )
     }
 }

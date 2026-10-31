@@ -15,6 +15,8 @@ import kotlin.random.Random
  * @property musicId ID of the background music. Null means no music.
  * @property captions Caption segments. A caption that is bound to a clip gets its time from the clip.
  *   Use [placedCaptions] for the times on the timeline.
+ * @property captionPosition Height of all captions from the bottom of the screen, in percent of the screen height.
+ *   Null uses the height of the caption style. See [captionPositionFor].
  * @property musicRange Part of the music track that plays from the project start, or null for the whole track.
  * @property musicFade True to fade the music in and out for 1 second at the start and the end.
  * @property musicVolume Volume of the music, from 0 to 100.
@@ -33,6 +35,7 @@ data class EditorProject(
     val texts: List<TextOverlay> = emptyList(),
     val musicId: String? = null,
     val captions: List<CaptionSegment> = emptyList(),
+    val captionPosition: Double? = null,
     val musicRange: MusicRange? = null,
     val musicFade: Boolean = true,
     val musicVolume: Int = DEFAULT_MUSIC_VOLUME,

@@ -75,6 +75,8 @@ import com.company.core.media.transitionLook
 import com.company.feature.editor.resources.Res
 import com.company.feature.editor.resources.delete
 import com.company.feature.editor.resources.play
+import com.company.feature.editor.resources.stage_caption_move_all
+import com.company.feature.editor.resources.stage_caption_move_default
 import com.company.feature.editor.resources.stage_empty
 import com.company.feature.editor.resources.stage_text_placeholder
 import com.company.ui.editor.OverlayText
@@ -236,8 +238,41 @@ internal fun EditorStage(
                 }
             }
             val captionPreview = draft?.captionId?.let { CaptionPreview(it, draft.text, draft.decorations) }
-            StageCaption(project = project, time = state.time, animate = state.playing, preview = captionPreview)
+            // 멈춘 편집 화면에서는 자막을 위아래로 끌어 모든 자막을 함께 옮기고, 누르면 그 자막을 고른다.
+            val captionMove = if (fullScreen || state.playing || draft != null) {
+                null
+            } else {
+                CaptionMove(
+                    moving = state.captionMoving,
+                    selectedId = (state.selectedTrackItem as? TrackSelection.Caption)?.id,
+                    onTap = { id ->
+                        val selection = TrackSelection.Caption(id)
+                        if (state.selectedTrackItem != selection) onIntent(EditorIntent.SelectTrackItem(selection))
+                    },
+                    onStart = { onIntent(EditorIntent.StartCaptionMove) },
+                    onMove = { onIntent(EditorIntent.MoveCaption(it)) },
+                    onEnd = { onIntent(EditorIntent.EndCaptionMove) },
+                )
+            }
+            StageCaption(project = project, time = state.time, animate = state.playing, preview = captionPreview, move = captionMove)
             if (state.watermark) StageWatermark()
+        }
+
+        // 자막을 끄는 동안 위쪽에 지금 위치가 스타일 기본 위치인지 알려 준다.
+        if (state.captionMoving && !fullScreen) {
+            Text(
+                text = stringResource(if (project.captionPosition == null) Res.string.stage_caption_move_default else Res.string.stage_caption_move_all),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 14.dp)
+                    .clip(CircleShape)
+                    .background(MagicColors.Background.copy(alpha = 0.78f))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MagicColors.OnSurface,
+                maxLines = 1,
+            )
         }
 
         if (!state.playing && current != null && state.sheet == null && state.activeDrag == null && !fullScreen) {
