@@ -217,6 +217,67 @@ class TransitionTimelineTest {
     }
 
     @Test
+    fun spinLook_growsAndTurnsOneAndAHalfTimes() {
+        val start = transitionLook(TransitionType.SPIN, 0f)
+        val end = transitionLook(TransitionType.SPIN, 1f)
+
+        assertNear(0f, start.to.alpha)
+        assertNear(540f, start.to.rotationDegrees)
+        assertNear(1f, end.to.scale)
+        assertNear(0f, end.to.rotationDegrees)
+        assertTrue(TransitionType.SPIN.canOpen)
+        assertTrue(openingLook(TransitionType.SPIN, 0.5f).fromIsBlack)
+    }
+
+    @Test
+    fun spinBeforeTheBoundaryTurnsTheNextFirstFrame() {
+        val window = boundary(TransitionType.SPIN)
+        val timeline = TransitionTimeline(listOf(window), clipStartsUs)
+
+        val time = timeUs(window, 0.25)
+        val frame = assertNotNull(timeline.frameAt(time))
+        val look = transitionLook(TransitionType.SPIN, window.progressAt(time / 1e6).toFloat())
+
+        val still = assertNotNull(frame.still)
+        assertEquals(StillRef(clipIndex = 1, edge = StillEdge.FIRST), still.ref)
+        assertNull(still.hole)
+        assertNear(look.to.rotationDegrees, still.look.rotationDegrees)
+        assertNear(look.to.scale, still.look.scale)
+        assertTrue(frame.live.hasPlainShape)
+    }
+
+    @Test
+    fun spinAfterTheBoundaryCutsAHoleInThePreviousScene() {
+        val window = boundary(TransitionType.SPIN)
+        val timeline = TransitionTimeline(listOf(window), clipStartsUs)
+
+        val time = timeUs(window, 0.75)
+        val frame = assertNotNull(timeline.frameAt(time))
+        val look = transitionLook(TransitionType.SPIN, window.progressAt(time / 1e6).toFloat())
+
+        val still = assertNotNull(frame.still)
+        assertEquals(StillRef(clipIndex = 0, edge = StillEdge.LAST), still.ref)
+        assertNear(1f, still.look.alpha)
+        assertEquals(look.to, still.hole)
+        assertEquals(look.to, frame.live)
+        assertEquals(TransitionLayers(shape = true, still = true), timeline.layers)
+    }
+
+    @Test
+    fun spinOpeningTurnsTheLiveFrameWithoutAStill() {
+        val window = opening(TransitionType.SPIN)
+        val timeline = TransitionTimeline(listOf(window), clipStartsUs)
+
+        val frame = assertNotNull(timeline.frameAt(timeUs(window, 0.5)))
+        val look = openingLook(TransitionType.SPIN, 0.5f)
+
+        assertNull(frame.still)
+        assertNear(look.to.rotationDegrees, frame.live.rotationDegrees)
+        assertFalse(timeline.layers.still)
+        assertTrue(timeline.layers.shape)
+    }
+
+    @Test
     fun nextWindowIsTheFirstOneAfterTheTime() {
         val timeline = TransitionTimeline(listOf(boundary(TransitionType.DISSOLVE)), clipStartsUs)
 

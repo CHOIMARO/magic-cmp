@@ -336,8 +336,26 @@ private fun DubbingPreviewButton(seconds: Double, enabled: Boolean, key: Any) {
 // Sound effects
 // =====================================================================
 
+/** Tabs of the sound effect sheet, in the order of the chips. */
+private val SoundEffectTabs: List<SoundEffectTab> =
+    listOf(SoundEffectTab.All, SoundEffectTab.Recent) + SoundEffectCategory.entries.map { SoundEffectTab.Category(it) }
+
 /**
- * Sound effect sheet (F07): categories, the effects of a category, a preview, and the insert button of each effect.
+ * Effects that a tab of the sound effect sheet shows.
+ *
+ * @param tab Tab of the sheet.
+ * @param catalog All effects of the catalog.
+ * @param recent IDs of the effects that the user added, newest first.
+ */
+internal fun soundEffectsOf(tab: SoundEffectTab, catalog: List<SoundEffect>, recent: List<String>): List<SoundEffect> = when (tab) {
+    SoundEffectTab.All -> catalog
+    SoundEffectTab.Recent -> recent.mapNotNull { id -> catalog.find { it.id == id } }
+    is SoundEffectTab.Category -> catalog.filter { it.category == tab.category }
+}
+
+/**
+ * Sound effect sheet (F07): tabs (all, recent, and the categories), the effects of the tab, a preview, and the insert
+ * button of each effect.
  *
  * @param state Editor state.
  * @param onIntent Called with each user action.
@@ -345,27 +363,24 @@ private fun DubbingPreviewButton(seconds: Double, enabled: Boolean, key: Any) {
 @Composable
 internal fun SoundEffectSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {
     var playing by remember { mutableStateOf<String?>(null) }
-    val category = state.soundEffectCategory
+    val tab = state.soundEffectTab
     Row(
         modifier = Modifier.fillMaxWidth().bleedHorizontal(SheetPadding).horizontalScroll(rememberScrollState()).padding(horizontal = SheetPadding),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        MagicChip(label = stringResource(Res.string.sound_recent), selected = category == null, onClick = {
-            playing = null
-            onIntent(EditorIntent.PickSoundEffectCategory(null))
-        })
-        SoundEffectCategory.entries.forEach { item ->
-            MagicChip(label = item.displayName, selected = category == item, onClick = {
+        SoundEffectTabs.forEach { item ->
+            val label = when (item) {
+                SoundEffectTab.All -> stringResource(Res.string.all)
+                SoundEffectTab.Recent -> stringResource(Res.string.sound_recent)
+                is SoundEffectTab.Category -> item.category.displayName
+            }
+            MagicChip(label = label, selected = tab == item, onClick = {
                 playing = null
-                onIntent(EditorIntent.PickSoundEffectCategory(item))
+                onIntent(EditorIntent.PickSoundEffectTab(item))
             })
         }
     }
-    val effects = if (category == null) {
-        state.recentSoundEffects.mapNotNull { id -> state.soundEffects.find { it.id == id } }
-    } else {
-        state.soundEffects.filter { it.category == category }
-    }
+    val effects = soundEffectsOf(tab, state.soundEffects, state.recentSoundEffects)
     Column(
         modifier = Modifier.fillMaxWidth().height(236.dp).bleedHorizontal(8.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(2.dp),

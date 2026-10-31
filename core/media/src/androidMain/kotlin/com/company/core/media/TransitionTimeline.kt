@@ -40,9 +40,11 @@ internal data class StillRef(val clipIndex: Int, val edge: StillEdge)
  *
  * @property ref Still frame to show.
  * @property look Look of the still. Its alpha is the opacity of the layer. The renderer uses only the alpha, the scale,
- *   and the move.
+ *   the move, and the turn.
+ * @property hole Place of the live scene in the frame, or null. The still has a transparent hole there, so the live
+ *   scene under the still shows. Only a still with a plain shape has a hole.
  */
-internal data class StillLayer(val ref: StillRef, val look: SceneLook)
+internal data class StillLayer(val ref: StillRef, val look: SceneLook, val hole: SceneLook? = null)
 
 /**
  * How to draw one output frame of a transition.
@@ -89,6 +91,8 @@ internal data class TransitionLayers(
  * boundary, the still scene must be under the live scene, so the plan changes the opacities:
  * - When the live scene covers the whole frame, the still alpha becomes `(1 - live) × still` and the live alpha becomes
  *   `live / (1 - still alpha)`. The result is the same as the formula.
+ * - When the opaque live scene turns over a still scene with a plain shape (spin), the still gets a hole where the live
+ *   scene is. The result is the same as the formula.
  * - Otherwise, the still stays on top with its own alpha. The result is the same as the formula when the two scenes do
  *   not overlap, as in the push transition.
  *
@@ -227,6 +231,15 @@ internal class TransitionTimeline(windows: List<TransitionWindow>, private val c
                     coverAlpha = look.coverAlpha,
                 )
             }
+            to.alpha >= 1f && abs(to.rotationDegrees) >= LOOK_EPSILON && from.hasPlainShape -> {
+                // 다음 장면이 앞 장면 위에서 돈다(빙글빙글). 정지 화면에 구멍을 내서 아래의 재생 장면이 보이게 한다.
+                TransitionFrame(
+                    live = to,
+                    still = StillLayer(ref, from, hole = to),
+                    cover = look.cover,
+                    coverAlpha = look.coverAlpha,
+                )
+            }
             // 두 장면이 겹치지 않으면(밀기) 어느 장면을 위에 그려도 결과가 같다.
             else -> TransitionFrame(
                 live = to,
@@ -247,13 +260,14 @@ internal class TransitionTimeline(windows: List<TransitionWindow>, private val c
     }
 }
 
-/** True when the scene shows some part in the frame. It ignores the skew. */
+/** True when the scene shows some part in the frame. It ignores the skew and the turn. */
 private val SceneLook.isVisible: Boolean
-    get() = alpha > 0f && abs(translateX) < (1f + scale) / 2f && abs(translateY) < (1f + scale) / 2f
+    get() = alpha > 0f && scale > LOOK_EPSILON && abs(translateX) < (1f + scale) / 2f && abs(translateY) < (1f + scale) / 2f
 
 /** True when the scene covers the whole frame. */
 private val SceneLook.coversFrame: Boolean
     get() = abs(skewXDegrees) < LOOK_EPSILON &&
+        abs(rotationDegrees) < LOOK_EPSILON &&
         abs(translateX) <= (scale - 1f) / 2f + LOOK_EPSILON &&
         abs(translateY) <= (scale - 1f) / 2f + LOOK_EPSILON
 
@@ -262,14 +276,16 @@ private fun SceneLook.hasSameShape(other: SceneLook): Boolean =
     abs(scale - other.scale) < LOOK_EPSILON &&
         abs(translateX - other.translateX) < LOOK_EPSILON &&
         abs(translateY - other.translateY) < LOOK_EPSILON &&
-        abs(skewXDegrees - other.skewXDegrees) < LOOK_EPSILON
+        abs(skewXDegrees - other.skewXDegrees) < LOOK_EPSILON &&
+        abs(rotationDegrees - other.rotationDegrees) < LOOK_EPSILON
 
-/** True when the scene does not move, scale, or skew. */
+/** True when the scene does not move, scale, skew, or turn. */
 internal val SceneLook.hasPlainShape: Boolean
     get() = abs(scale - 1f) < LOOK_EPSILON &&
         abs(translateX) < LOOK_EPSILON &&
         abs(translateY) < LOOK_EPSILON &&
-        abs(skewXDegrees) < LOOK_EPSILON
+        abs(skewXDegrees) < LOOK_EPSILON &&
+        abs(rotationDegrees) < LOOK_EPSILON
 
 /** True when the scene does not change its colors. */
 internal val SceneLook.hasPlainColor: Boolean

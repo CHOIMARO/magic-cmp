@@ -92,6 +92,7 @@
     <string name="transition_blur">흐림</string>
     <string name="transition_flash">플래시</string>
     <string name="transition_glitch">글리치</string>
+    <string name="transition_spin">빙글빙글</string>
     <string name="push_from_left">왼쪽에서</string>
     <string name="push_from_right">오른쪽에서</string>
     <string name="push_from_up">위에서</string>

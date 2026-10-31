@@ -155,6 +155,7 @@ val TransitionType.displayName: String
             TransitionType.BLUR -> Res.string.transition_blur
             TransitionType.FLASH -> Res.string.transition_flash
             TransitionType.GLITCH -> Res.string.transition_glitch
+            TransitionType.SPIN -> Res.string.transition_spin
         }
     )
 

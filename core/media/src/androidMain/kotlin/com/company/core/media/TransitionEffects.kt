@@ -2,7 +2,11 @@ package com.company.core.media
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Matrix
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.util.Pair
 import androidx.annotation.OptIn
 import androidx.media3.common.Effect
@@ -39,7 +43,7 @@ private const val BLUR_KERNEL_DEVIATIONS = 2f
  * Put the effects before the effect that moves the area into the frame. The frame then has the area size, and the
  * layout and text overlays do not change. The effects run in this order:
  * 1. Blur of the live frame ([SeparableConvolutionShaderProgram] with a kernel that changes with the time).
- * 2. Move, scale, and skew of the live frame ([MatrixTransformation]).
+ * 2. Move, scale, skew, and turn of the live frame ([MatrixTransformation]).
  * 3. Hue, saturation, and opacity on black of the live frame ([RgbMatrix]).
  * 4. Still scene of the other clip ([OverlayEffect]). See [TransitionTimeline] for the layer order.
  * 5. Cover color ([RgbMatrix]).
@@ -49,7 +53,10 @@ private const val BLUR_KERNEL_DEVIATIONS = 2f
  *
  * Approximations:
  * - The other scene is a still frame, so it does not move during the transition.
- * - The still scene supports only the alpha, the scale, and the move. No transition skews or colors the still scene.
+ * - The still scene supports only the alpha, the scale, the move, and the turn. No transition skews or colors the still
+ *   scene.
+ * - After the boundary of the spin, the still of the previous scene is on top. It gets a transparent hole where the
+ *   next scene turns, so a new bitmap loads in each frame of that part.
  * - A still frame has one blur: the blur of its scene at the boundary. In the blur transition, the still shows only
  *   near the boundary, where the blur does not change. A blurred still is a small bitmap that the overlay scales up.
  * - A still frame is not larger than [STILL_MAX_SIDE] pixels on its longest side. A 4K export scales it up.
@@ -123,7 +130,7 @@ private class BlurKernels(private val timeline: TransitionTimeline) : Convolutio
 }
 
 /**
- * Moves, scales, and skews the live frame around its center.
+ * Moves, scales, skews, and turns the live frame around its center.
  *
  * The matrix works in normalized device coordinates: -1 to 1, with y up.
  */
@@ -144,6 +151,12 @@ private class LiveShape(private val timeline: TransitionTimeline) : MatrixTransf
         val look = timeline.frameAt(presentationTimeUs)?.live ?: return matrix
         // CSS의 skewX는 아래쪽을 오른쪽으로 민다. 여기서는 y가 위쪽이므로 부호가 바뀐다.
         matrix.setSkew(-tan(look.skewXDegrees * PI.toFloat() / 180f) * aspect, 0f)
+        if (look.rotationDegrees != 0f) {
+            // 가로와 세로의 단위가 다르므로, 화면 비율로 바꾼 뒤 돌리고 되돌린다. y가 위쪽이므로 시계 방향은 음수다.
+            matrix.postScale(1f, aspect)
+            matrix.postRotate(-look.rotationDegrees)
+            matrix.postScale(1f, 1f / aspect)
+        }
         matrix.postScale(look.scale, look.scale)
         matrix.postTranslate(look.translateX * 2f, -look.translateY * 2f)
         return matrix
@@ -182,7 +195,8 @@ private class StillEffect(private val overlay: StillOverlay, private val stills:
  * Shows the still scene of the transition at the frame time.
  *
  * Media3 draws a bitmap at its pixel size, so the overlay scales the still to the frame size. A time without a still
- * keeps the last bitmap with alpha 0, so that the texture does not load again.
+ * keeps the last bitmap with alpha 0, so that the texture does not load again. A still with a hole shows a copy with
+ * the hole.
  */
 @OptIn(UnstableApi::class)
 private class StillOverlay(private val timeline: TransitionTimeline, private val stills: StillFrames) : BitmapOverlay() {
@@ -190,6 +204,7 @@ private class StillOverlay(private val timeline: TransitionTimeline, private val
 
     /** Still frame that [bitmap] shows, or null. */
     private var bitmapRef: StillRef? = null
+    private val holes = StillWithHole()
     private var frameWidth = 1
     private var frameHeight = 1
 
@@ -200,14 +215,16 @@ private class StillOverlay(private val timeline: TransitionTimeline, private val
 
     override fun getBitmap(presentationTimeUs: Long): Bitmap {
         stills.prefetch(presentationTimeUs)
-        val ref = timeline.frameAt(presentationTimeUs)?.still?.ref
+        val layer = timeline.frameAt(presentationTimeUs)?.still
+        val ref = layer?.ref
         if (ref != null && ref != bitmapRef) {
             stills.await(ref)?.let {
                 bitmap = it
                 bitmapRef = ref
             }
         }
-        return bitmap
+        val hole = layer?.hole
+        return if (hole != null && ref == bitmapRef) holes.draw(bitmap, hole) else bitmap
     }
 
     // Media3는 같은 시각의 getBitmap을 먼저 부른다. 그래서 bitmap은 이 프레임의 비트맵이다.
@@ -221,11 +238,54 @@ private class StillOverlay(private val timeline: TransitionTimeline, private val
             scaleY = look.scale * frameHeight / bitmap.height,
             anchorX = look.translateX * 2f,
             anchorY = -look.translateY * 2f,
+            // 화면 좌표는 y가 위쪽이므로 시계 방향은 음수다.
+            rotation = -look.rotationDegrees,
         )
     }
 
     private companion object {
         val HIDDEN = StillPlacement(alpha = 0f, scaleX = 1f, scaleY = 1f, anchorX = 0f, anchorY = 0f)
+    }
+}
+
+/** Part of the live scene edge that the still with a hole covers, in still pixels. It hides the hard edge of the live scene. */
+private const val HOLE_INSET_PX = 1f
+
+/**
+ * Copy of a still with a transparent hole. The cached still does not change, because other compositions can share it.
+ *
+ * Two copies take turns. Media3 loads the texture again when it gets a different bitmap object. A drawing on a canvas
+ * possibly does not change the generation ID of the same bitmap.
+ */
+private class StillWithHole {
+    private val copies = arrayOfNulls<Bitmap>(2)
+    private var next = 0
+    private val copyPaint = Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC) }
+    private val clearPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
+
+    /**
+     * Draws [still] into the next copy and cuts the hole.
+     *
+     * @param still Still with a plain shape that fills the frame.
+     * @param hole Place of the live scene in the frame.
+     * @return The copy with the hole.
+     */
+    fun draw(still: Bitmap, hole: SceneLook): Bitmap {
+        val index = next
+        next = 1 - next
+        val target = copies[index]?.takeIf { it.width == still.width && it.height == still.height }
+            ?: Bitmap.createBitmap(still.width, still.height, Bitmap.Config.ARGB_8888).also { copies[index] = it }
+        val canvas = Canvas(target)
+        canvas.drawBitmap(still, 0f, 0f, copyPaint)
+        val width = target.width.toFloat()
+        val height = target.height.toFloat()
+        val halfWidth = (width * hole.scale / 2f - HOLE_INSET_PX).coerceAtLeast(0f)
+        val halfHeight = (height * hole.scale / 2f - HOLE_INSET_PX).coerceAtLeast(0f)
+        // 비트맵 좌표는 y가 아래쪽이므로, 화면 기준 값을 그대로 쓴다.
+        canvas.translate(width / 2f + hole.translateX * width, height / 2f + hole.translateY * height)
+        canvas.rotate(hole.rotationDegrees)
+        canvas.drawRect(-halfWidth, -halfHeight, halfWidth, halfHeight, clearPaint)
+        return target
     }
 }
 
@@ -240,6 +300,7 @@ private class StillOverlay(private val timeline: TransitionTimeline, private val
  * @property scaleY Vertical scale of the bitmap.
  * @property anchorX Horizontal center of the still in normalized device coordinates.
  * @property anchorY Vertical center of the still in normalized device coordinates. A positive value is up.
+ * @property rotation Turn of the still in degrees. A positive value turns counterclockwise.
  */
 @OptIn(UnstableApi::class)
 private class StillPlacement(
@@ -248,10 +309,13 @@ private class StillPlacement(
     private val scaleY: Float,
     private val anchorX: Float,
     private val anchorY: Float,
+    private val rotation: Float = 0f,
 ) : OverlaySettings {
     override fun getAlphaScale(): Float = alpha
 
     override fun getScale(): Pair<Float, Float> = Pair.create(scaleX, scaleY)
 
     override fun getBackgroundFrameAnchor(): Pair<Float, Float> = Pair.create(anchorX, anchorY)
+
+    override fun getRotationDegrees(): Float = rotation
 }

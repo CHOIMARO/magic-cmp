@@ -241,6 +241,18 @@ enum class AnimationTab {
     EXIT,
 }
 
+/** Tab of the sound effect sheet. The tabs are all, recent, and one tab for each category, in this order. */
+sealed interface SoundEffectTab {
+    /** All : All effects of the catalog ("전체"). The sheet opens on it. */
+    data object All : SoundEffectTab
+
+    /** Recent : The effects that the user added, newest first ("최근"). */
+    data object Recent : SoundEffectTab
+
+    /** Category(category) : The effects of one category. */
+    data class Category(val category: SoundEffectCategory) : SoundEffectTab
+}
+
 /**
  * Item whose volume the volume sheet changes.
  *
@@ -331,7 +343,7 @@ data class FullScreenState(
  * @property myVoice State of the user's own voice.
  * @property dubbingDraft Dubbing that the user prepares, or null.
  * @property soundEffects Sound effects of the catalog.
- * @property soundEffectCategory Category of the effect list, or null for the recent effects.
+ * @property soundEffectTab Tab of the effect list.
  * @property recentSoundEffects IDs of the effects that the user added, newest first.
  * @property volumeTarget Item of the volume sheet, or null.
  * @property transitionSlot Place of the transition sheet, or null.
@@ -372,7 +384,7 @@ data class EditorState(
     val myVoice: MyVoiceStatus = MyVoiceStatus.None,
     val dubbingDraft: DubbingDraft? = null,
     val soundEffects: List<SoundEffect> = emptyList(),
-    val soundEffectCategory: SoundEffectCategory? = SoundEffectCategory.HIGHLIGHT,
+    val soundEffectTab: SoundEffectTab = SoundEffectTab.All,
     val recentSoundEffects: List<String> = emptyList(),
     val volumeTarget: VolumeTarget? = null,
     val transitionSlot: TransitionSlot? = null,
@@ -714,8 +726,8 @@ sealed class EditorIntent : Intent() {
 
     // ----- Sound effects and volume -----
 
-    /** PickSoundEffectCategory(category) : Shows the effects of a category. Null shows the recent effects. */
-    data class PickSoundEffectCategory(val category: SoundEffectCategory?) : EditorIntent()
+    /** PickSoundEffectTab(tab) : Shows the effects of a tab: all, recent, or one category. */
+    data class PickSoundEffectTab(val tab: SoundEffectTab) : EditorIntent()
 
     /** InsertSoundEffect(effectId) : Adds the effect at the playhead and closes the sheet. */
     data class InsertSoundEffect(val effectId: String) : EditorIntent()

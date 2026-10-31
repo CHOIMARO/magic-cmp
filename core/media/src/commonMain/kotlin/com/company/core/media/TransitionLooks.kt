@@ -8,7 +8,7 @@ import kotlin.math.sin
 
 // =====================================================================
 // Look of the transitions (F08). The editor sheet, the placeholder stage, and the platform renderers use it.
-// The values come from the Magic Editor v7 prototype (transFx, startFx).
+// The values come from the Magic Editor v7 and v8 prototypes (transFx, startFx).
 // =====================================================================
 
 /** Blur radius of the blur transition, as a part of the frame width. It is 10 px on the 264 px wide prototype stage. */
@@ -16,6 +16,9 @@ private const val BLUR_RADIUS = 10f / 264.375f
 
 /** Blur radius of the blur opening, as a part of the frame width. It is 12 px on the prototype stage. */
 private const val OPENING_BLUR_RADIUS = 12f / 264.375f
+
+/** Turn of the spin transition, in degrees: one and a half turns. */
+private const val SPIN_DEGREES = 540f
 
 /**
  * Look of one scene during a transition. The scene is a full frame, and it changes around the frame center.
@@ -28,6 +31,7 @@ private const val OPENING_BLUR_RADIUS = 12f / 264.375f
  * @property skewXDegrees Horizontal skew in degrees.
  * @property hueDegrees Hue rotation in degrees.
  * @property saturation Saturation factor. 1 keeps the colors.
+ * @property rotationDegrees Turn around the frame center in degrees. A positive value turns clockwise on the screen.
  */
 data class SceneLook(
     val alpha: Float = 1f,
@@ -38,6 +42,7 @@ data class SceneLook(
     val skewXDegrees: Float = 0f,
     val hueDegrees: Float = 0f,
     val saturation: Float = 1f,
+    val rotationDegrees: Float = 0f,
 )
 
 /** Color that covers the frame during a transition. */
@@ -121,6 +126,7 @@ fun transitionLook(type: TransitionType, progress: Float, direction: PushDirecti
             }
             TransitionLook(from = shake, to = shake.copy(alpha = half))
         }
+        TransitionType.SPIN -> TransitionLook(from = SceneLook(), to = spinScene(p))
     }
 }
 
@@ -148,8 +154,20 @@ fun openingLook(type: TransitionType, progress: Float): TransitionLook {
             coverAlpha = 1f - easeOutCubic(p),
             fromIsBlack = true,
         )
+        TransitionType.SPIN -> TransitionLook(from = black, to = spinScene(p), fromIsBlack = true)
         TransitionType.DISSOLVE, TransitionType.PUSH, TransitionType.GLITCH -> TransitionLook(from = black, to = SceneLook(), fromIsBlack = true)
     }
+}
+
+/**
+ * Next scene of the spin transition. It starts too small to see at the center, and it grows to fill the frame while it
+ * turns one and a half times.
+ *
+ * @param p Progress from 0 to 1.
+ */
+private fun spinScene(p: Float): SceneLook {
+    val e = easeOutCubic(p)
+    return SceneLook(alpha = if (p > 0f) 1f else 0f, scale = e, rotationDegrees = (1f - e) * SPIN_DEGREES)
 }
 
 private fun easeOutCubic(p: Float): Float = 1f - (1f - p).pow(3)

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.BrokenImage
 import androidx.compose.material.icons.rounded.Contrast
+import androidx.compose.material.icons.rounded.Cyclone
 import androidx.compose.material.icons.rounded.FlashOn
 import androidx.compose.material.icons.rounded.Gradient
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -162,6 +163,7 @@ private val TransitionType.icon: ImageVector
         TransitionType.BLUR -> Icons.Rounded.BlurOn
         TransitionType.FLASH -> Icons.Rounded.FlashOn
         TransitionType.GLITCH -> Icons.Rounded.BrokenImage
+        TransitionType.SPIN -> Icons.Rounded.Cyclone
     }
 
 // =====================================================================

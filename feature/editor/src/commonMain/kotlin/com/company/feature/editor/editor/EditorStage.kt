@@ -139,6 +139,8 @@ internal fun EditorStage(
         val stageWidth = constraints.maxWidth.toFloat()
         val stageHeight = constraints.maxHeight.toFloat()
         val screenDensity = LocalDensity.current
+        // 전환 시트를 연 동안 고른 전환을 앞뒤 클립으로 반복해서 보여 준다.
+        val loopSlot = state.transitionSlot.takeIf { state.sheet == EditorSheet.TRANSITION && !fullScreen }
 
         // 레이아웃·글자·자막·워터마크는 기준 무대(StageCanvas) 위에 그린다. 저장할 때도 같은 코드로 그린다.
         if (current != null) {
@@ -150,6 +152,8 @@ internal fun EditorStage(
                             CompositionLocalProvider(LocalDensity provides screenDensity) {
                                 video(Modifier.matchParentSize())
                             }
+                            // 전환은 영상 영역만 바꾼다.
+                            loopSlot?.let { SheetTransitionLoop(project = project, slot = it, modifier = Modifier.matchParentSize()) }
                         } else {
                             // 칸마다 영상을 합성하기 전까지, 다음 클립은 시작 화면으로 보여 준다.
                             MediaThumbnail(
@@ -203,6 +207,9 @@ internal fun EditorStage(
         // 재생 중 화면 전환: 원본 파일이 없는 샘플 클립은 줄무늬 장면으로 전환을 보여 준다. 실제 영상은 재생기가 그린다.
         if (video == null && state.playing && current != null) {
             PlaceholderTransition(project = project, time = state.time)
+        }
+        if (video == null && current != null) {
+            loopSlot?.let { SheetTransitionLoop(project = project, slot = it, modifier = Modifier.fillMaxSize()) }
         }
 
         // 선택한 글자가 무대에 보이면, 무대 어디에서든 두 손가락으로 그 글자의 크기와 각도를 바꾼다.

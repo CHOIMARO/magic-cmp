@@ -362,7 +362,7 @@ class EditorViewModel(
                 postSideEffect { EditorSideEffect.OpenMyVoice }
             }
 
-            is EditorIntent.PickSoundEffectCategory -> reduce { copy(soundEffectCategory = intent.category) }
+            is EditorIntent.PickSoundEffectTab -> reduce { copy(soundEffectTab = intent.tab) }
             is EditorIntent.InsertSoundEffect -> audio.insertSoundEffect(intent.effectId)
             is EditorIntent.OpenVolume -> {
                 pause()

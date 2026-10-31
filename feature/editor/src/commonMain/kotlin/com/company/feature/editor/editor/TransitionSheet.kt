@@ -43,6 +43,8 @@ import com.company.core.designsystem.component.MagicButtonStyle
 import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
+import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.EditorProject
 import com.company.domain.model.editor.PushDirection
 import com.company.domain.model.editor.TransitionSlot
 import com.company.domain.model.editor.TransitionType
@@ -60,6 +62,7 @@ import com.company.feature.editor.resources.transition_direction
 import com.company.feature.editor.resources.transition_intro_boundary
 import com.company.feature.editor.resources.transition_intro_opening
 import com.company.ui.editor.displayName
+import com.company.ui.media.MediaThumbnail
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -74,6 +77,9 @@ private const val CARD_FROM_HUE = 35f
 
 /** Hue of the scene after the boundary in the cards. */
 private const val CARD_TO_HUE = 200f
+
+/** Time before the clip end of the last frame of a video clip, in seconds. It is one frame at 30 fps. */
+private const val LAST_FRAME_OFFSET = 1.0 / 30
 
 /** Guide under the title of the transition sheet. */
 @Composable
@@ -119,8 +125,7 @@ internal fun TransitionSheet(state: EditorState, onIntent: (EditorIntent) -> Uni
                     .clip(shape)
                     .then(if (selected) Modifier.border(2.dp, MagicColors.Accent, shape) else Modifier.border(1.dp, Color.White.copy(alpha = 0.08f), shape)),
             ) {
-                val phase = clock.longValue % CARD_LOOP_MILLIS
-                val progress = if (opening) ((phase - 300) / 700f).coerceIn(0f, 1f) else ((phase - 500) / 600f).coerceIn(0f, 1f)
+                val progress = transitionPreviewProgress(clock.longValue, opening)
                 val direction = if (type == TransitionType.PUSH) current?.direction ?: PushDirection.RIGHT else PushDirection.RIGHT
                 val look = when {
                     type == null -> if (opening) openingLook(TransitionType.DISSOLVE, progress) else noTransitionLook(progress)
@@ -180,6 +185,19 @@ internal fun TransitionSheet(state: EditorState, onIntent: (EditorIntent) -> Uni
     }
 }
 
+/**
+ * Progress of a transition preview in a loop of [CARD_LOOP_MILLIS]. Each loop shows the scene before the transition,
+ * the transition, and the scene after it. The opening starts earlier and takes longer.
+ *
+ * @param clockMillis Time since the preview started.
+ * @param opening True for the opening transition.
+ * @return The progress from 0 to 1.
+ */
+internal fun transitionPreviewProgress(clockMillis: Long, opening: Boolean): Float {
+    val phase = clockMillis % CARD_LOOP_MILLIS
+    return if (opening) ((phase - 300) / 700f).coerceIn(0f, 1f) else ((phase - 500) / 600f).coerceIn(0f, 1f)
+}
+
 /** Look without a transition: the next scene shows at once in the middle. */
 private fun noTransitionLook(progress: Float): TransitionLook =
     TransitionLook(from = SceneLook(), to = SceneLook(alpha = if (progress >= 0.5f) 1f else 0f))
@@ -215,9 +233,36 @@ internal fun TransitionScenes(
     modifier: Modifier = Modifier,
     stripeOffset: Dp = 0.dp,
 ) {
+    TransitionScenes(
+        look = look,
+        modifier = modifier,
+        from = { sceneModifier, colorFilter ->
+            StripeBox(hue = fromHue, lightness = 0.5f, colorFilter = colorFilter, stripeOffset = stripeOffset, modifier = sceneModifier)
+        },
+        to = { sceneModifier, colorFilter ->
+            StripeBox(hue = toHue, lightness = 0.5f, colorFilter = colorFilter, stripeOffset = stripeOffset, modifier = sceneModifier)
+        },
+    )
+}
+
+/**
+ * Draws a transition: black, the scene before the boundary, the scene after it, and the cover color.
+ *
+ * @param look Look of the transition at one moment.
+ * @param modifier Modifier for the scenes. Give it a size.
+ * @param from Scene before the boundary. Give it the modifier and the color filter.
+ * @param to Scene after the boundary. Give it the modifier and the color filter.
+ */
+@Composable
+internal fun TransitionScenes(
+    look: TransitionLook,
+    modifier: Modifier = Modifier,
+    from: @Composable (Modifier, ColorFilter?) -> Unit,
+    to: @Composable (Modifier, ColorFilter?) -> Unit,
+) {
     Box(modifier = modifier.clip(RoundedCornerShape(0.dp)).background(Color.Black)) {
-        if (!look.fromIsBlack) Scene(look.from, fromHue, stripeOffset)
-        Scene(look.to, toHue, stripeOffset)
+        if (!look.fromIsBlack) Scene(look.from, from)
+        Scene(look.to, to)
         if (look.coverAlpha > 0f) {
             val cover = if (look.cover == CoverColor.WHITE) Color.White else Color.Black
             Box(modifier = Modifier.matchParentSize().background(cover.copy(alpha = look.coverAlpha.coerceIn(0f, 1f))))
@@ -225,21 +270,58 @@ internal fun TransitionScenes(
     }
 }
 
-/** One striped scene with the opacity, the size, the move, the skew, the blur, and the colors of [look]. */
+/**
+ * Transition of the open transition sheet on the stage (v8). It plays the picked transition again and again with the
+ * clips of the slot: the last frame of the clip before the boundary and the first frame of the clip after it.
+ *
+ * @param project Project with the clips and the transitions.
+ * @param slot Place of the transition sheet.
+ * @param modifier Modifier for the scenes. Give it a size.
+ */
 @Composable
-private fun BoxScope.Scene(look: SceneLook, hue: Float, stripeOffset: Dp) {
+internal fun SheetTransitionLoop(project: EditorProject, slot: TransitionSlot, modifier: Modifier = Modifier) {
+    val transition = project.transitionAt(slot) ?: return
+    val opening = slot == TransitionSlot.Opening
+    val toIndex = when (slot) {
+        TransitionSlot.Opening -> 0
+        is TransitionSlot.Boundary -> project.clips.indexOfFirst { it.id == slot.clipId }
+    }
+    if (toIndex !in project.clips.indices || (!opening && toIndex < 1)) return
+    val to = project.clips[toIndex]
+    val from = if (opening) null else project.clips[toIndex - 1]
+    val clock = rememberTextPreviewClock(running = true)
+    val progress = transitionPreviewProgress(clock.longValue, opening)
+    val look = if (opening) openingLook(transition.type, progress) else transitionLook(transition.type, progress, transition.direction)
+    TransitionScenes(
+        look = look,
+        modifier = modifier,
+        from = { sceneModifier, colorFilter -> from?.let { ClipFrame(it, it.lastFrameTime, sceneModifier, colorFilter) } },
+        to = { sceneModifier, colorFilter -> ClipFrame(to, to.inPoint, sceneModifier, colorFilter) },
+    )
+}
+
+/** Source time of the last frame of the clip. */
+private val Clip.lastFrameTime: Double
+    get() = (outPoint - LAST_FRAME_OFFSET).coerceAtLeast(inPoint)
+
+/** Still frame of a clip at the source time [time]. A clip without a source file shows its stripes. */
+@Composable
+private fun ClipFrame(clip: Clip, time: Double, modifier: Modifier, colorFilter: ColorFilter?) {
+    MediaThumbnail(uri = clip.sourceUri, type = clip.type, hue = clip.thumbnailHue, modifier = modifier, time = time, colorFilter = colorFilter)
+}
+
+/** One scene with the opacity, the size, the move, the turn, the skew, the blur, and the colors of [look]. */
+@Composable
+private fun BoxScope.Scene(look: SceneLook, content: @Composable (Modifier, ColorFilter?) -> Unit) {
     if (look.alpha <= 0f) return
-    StripeBox(
-        hue = hue,
-        lightness = 0.5f,
-        colorFilter = look.colorFilter(),
-        stripeOffset = stripeOffset,
-        modifier = Modifier
+    content(
+        Modifier
             .matchParentSize()
             .graphicsLayer {
                 alpha = look.alpha.coerceIn(0f, 1f)
                 scaleX = look.scale
                 scaleY = look.scale
+                rotationZ = look.rotationDegrees
                 translationX = look.translateX * size.width
                 translationY = look.translateY * size.height
             }
@@ -254,6 +336,7 @@ private fun BoxScope.Scene(look: SceneLook, hue: Float, stripeOffset: Dp) {
                     Modifier
                 },
             ),
+        look.colorFilter(),
     )
 }
 

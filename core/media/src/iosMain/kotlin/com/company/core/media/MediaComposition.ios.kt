@@ -575,7 +575,8 @@ private class FrameRenderer(
     }
 
     /**
-     * Changes a scene as [look] tells: colors, blur, move, size, skew, and opacity. The result stays in the video area.
+     * Changes a scene as [look] tells: colors, blur, move, size, skew, turn, and opacity. The result stays in the video
+     * area.
      *
      * @return The changed scene, or null when the scene is not visible.
      */
@@ -592,24 +593,33 @@ private class FrameRenderer(
     }
 
     /**
-     * Returns the move, the size change, and the horizontal skew of [look] around the center of the video area.
+     * Returns the move, the size change, the horizontal skew, and the turn of [look] around the center of the video
+     * area.
      *
      * @return The transform, or null when the look does not move the scene.
      */
     private fun sceneTransform(look: SceneLook): CValue<CGAffineTransform>? {
         if (!look.movesScene) return null
         val scale = look.scale.toDouble()
-        // Core Image의 y축은 위쪽이 양수라서, 화면 기준 값인 기울기와 세로 이동의 부호를 바꾼다.
+        // Core Image의 y축은 위쪽이 양수라서, 화면 기준 값인 기울기, 회전, 세로 이동의 부호를 바꾼다.
         val shear = -scale * tan(look.skewXDegrees * PI / 180)
+        val angle = -look.rotationDegrees * PI / 180
+        val cosA = cos(angle)
+        val sinA = sin(angle)
+        // 크기와 기울기 [[scale, shear], [0, scale]]를 먼저 주고 돌린다.
+        val a = cosA * scale
+        val b = sinA * scale
+        val c = cosA * shear - sinA * scale
+        val d = sinA * shear + cosA * scale
         val centerX = areaWidth / 2
         val centerY = areaHeight / 2
         return CGAffineTransformMake(
-            scale,
-            0.0,
-            shear,
-            scale,
-            centerX - scale * centerX - shear * centerY + look.translateX * areaWidth,
-            centerY - scale * centerY - look.translateY * areaHeight,
+            a,
+            b,
+            c,
+            d,
+            centerX - a * centerX - c * centerY + look.translateX * areaWidth,
+            centerY - b * centerX - d * centerY - look.translateY * areaHeight,
         )
     }
 
@@ -619,9 +629,9 @@ private class FrameRenderer(
 /** True when the transition runs at [time]. */
 private fun TransitionWindow.covers(time: Double): Boolean = time >= start - TIME_EPSILON && time < end - TIME_EPSILON
 
-/** True when the look moves, scales, or skews the scene. */
+/** True when the look moves, scales, skews, or turns the scene. */
 private val SceneLook.movesScene: Boolean
-    get() = scale != 1f || translateX != 0f || translateY != 0f || skewXDegrees != 0f
+    get() = scale != 1f || translateX != 0f || translateY != 0f || skewXDegrees != 0f || rotationDegrees != 0f
 
 /**
  * Blurs the image. The edge pixels repeat outside the image, so the edges do not become dark.

@@ -206,6 +206,9 @@ enum class TransitionType(val canOpen: Boolean) {
 
     /** The scene shakes and breaks up while it changes ("글리치"). */
     GLITCH(canOpen = false),
+
+    /** The next scene grows from the center and turns one and a half times ("빙글빙글"). */
+    SPIN(canOpen = true),
 }
 
 /** Side that the next scene comes from in a [TransitionType.PUSH] transition. */
