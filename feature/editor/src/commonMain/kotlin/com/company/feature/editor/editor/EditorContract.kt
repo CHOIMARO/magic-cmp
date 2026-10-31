@@ -26,6 +26,7 @@ import com.company.domain.model.editor.SoundEffectClip
 import com.company.domain.model.editor.TextEntrance
 import com.company.domain.model.editor.TextExit
 import com.company.domain.model.editor.TextFontType
+import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.TransitionSlot
@@ -228,10 +229,13 @@ data class DubbingDraft(
     val busy: Boolean = false,
 )
 
-/** Tab of the animation sheet. */
+/** Tab of the animation sheet, in the order of the tabs. */
 enum class AnimationTab {
     /** ENTRANCE : Entrance animations ("등장"). */
     ENTRANCE,
+
+    /** LOOP : Movements that repeat while the text is on screen ("반복"). The stage plays the picked one all the time. */
+    LOOP,
 
     /** EXIT : Exit animations ("퇴장"). */
     EXIT,
@@ -339,6 +343,8 @@ data class FullScreenState(
  * @property leaveDialog True while the popup that asks before the editor closes shows.
  * @property watermark True to show the "magic" watermark on the stage.
  * @property fullScreen Full-screen preview, or null when the editor shows.
+ * @property favoriteTextStyles Text templates that the user marked as favorites, the newest first. The template lists
+ *   show them first.
  */
 data class EditorState(
     val project: EditorProject = EditorProject(name = ""),
@@ -377,6 +383,7 @@ data class EditorState(
     val leaveDialog: Boolean = false,
     val watermark: Boolean = false,
     val fullScreen: FullScreenState? = null,
+    val favoriteTextStyles: List<TextStyleType> = emptyList(),
 ) : State() {
     /** Length of the project in seconds. */
     val totalDuration: Double
@@ -545,6 +552,12 @@ sealed class EditorIntent : Intent() {
     /** ChangeDraftStyle(style) : Changes the style in the text sheet. */
     data class ChangeDraftStyle(val style: TextStyleType) : EditorIntent()
 
+    /**
+     * ToggleFavoriteTextStyle(style) : Adds the text template to the favorites at the front, or removes it (F14). It is
+     * a user setting, so the undo history does not keep it.
+     */
+    data class ToggleFavoriteTextStyle(val style: TextStyleType) : EditorIntent()
+
     /** ChangeDraftFont(font) : Changes the font. A font that is not on the device downloads first. */
     data class ChangeDraftFont(val font: TextFontType) : EditorIntent()
 
@@ -583,7 +596,10 @@ sealed class EditorIntent : Intent() {
     /** ChangeAnimationLength(millis) : Sets the length of the animation of the open tab. A quick series of changes is one undo step. */
     data class ChangeAnimationLength(val millis: Int) : EditorIntent()
 
-    /** ResetAnimation : The selected text uses the animations of its style again. */
+    /** PickLoop(loop) : Sets the loop of the selected text. The stage plays it while the loop tab is open. */
+    data class PickLoop(val loop: TextLoop) : EditorIntent()
+
+    /** ResetAnimation : The selected text uses the animations of its style again, without a loop. */
     data object ResetAnimation : EditorIntent()
 
     // ----- Sheets -----
@@ -596,6 +612,9 @@ sealed class EditorIntent : Intent() {
 
     /** PickLayout(layout) : Applies the layout. */
     data class PickLayout(val layout: LayoutType) : EditorIntent()
+
+    /** ResetLayout : Goes back to the full-screen layout. */
+    data object ResetLayout : EditorIntent()
 
     /** PickSpeed(speed) : Sets the play speed of the selected clip. */
     data class PickSpeed(val speed: Double) : EditorIntent()

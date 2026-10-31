@@ -110,7 +110,11 @@ internal fun ColumnScope.EditorSheetContent(
     if (title != null) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SheetHeader(title = title, onClose = onClose)
-            sheet.intro(state)?.let { Text(text = it, fontSize = 13.sp, color = MagicColors.OnSurface60) }
+            if (sheet == EditorSheet.LAYOUT) {
+                LayoutIntro(state, onIntent)
+            } else {
+                sheet.intro(state)?.let { Text(text = it, fontSize = 13.sp, color = MagicColors.OnSurface60) }
+            }
         }
     }
     when (sheet) {
@@ -147,7 +151,6 @@ private fun EditorSheet.title(state: EditorState): String? = when (this) {
 /** Short guide under the title, or null. */
 @Composable
 private fun EditorSheet.intro(state: EditorState): String? = when (this) {
-    EditorSheet.LAYOUT -> stringResource(Res.string.sheet_intro_layout)
     EditorSheet.TRANSITION -> transitionIntro(state)
     EditorSheet.VOLUME -> when (state.volumeTarget?.kind) {
         VolumeKind.CLIP -> stringResource(Res.string.sheet_intro_volume_clip)
@@ -161,6 +164,32 @@ private fun EditorSheet.intro(state: EditorState): String? = when (this) {
 // =====================================================================
 // Layout, speed
 // =====================================================================
+
+/**
+ * Guide of the layout sheet. A reset button goes back to the full layout when the project uses an other layout.
+ *
+ * @param state Editor state.
+ * @param onIntent Called with each user action.
+ */
+@Composable
+private fun LayoutIntro(state: EditorState, onIntent: (EditorIntent) -> Unit) {
+    // 버튼이 나타나거나 사라져도 줄 높이가 바뀌지 않게 버튼 높이를 확보한다.
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 30.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(Res.string.sheet_intro_layout),
+            modifier = Modifier.weight(1f),
+            fontSize = 13.sp,
+            color = MagicColors.OnSurface60,
+        )
+        if (state.project.layout != LayoutType.FULL) {
+            SmallPillButton(label = stringResource(Res.string.layout_reset), onClick = { onIntent(EditorIntent.ResetLayout) })
+        }
+    }
+}
 
 @Composable
 private fun LayoutSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) {

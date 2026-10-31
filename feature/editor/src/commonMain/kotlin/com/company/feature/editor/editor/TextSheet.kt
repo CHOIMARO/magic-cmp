@@ -2,6 +2,8 @@ package com.company.feature.editor.editor
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +40,8 @@ import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.BorderColor
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.FormatBold
 import androidx.compose.material.icons.rounded.Gradient
 import androidx.compose.material3.Icon
@@ -48,6 +52,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,8 +62,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -85,6 +95,7 @@ import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.component.sheetIme
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicTheme
+import com.company.core.designsystem.theme.oklch
 import com.company.domain.model.editor.Decoration
 import com.company.domain.model.editor.SIZE_STEP_COUNT
 import com.company.domain.model.editor.TextFontType
@@ -189,7 +200,7 @@ internal fun TextSheet(state: EditorState, onIntent: (EditorIntent) -> Unit, onC
             ) {
                 if (!draft.isCaption) TypingTabs(draft = draft, onIntent = onIntent)
                 when (draft.tab) {
-                    TextSheetTab.TEMPLATE -> TemplateStrip(draft = draft, text = sampleText, onIntent = onIntent)
+                    TextSheetTab.TEMPLATE -> TemplateStrip(draft = draft, text = sampleText, favorites = state.favoriteTextStyles, onIntent = onIntent)
                     TextSheetTab.FONT -> FontStrip(draft = draft, text = sampleText, downloading = state.fontDownloading, onIntent = onIntent)
                     TextSheetTab.DECORATION -> DecorationStrip(draft = draft, recentColors = state.recentColors, onIntent = onIntent)
                 }
@@ -205,7 +216,7 @@ internal fun TextSheet(state: EditorState, onIntent: (EditorIntent) -> Unit, onC
                 Box(modifier = Modifier.fillMaxWidth().height(TextSheetBodyHeight).bleedHorizontal(SheetPadding)) {
                     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = SheetPadding)) {
                         when (draft.tab) {
-                            TextSheetTab.TEMPLATE -> TextTemplatePage(draft = draft, text = sampleText, onIntent = onIntent)
+                            TextSheetTab.TEMPLATE -> TextTemplatePage(draft = draft, text = sampleText, favorites = state.favoriteTextStyles, onIntent = onIntent)
                             TextSheetTab.FONT -> TextFontPage(draft = draft, downloading = state.fontDownloading, onIntent = onIntent)
                             TextSheetTab.DECORATION -> DecorationPage(draft = draft, recentColors = state.recentColors, onIntent = onIntent)
                         }
@@ -347,32 +358,66 @@ private fun TextDraftField(draft: TextDraft, onIntent: (EditorIntent) -> Unit, m
 // Template and font tabs
 // =====================================================================
 
+/** Color of the heart of a favorite template. oklch(0.78 0.17 10). */
+private val FavoriteColor = oklch(0.78f, 0.17f, 10f)
+
 /**
- * Template tab. Each card plays the animation of its style in a loop.
+ * Text templates in list order: the favorites first, the newest favorite first, and then the other templates in their
+ * normal order (F14).
+ *
+ * @param favorites Favorite templates, the newest first.
+ */
+internal fun templatesWithFavoritesFirst(favorites: List<TextStyleType>): List<TextStyleType> {
+    val first = favorites.distinct()
+    return first + TextStyleType.entries.filterNot { it in first }
+}
+
+/**
+ * Template tab. Each card plays the animation of its style in a loop. The favorites come first. Under the cards, a
+ * hint tells how to add a favorite, and a reset button goes back to the default template.
  *
  * @param draft Text that the user types.
  * @param text Text in the cards.
+ * @param favorites Favorite templates, the newest first.
  * @param onIntent Called with each user action.
  */
 @Composable
-private fun TextTemplatePage(draft: TextDraft, text: String, onIntent: (EditorIntent) -> Unit) {
+private fun TextTemplatePage(draft: TextDraft, text: String, favorites: List<TextStyleType>, onIntent: (EditorIntent) -> Unit) {
     val clock = rememberTextPreviewClock(running = true)
-    FixedGrid(items = TextStyleType.entries, columns = 4, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { style ->
-        TemplateCard(style = style, draft = draft, text = text, clock = clock, onIntent = onIntent)
+    FixedGrid(items = templatesWithFavoritesFirst(favorites), columns = 4, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { style ->
+        TemplateCard(style = style, draft = draft, text = text, clock = clock, favorite = style in favorites, onIntent = onIntent)
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 30.dp).padding(top = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(Res.string.template_favorite_hint),
+            modifier = Modifier.weight(1f, fill = false),
+            fontSize = 12.sp,
+            color = MagicColors.OnSurface50,
+            textAlign = TextAlign.Center,
+        )
+        if (draft.style != TextStyleType.IMPACT) {
+            SmallPillButton(label = stringResource(Res.string.template_reset), onClick = { onIntent(EditorIntent.ChangeDraftStyle(TextStyleType.IMPACT)) })
+        }
     }
 }
 
 /**
- * One row of template cards above the keyboard. The user can change the template while the user types.
+ * One row of template cards above the keyboard. The user can change the template while the user types. The favorites
+ * come first.
  *
  * @param draft Text that the user types.
  * @param text Text in the cards.
+ * @param favorites Favorite templates, the newest first.
  * @param onIntent Called with each user action.
  */
 @Composable
-private fun TemplateStrip(draft: TextDraft, text: String, onIntent: (EditorIntent) -> Unit) {
+private fun TemplateStrip(draft: TextDraft, text: String, favorites: List<TextStyleType>, onIntent: (EditorIntent) -> Unit) {
     val clock = rememberTextPreviewClock(running = true)
-    val styles = TextStyleType.entries
+    val styles = templatesWithFavoritesFirst(favorites)
     StripRow(state = rememberStripState(selectedIndex = styles.indexOf(draft.style))) {
         items(styles) { style ->
             TemplateCard(
@@ -380,6 +425,7 @@ private fun TemplateStrip(draft: TextDraft, text: String, onIntent: (EditorInten
                 draft = draft,
                 text = text,
                 clock = clock,
+                favorite = style in favorites,
                 onIntent = onIntent,
                 modifier = Modifier.width(StripCardWidth),
             )
@@ -468,6 +514,7 @@ private fun rememberStripState(selectedIndex: Int): LazyListState =
  * @param draft Text that the user types.
  * @param text Text in the card.
  * @param clock Clock of the card animations.
+ * @param favorite True when the template is a favorite. The heart is then filled.
  * @param onIntent Called with each user action.
  * @param modifier Modifier for the card.
  */
@@ -477,17 +524,41 @@ private fun TemplateCard(
     draft: TextDraft,
     text: String,
     clock: LongState,
+    favorite: Boolean,
     onIntent: (EditorIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptic = LocalHapticFeedback.current
+    val longPress = remember { LongPressGuard() }
+    val toggleFavorite by rememberUpdatedState { onIntent(EditorIntent.ToggleFavoriteTextStyle(style)) }
     TextSheetCard(
         label = style.displayName,
         selected = draft.style == style,
-        onClick = { onIntent(EditorIntent.ChangeDraftStyle(style)) },
-        modifier = modifier,
+        onClick = longPress.guard { onIntent(EditorIntent.ChangeDraftStyle(style)) },
+        // 카드를 길게 눌러도 하트처럼 즐겨찾기를 바꾼다.
+        modifier = modifier.pointerInput(longPress) {
+            awaitLongPresses(longPress) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                toggleFavorite()
+            }
+        },
     ) {
         val look = style.look(STYLE_SAMPLE_SCALE, draft.font)
         StyleSample(text = text, look = look, frame = look.animation.previewFrameAt(clock.longValue), scale = STYLE_SAMPLE_SCALE)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(32.dp)
+                .pressClickable(pressedScale = 0.85f, onClick = longPress.guard(toggleFavorite)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (favorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                contentDescription = stringResource(if (favorite) Res.string.template_favorite_remove else Res.string.template_favorite_add),
+                tint = if (favorite) FavoriteColor else Color.White.copy(alpha = 0.78f),
+                modifier = Modifier.size(17.dp),
+            )
+        }
     }
 }
 
@@ -598,6 +669,57 @@ internal fun TextSheetCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+/** Time of a long press on a card, in milliseconds. */
+private const val LONG_PRESS_MILLIS = 500L
+
+/** Finger move that cancels a long press. */
+private val LONG_PRESS_SLOP = 8.dp
+
+/**
+ * Remembers a long press until the finger goes up. The click at the end of a long press must not also do the click
+ * action.
+ */
+private class LongPressGuard {
+    /** True after a long press, until the next click or the next press. */
+    var fired = false
+
+    /**
+     * Click action that does nothing when the click ends a long press.
+     *
+     * @param onClick Action of a normal click.
+     */
+    fun guard(onClick: () -> Unit): () -> Unit = {
+        if (fired) fired = false else onClick()
+    }
+}
+
+/**
+ * Calls [onLongPress] after each press of [LONG_PRESS_MILLIS] without a move of more than [LONG_PRESS_SLOP]. The
+ * events go on to the click and press handlers of the element and its children.
+ *
+ * @param guard Guard that the click actions of the element use.
+ * @param onLongPress Action of a long press.
+ */
+private suspend fun PointerInputScope.awaitLongPresses(guard: LongPressGuard, onLongPress: () -> Unit) {
+    awaitEachGesture {
+        // 자식보다 먼저 지켜본다. 이벤트를 소비하지 않아서 눌림 표시와 누르기는 그대로 동작한다.
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        guard.fired = false
+        val slop = LONG_PRESS_SLOP.toPx()
+        val ended = withTimeoutOrNull(LONG_PRESS_MILLIS) {
+            var change = down
+            while (change.pressed && (change.position - down.position).getDistance() <= slop) {
+                change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
+            }
+            true
+        }
+        if (ended == null) {
+            guard.fired = true
+            onLongPress()
+        }
     }
 }
 

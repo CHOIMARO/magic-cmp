@@ -238,14 +238,20 @@ fun EditorProject.updateText(textId: String, text: String, style: TextStyleType,
     mapText(textId) { it.copy(text = text, style = style, font = font) }
 
 /**
- * Changes the entrance or the exit animation of a text overlay.
+ * Changes the entrance, the exit, or the loop animation of a text overlay.
  *
  * @param textId ID of the overlay.
  * @param entrance New entrance, or null to keep it.
  * @param exit New exit, or null to keep it.
+ * @param loop New loop, or null to keep it.
  */
-fun EditorProject.setTextAnimation(textId: String, entrance: TextEntrance? = null, exit: TextExit? = null): EditorProject =
-    mapText(textId) { it.copy(entrance = entrance ?: it.entrance, exit = exit ?: it.exit) }
+fun EditorProject.setTextAnimation(
+    textId: String,
+    entrance: TextEntrance? = null,
+    exit: TextExit? = null,
+    loop: TextLoop? = null,
+): EditorProject =
+    mapText(textId) { it.copy(entrance = entrance ?: it.entrance, exit = exit ?: it.exit, loop = loop ?: it.loop) }
 
 /**
  * Changes the length of the entrance or the exit animation of a text overlay.
@@ -268,11 +274,11 @@ fun EditorProject.setTextAnimationLength(textId: String, entranceMillis: Int? = 
  * @param textId ID of the overlay.
  */
 fun EditorProject.resetTextAnimation(textId: String): EditorProject =
-    mapText(textId) { it.copy(entrance = null, entranceMillis = null, exit = null, exitMillis = null) }
+    mapText(textId) { it.copy(entrance = null, entranceMillis = null, exit = null, exitMillis = null, loop = null) }
 
 /** True when the user picked an animation or an animation length for the text. */
 val TextOverlay.hasCustomAnimation: Boolean
-    get() = entrance != null || entranceMillis != null || exit != null || exitMillis != null
+    get() = entrance != null || entranceMillis != null || exit != null || exitMillis != null || loop != null
 
 /**
  * Removes a text overlay. A row of the text track that becomes empty goes away, and the rows below it move up.

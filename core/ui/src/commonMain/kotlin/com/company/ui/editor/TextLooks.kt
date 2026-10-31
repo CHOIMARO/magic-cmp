@@ -23,10 +23,12 @@ import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
@@ -52,12 +54,16 @@ import com.company.domain.model.editor.Decoration
 import com.company.domain.model.editor.DecorationRange
 import com.company.domain.model.editor.TextEntrance
 import com.company.domain.model.editor.TextFontType
+import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.perCharacter
 import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.sin
 
 /**
  * Shadow behind text. A blur of 0 gives a hard shadow with sharp edges.
@@ -315,7 +321,7 @@ fun TextStyleType.look(
  */
 fun TextOverlay.look(scale: Float = 1f): TextLook {
     val look = style.look(scale = scale, font = font, sizeStep = sizeStep, decorations = decorations)
-    return look.copy(animation = look.animation.withChoices(entrance, entranceMillis, exit, exitMillis, length))
+    return look.copy(animation = look.animation.withChoices(entrance, entranceMillis, exit, exitMillis, length, loop))
 }
 
 /**
@@ -504,6 +510,8 @@ private fun LookText(
         textAlign = look.textAlign,
     )
     val outlineStrokePx = if (look.outlineEm > 0f) look.outlineEm * fontSizePx * 2 else with(density) { (look.outlineWidth * fit).dp.toPx() }
+    // 불꽃 반복은 스타일의 그림자를 위로 번지는 주황빛 그림자로 바꾼다.
+    val shadows = if (frame.loop == TextLoop.FIRE) fireShadows(frame.loopTime, look.fontSize * fit) else look.shadows
     val outlineLayout = remember { LayoutRef() }
     val hasDecorations = decorations.isNotEmpty()
     val decorationShadow = remember(density) { DecorationShadow.toShadow(density) }
@@ -556,21 +564,33 @@ private fun LookText(
 
     val background = look.background
     val cornerRadius = look.cornerRadius.dp
+    val paddingH = (look.paddingHorizontal * fit).dp
+    val paddingV = (look.paddingVertical * fit).dp
     var mainLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
     Box(
         modifier = modifier
             .graphicsLayer {
+                val shake = if (frame.loop == TextLoop.SHAKE) shakeAt(frame.loopTime, fontSizePx) else ShakeOffset.None
                 alpha = frame.alpha
                 scaleX = frame.scale
                 scaleY = frame.scale
-                translationY = frame.offsetY.dp.toPx()
-                rotationZ = look.rotation
+                translationX = shake.x
+                translationY = frame.offsetY.dp.toPx() + shake.y
+                rotationZ = look.rotation + shake.rotation
             }
             .drawWithContent {
+                val layout = mainLayout
+                // 타이핑과 물결치기는 글자 자리를 잘라 따로 그린다. 모든 층(그림자·테두리·입체)이 글자와 함께 움직인다.
+                val pieces = if (layout != null && (frame.charReveal < 1f || frame.loop == TextLoop.WAVE)) {
+                    textPieces(drawn, layout, frame, fontSizePx, Offset(paddingH.toPx(), paddingV.toPx()), size)
+                } else {
+                    null
+                }
                 // 기울임은 그리기 단계에서 준다. iOS(Skia)의 글자 배치는 TextGeometricTransform을 그리지 않는다.
                 withTransform({ if (look.skewX != 0f) transform(skewMatrix(look.skewX, size.height / 2)) }) {
                     if (frame.textReveal >= 1f) {
-                        this@drawWithContent.drawContent()
+                        drawLookBackground(background, cornerRadius.toPx(), frame.backgroundReveal)
+                        this@drawWithContent.drawPieces(pieces)
                     } else {
                         // 스펙처럼 위아래와 왼쪽은 넉넉히 남겨서, 그림자와 테두리가 잘리지 않게 한다.
                         clipRect(
@@ -578,18 +598,14 @@ private fun LookText(
                             top = -size.height * 0.3f,
                             right = size.width * frame.textReveal,
                             bottom = size.height * 1.3f,
-                        ) { this@drawWithContent.drawContent() }
+                        ) {
+                            drawLookBackground(background, cornerRadius.toPx(), frame.backgroundReveal)
+                            this@drawWithContent.drawPieces(pieces)
+                        }
                     }
                 }
             }
-            .drawBehind {
-                if (background.alpha > 0f) {
-                    clipRect(right = size.width * frame.backgroundReveal) {
-                        drawRoundRect(background, cornerRadius = CornerRadius(cornerRadius.toPx()))
-                    }
-                }
-            }
-            .padding(horizontal = (look.paddingHorizontal * fit).dp, vertical = (look.paddingVertical * fit).dp),
+            .padding(horizontal = paddingH, vertical = paddingV),
     ) {
         // 꾸미기 배경은 글자 뒤 모든 층보다 아래에 그린다.
         if (drawn.lines.any { line -> line.any { it.decoration?.background != null } }) {
@@ -602,7 +618,7 @@ private fun LookText(
         }
         // 아래 레이어부터 그린다: 먼 그림자 → 꾸미기 그림자 → 빛·입체 그림자 → 테두리 → 본문(가까운 그림자 포함)
         // → 그라데이션.
-        look.shadows.drop(1).reversed().forEach { shadow ->
+        shadows.drop(1).reversed().forEach { shadow ->
             Text(text = layer(TextLayer.FAR_SHADOW), style = style.copy(shadow = shadow.toShadow(density)), softWrap = false)
         }
         if (hasDecorations && decorations.any { it.decoration.shadow }) {
@@ -636,7 +652,7 @@ private fun LookText(
         }
         Text(
             text = layer(TextLayer.MAIN),
-            style = style.copy(shadow = look.shadows.firstOrNull()?.toShadow(density)),
+            style = style.copy(shadow = shadows.firstOrNull()?.toShadow(density)),
             softWrap = false,
             onTextLayout = { mainLayout = it },
         )
@@ -649,6 +665,149 @@ private fun LookText(
                 FillText(layer(TextLayer.FILL_REST), style, fill, look.font, fontSizePx)
             }
         }
+    }
+}
+
+// =====================================================================
+// Loops and typing (F09)
+// =====================================================================
+
+/** Height of the wave loop, as a part of the font size. */
+private const val WAVE_HEIGHT_EM = 0.14f
+
+/** Speed of the wave loop, in radians per second. One wave takes about 0.9 seconds. */
+private const val WAVE_SPEED = 7f
+
+/** Phase step of the wave loop from one character to the next, in radians. */
+private const val WAVE_STEP = 0.6f
+
+/** Largest move of the shake loop, as a part of the font size. */
+private const val SHAKE_EM = 0.06f
+
+/** Largest turn of the shake loop, in degrees. */
+private const val SHAKE_DEGREES = 1.8f
+
+/** Font size that the fire glow sizes of the prototype use, in dp. */
+private const val FIRE_REFERENCE_SIZE = 26f
+
+/**
+ * Move and turn of the shake loop at one moment.
+ *
+ * @property x Horizontal move in pixels.
+ * @property y Vertical move in pixels.
+ * @property rotation Turn in degrees.
+ */
+private class ShakeOffset(val x: Float, val y: Float, val rotation: Float) {
+    companion object {
+        val None = ShakeOffset(0f, 0f, 0f)
+    }
+}
+
+/** Shake of the whole text box at [time] seconds. Several fast sine waves make an uneven shake. */
+private fun shakeAt(time: Float, fontSizePx: Float): ShakeOffset {
+    val a = fontSizePx * SHAKE_EM
+    return ShakeOffset(
+        x = sin(time * 61f) * a + sin(time * 23f) * a * 0.6f,
+        y = cos(time * 53f) * a,
+        rotation = sin(time * 41f) * SHAKE_DEGREES,
+    )
+}
+
+/**
+ * Shadows of the fire loop at [time] seconds: a light core and orange glows that go up and flicker.
+ *
+ * @param fontSize Font size of the text in dp.
+ */
+private fun fireShadows(time: Float, fontSize: Float): List<LookShadow> {
+    val glow = 0.7f + 0.3f * abs(sin(time * 11f) * sin(time * 6.7f + 1f))
+    val unit = fontSize / FIRE_REFERENCE_SIZE
+    return listOf(
+        LookShadow(Color(0xE6FFFADC), offsetY = 0f, blur = 2f * unit),
+        LookShadow(Color(0xFFFFD84D), offsetY = -1.5f * unit, blur = 5f * glow * unit),
+        LookShadow(Color(0xFFFF9A1F), offsetY = -3f * unit, blur = 10f * glow * unit),
+        LookShadow(Color(0xFFFF4A17), offsetY = -5f * unit, blur = 17f * glow * unit),
+        LookShadow(Color(0x99FF2800), offsetY = -8f * unit, blur = 26f * glow * unit),
+    )
+}
+
+/**
+ * Part of the text box that draws on its own.
+ *
+ * @property rect Area of the part in the text box.
+ * @property dy Vertical move of the part in pixels.
+ */
+private class TextPiece(val rect: Rect, val dy: Float)
+
+/**
+ * Splits the text box into parts for the typing entrance and the wave loop.
+ *
+ * Typing gives one part for each line, up to the last character that shows. The wave gives one part for each
+ * character that shows, with its own height. The first and the last part of a line go far outside the box, so the
+ * shadows and the outlines at the edges stay.
+ *
+ * @param drawn Text after the line breaks.
+ * @param layout Layout of the letters.
+ * @param frame Animation state.
+ * @param fontSizePx Font size in pixels.
+ * @param origin Position of the letters in the text box.
+ * @param boxSize Size of the text box.
+ */
+private fun textPieces(drawn: DrawnText, layout: TextLayoutResult, frame: TextFrame, fontSizePx: Float, origin: Offset, boxSize: Size): List<TextPiece> {
+    val total = drawn.lines.sumOf { it.size }
+    val shown = floor(frame.charReveal * total + 1e-4f).toInt()
+    val wave = frame.loop == TextLoop.WAVE
+    val amplitude = fontSizePx * WAVE_HEIGHT_EM
+    val far = boxSize.width + boxSize.height + fontSizePx * 4
+    val pieces = mutableListOf<TextPiece>()
+    var offset = 0
+    var index = 0
+    drawn.lines.forEachIndexed { lineIndex, line ->
+        if (lineIndex > 0) offset++
+        if (lineIndex < layout.lineCount) {
+            val top = if (lineIndex == 0) -far else origin.y + layout.getLineTop(lineIndex)
+            val bottom = if (lineIndex == drawn.lines.lastIndex) far else origin.y + layout.getLineBottom(lineIndex)
+            val visible = (shown - index).coerceIn(0, line.size)
+            fun box(char: Int) = layout.getBoundingBox(offset + char)
+            if (visible > 0 && !wave) {
+                val right = if (visible == line.size) far else origin.x + box(visible - 1).right
+                pieces += TextPiece(Rect(-far, top, right, bottom), 0f)
+            } else if (visible > 0) {
+                for (char in 0 until visible) {
+                    val left = if (char == 0) -far else origin.x + box(char).left
+                    val right = when (char) {
+                        line.lastIndex -> far
+                        visible - 1 -> origin.x + box(char).right
+                        else -> origin.x + box(char + 1).left
+                    }
+                    val dy = sin(frame.loopTime * WAVE_SPEED - (index + char) * WAVE_STEP) * amplitude
+                    pieces += TextPiece(Rect(left, top, right, bottom), dy)
+                }
+            }
+        }
+        index += line.size
+        offset += line.size
+    }
+    return pieces
+}
+
+/** Draws the content, or only [pieces] when they are not null. */
+private fun ContentDrawScope.drawPieces(pieces: List<TextPiece>?) {
+    if (pieces == null) {
+        drawContent()
+        return
+    }
+    pieces.forEach { piece ->
+        translate(top = piece.dy) {
+            clipRect(piece.rect.left, piece.rect.top, piece.rect.right, piece.rect.bottom) { this@drawPieces.drawContent() }
+        }
+    }
+}
+
+/** Draws the background box of a look. [reveal] is the part that shows from the left edge, from 0 to 1. */
+private fun DrawScope.drawLookBackground(background: Color, cornerRadiusPx: Float, reveal: Float) {
+    if (background.alpha <= 0f) return
+    clipRect(right = size.width * reveal) {
+        drawRoundRect(background, cornerRadius = CornerRadius(cornerRadiusPx))
     }
 }
 

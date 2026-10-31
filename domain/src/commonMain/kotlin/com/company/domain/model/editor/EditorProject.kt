@@ -105,6 +105,7 @@ data class Clip(
  * @property entranceMillis Length of the entrance, or null for the length of [style].
  * @property exit Exit animation, or null for [TextExit.FADE].
  * @property exitMillis Length of the exit, or null for the default length.
+ * @property loop Movement that repeats while the text is on screen, or null for no movement.
  */
 data class TextOverlay(
     override val id: String,
@@ -124,6 +125,7 @@ data class TextOverlay(
     val entranceMillis: Int? = null,
     val exit: TextExit? = null,
     val exitMillis: Int? = null,
+    val loop: TextLoop? = null,
 ) : TrackItem
 
 /**

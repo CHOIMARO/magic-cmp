@@ -6,6 +6,7 @@ import com.company.domain.model.editor.DecorationRange
 import com.company.domain.model.editor.TextEntrance
 import com.company.domain.model.editor.TextExit
 import com.company.domain.model.editor.TextFontType
+import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.TextStyleType
 import kotlin.test.Test
@@ -43,6 +44,45 @@ class TextV7RulesTest {
         val none = style.withChoices(TextEntrance.NONE, null, TextExit.NONE, null, lengthSeconds = 3.0)
         assertEquals(TextFrame.Static, none.frameAt(0.0, 3.0))
         assertEquals(TextFrame.Static, none.frameAt(2.99, 0.01))
+    }
+
+    @Test
+    fun typingEntrance_showsTheCharactersInOrder_andTakesOneSecondByDefault() {
+        val style = TextStyleType.NEON.look().animation
+        val typing = style.withChoices(TextEntrance.TYPING, null, null, null, lengthSeconds = 3.0)
+        assertEquals(1000, typing.entranceMillis)
+        assertEquals(0f, typing.frameAt(0.0, 3.0).charReveal, 1e-4f)
+        assertEquals(0.5f, typing.frameAt(0.5, 2.5).charReveal, 1e-4f)
+        assertEquals(1f, typing.frameAt(0.5, 2.5).alpha, 1e-4f)
+        assertEquals(TextFrame.Static, typing.frameAt(1.5, 1.5))
+        // 사용자가 고른 길이가 기본 길이보다 먼저다.
+        assertEquals(600, style.withChoices(TextEntrance.TYPING, 600, null, null, lengthSeconds = 3.0).entranceMillis)
+        // 다른 등장은 스타일의 길이를 그대로 쓴다.
+        assertEquals(700, style.withChoices(TextEntrance.FADE, null, null, null, lengthSeconds = 3.0).entranceMillis)
+    }
+
+    @Test
+    fun loop_movesTheTextDuringTheWholeTime() {
+        val style = TextStyleType.NEON.look().animation
+        val wave = style.withChoices(null, null, null, null, lengthSeconds = 3.0, loop = TextLoop.WAVE)
+        val middle = wave.frameAt(1.5, 1.5)
+        assertEquals(TextLoop.WAVE, middle.loop)
+        assertEquals(1.5f, middle.loopTime, 1e-4f)
+        assertEquals(listOf(0.0..3.0), wave.animatedRanges(3.0))
+        // 반복이 없으면 등장과 퇴장 사이에는 모양이 바뀌지 않는다.
+        val still = style.withChoices(null, null, null, null, lengthSeconds = 3.0)
+        assertEquals(TextFrame.Static, still.frameAt(1.5, 1.5))
+        assertEquals(2, still.animatedRanges(3.0).size)
+    }
+
+    @Test
+    fun overlayLook_appliesTheLoop() {
+        val overlay = TextOverlay(
+            id = "t", text = "a", start = 0.0, length = 3.0, style = TextStyleType.NEON, x = 50.0, y = 50.0,
+            loop = TextLoop.SHAKE,
+        )
+        assertEquals(TextLoop.SHAKE, overlay.look().animation.loop)
+        assertEquals(TextLoop.NONE, overlay.copy(loop = null).look().animation.loop)
     }
 
     @Test

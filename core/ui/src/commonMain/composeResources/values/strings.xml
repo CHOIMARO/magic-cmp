@@ -63,6 +63,7 @@
 
     <!-- 글자 등장·퇴장 애니메이션 -->
     <string name="entrance_none">없음</string>
+    <string name="entrance_typing">타이핑</string>
     <string name="entrance_pop">팝</string>
     <string name="entrance_slide_up">밀어 올리기</string>
     <string name="entrance_fade">페이드</string>
@@ -72,6 +73,10 @@
     <string name="entrance_write">써 내려가기</string>
     <string name="entrance_stamp">도장 찍기</string>
     <string name="entrance_bounce">통통</string>
+    <string name="loop_none">없음</string>
+    <string name="loop_wave">물결치기</string>
+    <string name="loop_shake">떨리기</string>
+    <string name="loop_fire">불꽃</string>
     <string name="exit_none">없음</string>
     <string name="exit_fade">페이드</string>
     <string name="exit_slide_down">밀어 내리기</string>

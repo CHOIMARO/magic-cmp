@@ -16,6 +16,8 @@ import com.company.domain.model.editor.MusicRange
 import com.company.domain.model.editor.PasteTarget
 import com.company.domain.model.editor.SoundEffect
 import com.company.domain.model.editor.SoundEffectCategory
+import com.company.domain.model.editor.TextEntrance
+import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.TransitionSlot
@@ -37,6 +39,7 @@ import com.company.domain.model.editor.dubbingOverflow
 import com.company.domain.model.editor.duplicateAudioItem
 import com.company.domain.model.editor.finishAudioMove
 import com.company.domain.model.editor.fitDubbingToCaption
+import com.company.domain.model.editor.hasCustomAnimation
 import com.company.domain.model.editor.moveAudioItem
 import com.company.domain.model.editor.moveMusicRange
 import com.company.domain.model.editor.paste
@@ -44,8 +47,10 @@ import com.company.domain.model.editor.pasteOptions
 import com.company.domain.model.editor.placedCaptions
 import com.company.domain.model.editor.removeAudioItem
 import com.company.domain.model.editor.removeClip
+import com.company.domain.model.editor.resetTextAnimation
 import com.company.domain.model.editor.scriptLines
 import com.company.domain.model.editor.scriptStart
+import com.company.domain.model.editor.setTextAnimation
 import com.company.domain.model.editor.setTransition
 import com.company.domain.model.editor.setTransitionForAllBoundaries
 import com.company.domain.model.editor.speechRangesFrom
@@ -58,6 +63,7 @@ import com.company.domain.model.editor.trimWith
 import com.company.domain.model.editor.valuesIn
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -329,5 +335,23 @@ class EditorV7EditsTest {
         assertEquals(MusicRange(24.0, 30.0), moveMusicRange(30.0, range, 100.0, moveStart = true, moveEnd = true))
         assertEquals(MusicRange(7.0, 10.0), moveMusicRange(30.0, range, 5.0, moveStart = true, moveEnd = false))
         assertEquals(MusicRange(4.0, 30.0), moveMusicRange(30.0, range, 50.0, moveStart = false, moveEnd = true))
+    }
+
+    // ----- Text animations -----
+
+    @Test
+    fun setTextAnimation_keepsTheLoop_andResetRemovesIt() {
+        val text = TextOverlay(id = "t", text = "a", start = 0.0, length = 3.0, style = TextStyleType.NEON, x = 50.0, y = 50.0)
+        val withLoop = project.copy(texts = listOf(text)).setTextAnimation("t", loop = TextLoop.FIRE)
+        assertEquals(TextLoop.FIRE, withLoop.texts.single().loop)
+        assertTrue(withLoop.texts.single().hasCustomAnimation)
+        // 등장만 바꾸면 반복은 그대로다.
+        val withEntrance = withLoop.setTextAnimation("t", entrance = TextEntrance.TYPING)
+        assertEquals(TextEntrance.TYPING, withEntrance.texts.single().entrance)
+        assertEquals(TextLoop.FIRE, withEntrance.texts.single().loop)
+        val reset = withEntrance.resetTextAnimation("t").texts.single()
+        assertNull(reset.loop)
+        assertNull(reset.entrance)
+        assertFalse(reset.hasCustomAnimation)
     }
 }

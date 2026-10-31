@@ -67,6 +67,7 @@ import com.company.domain.model.editor.EditorProject
 import com.company.domain.model.editor.MAX_TEXT_SCALE
 import com.company.domain.model.editor.MIN_TEXT_SCALE
 import com.company.domain.model.editor.MediaType
+import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.clipAt
 import com.company.domain.model.editor.transitionWindows
@@ -644,7 +645,8 @@ private const val DEMO_EXIT_HOLD_MILLIS = 300L
 private const val DEMO_END_MILLIS = 500L
 
 /**
- * Plays the animation of the selected text once after each pick in the animation sheet (F09).
+ * Plays the animation of the selected text once after each pick in the animation sheet (F09). While the loop tab is
+ * open, it plays the picked loop all the time.
  *
  * @return The animation state of the selected text, or null when no demo plays.
  */
@@ -652,8 +654,18 @@ private const val DEMO_END_MILLIS = 500L
 private fun rememberAnimationDemo(state: EditorState): TextFrame? {
     var frame by remember { mutableStateOf<TextFrame?>(null) }
     val text = state.selectedText?.takeIf { state.sheet == EditorSheet.ANIMATION }
-    LaunchedEffect(state.animationReplay, text != null) {
+    val loopTab = text != null && state.animationTab == AnimationTab.LOOP
+    val loop = text?.loop?.takeIf { loopTab } ?: TextLoop.NONE
+    LaunchedEffect(state.animationReplay, text != null, loopTab, loop) {
         frame = null
+        if (loopTab) {
+            if (loop == TextLoop.NONE) return@LaunchedEffect
+            val start = withFrameMillis { it }
+            while (true) {
+                val elapsed = withFrameMillis { it } - start
+                frame = TextFrame(loop = loop, loopTime = elapsed / 1000f)
+            }
+        }
         if (text == null || state.animationReplay == 0) return@LaunchedEffect
         val animation = text.look().animation
         val entrance = state.animationTab == AnimationTab.ENTRANCE

@@ -6,6 +6,7 @@ import com.company.domain.model.editor.TextContent
 import com.company.domain.model.editor.TextEntrance
 import com.company.domain.model.editor.TextExit
 import com.company.domain.model.editor.TextFontType
+import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.addText
 import com.company.domain.model.editor.afterTextChange
@@ -242,12 +243,24 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
     }
 
     /**
+     * Sets the loop of the selected text. The stage plays it while the loop tab is open.
+     *
+     * @param loop New loop.
+     */
+    fun pickLoop(loop: TextLoop) {
+        val text = host.state.selectedText ?: return
+        if ((text.loop ?: TextLoop.NONE) != loop) host.projects.commit { it.setTextAnimation(text.id, loop = loop) }
+    }
+
+    /**
      * Sets the length of the animation of the open tab. The first change of a quick series keeps an undo step.
      *
      * @param millis New length in milliseconds.
      */
     fun changeAnimationLength(millis: Int) {
         val text = host.state.selectedText ?: return
+        // 반복 애니메이션에는 길이가 없다.
+        if (host.state.animationTab == AnimationTab.LOOP) return
         val fresh = lastLengthChange?.let { it.elapsedNow().inWholeMilliseconds > SLIDER_STEP_MILLIS } ?: true
         lastLengthChange = TimeSource.Monotonic.markNow()
         if (fresh) host.projects.saveCheckpoint()
@@ -255,6 +268,7 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
             when (host.state.animationTab) {
                 AnimationTab.ENTRANCE -> it.setTextAnimationLength(text.id, entranceMillis = millis)
                 AnimationTab.EXIT -> it.setTextAnimationLength(text.id, exitMillis = millis)
+                AnimationTab.LOOP -> it
             }
         }
         host.reduce { copy(animationReplay = animationReplay + 1) }

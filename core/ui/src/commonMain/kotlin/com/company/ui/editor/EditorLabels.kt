@@ -11,6 +11,7 @@ import com.company.domain.model.editor.TemplateKind
 import com.company.domain.model.editor.TextEntrance
 import com.company.domain.model.editor.TextExit
 import com.company.domain.model.editor.TextFontType
+import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.TransitionType
 import com.company.ui.resources.*
@@ -106,6 +107,7 @@ val TextEntrance.displayName: String
     @Composable get() = stringResource(
         when (this) {
             TextEntrance.NONE -> Res.string.entrance_none
+            TextEntrance.TYPING -> Res.string.entrance_typing
             TextEntrance.POP -> Res.string.entrance_pop
             TextEntrance.SLIDE_UP -> Res.string.entrance_slide_up
             TextEntrance.FADE -> Res.string.entrance_fade
@@ -115,6 +117,17 @@ val TextEntrance.displayName: String
             TextEntrance.WRITE -> Res.string.entrance_write
             TextEntrance.STAMP -> Res.string.entrance_stamp
             TextEntrance.BOUNCE -> Res.string.entrance_bounce
+        }
+    )
+
+/** Display name of the loop animation. */
+val TextLoop.displayName: String
+    @Composable get() = stringResource(
+        when (this) {
+            TextLoop.NONE -> Res.string.loop_none
+            TextLoop.WAVE -> Res.string.loop_wave
+            TextLoop.SHAKE -> Res.string.loop_shake
+            TextLoop.FIRE -> Res.string.loop_fire
         }
     )
 

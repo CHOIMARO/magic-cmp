@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.company.core.base.BaseViewModel
 import com.company.domain.model.editor.EditorProject
 import com.company.domain.model.editor.LayoutType
+import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.MY_VOICE_ID
 import com.company.domain.model.editor.MyVoiceStatus
 import com.company.domain.model.editor.compactTextLayers
@@ -31,7 +32,10 @@ import com.company.domain.usecase.editor.UpdateDraftUseCase
 import com.company.feature.editor.resources.Res
 import com.company.feature.editor.resources.toast_deleted_undoable
 import com.company.feature.editor.resources.toast_duplicated
+import com.company.feature.editor.resources.toast_favorite_added
+import com.company.feature.editor.resources.toast_favorite_removed
 import com.company.feature.editor.resources.toast_layout_clip_hint
+import com.company.feature.editor.resources.toast_layout_reset
 import com.company.feature.editor.resources.toast_move_line_into_clip
 import com.company.feature.editor.resources.toast_split_at_line
 import com.company.feature.editor.resources.toast_undone
@@ -98,7 +102,7 @@ internal interface EditorHost {
  */
 class EditorViewModel(
     private val projectRepository: EditorProjectRepository,
-    settingsRepository: EditorSettingsRepository,
+    private val settingsRepository: EditorSettingsRepository,
     mediaLibraryRepository: MediaLibraryRepository,
     generateCaptions: GenerateCaptionsUseCase,
     fontRepository: FontRepository,
@@ -174,7 +178,9 @@ class EditorViewModel(
             }
         }
         viewModelScope.launch { projectRepository.canUndo.collect { reduce { copy(canUndo = it) } } }
-        viewModelScope.launch { settingsRepository.settings.collect { reduce { copy(watermark = it.watermark) } } }
+        viewModelScope.launch {
+            settingsRepository.settings.collect { reduce { copy(watermark = it.watermark, favoriteTextStyles = it.favoriteTextStyles) } }
+        }
         viewModelScope.launch {
             myVoiceRepository.status.collect { status ->
                 reduce {
@@ -293,6 +299,7 @@ class EditorViewModel(
             is EditorIntent.ChangeDraftText -> texts.changeText(intent.text, intent.selectionStart, intent.selectionEnd)
             is EditorIntent.SelectTextTab -> reduce { copy(textDraft = textDraft?.copy(tab = intent.tab)) }
             is EditorIntent.ChangeDraftStyle -> reduce { copy(textDraft = textDraft?.copy(style = intent.style)) }
+            is EditorIntent.ToggleFavoriteTextStyle -> toggleFavoriteTextStyle(intent.style)
             is EditorIntent.ChangeDraftFont -> texts.changeFont(intent.font)
             is EditorIntent.ChangeDraftSize -> reduce { copy(textDraft = textDraft?.copy(sizeStep = intent.step)) }
             is EditorIntent.DecorateDraft -> texts.decorate(intent.change)
@@ -305,12 +312,17 @@ class EditorViewModel(
             is EditorIntent.SelectAnimationTab -> reduce { copy(animationTab = intent.tab) }
             is EditorIntent.PickEntrance -> texts.pickEntrance(intent.entrance)
             is EditorIntent.PickExit -> texts.pickExit(intent.exit)
+            is EditorIntent.PickLoop -> texts.pickLoop(intent.loop)
             is EditorIntent.ChangeAnimationLength -> texts.changeAnimationLength(intent.millis)
             EditorIntent.ResetAnimation -> texts.resetAnimation()
 
             is EditorIntent.OpenSheet -> openSheet(intent.sheet)
             EditorIntent.CloseSheet -> closeSheet()
             is EditorIntent.PickLayout -> pickLayout(intent.layout)
+            EditorIntent.ResetLayout -> if (currentState.project.layout != LayoutType.FULL) {
+                projectRepository.commit { it.copy(layout = LayoutType.FULL) }
+                toast(uiText(Res.string.toast_layout_reset))
+            }
             is EditorIntent.PickSpeed -> currentState.selectedClip?.let { clip ->
                 if (clip.speed != intent.speed) projectRepository.commit { it.setClipSpeed(clip.id, intent.speed) }
             }
@@ -658,6 +670,19 @@ class EditorViewModel(
         if (project.layout == layout) return
         projectRepository.commit { it.copy(layout = layout) }
         if (layout.clipCount > project.clips.size) toast(uiText(Res.string.toast_layout_clip_hint, layout.clipCount))
+    }
+
+    /**
+     * Adds the text template to the favorites at the front, or removes it, and tells the user. The favorites are a
+     * user setting, not a part of the project.
+     */
+    private fun toggleFavoriteTextStyle(style: TextStyleType) {
+        val added = style !in currentState.favoriteTextStyles
+        settingsRepository.update { settings ->
+            val others = settings.favoriteTextStyles - style
+            settings.copy(favoriteTextStyles = if (added) listOf(style) + others else others)
+        }
+        toast(uiText(if (added) Res.string.toast_favorite_added else Res.string.toast_favorite_removed))
     }
 
     private fun undo() {

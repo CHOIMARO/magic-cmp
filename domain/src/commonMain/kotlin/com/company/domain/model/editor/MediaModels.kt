@@ -66,10 +66,13 @@ data class MusicTrack(
  *
  * @property templateNews True to get news about new templates.
  * @property watermark True to show the "magic" watermark on the video.
+ * @property favoriteTextStyles Text templates that the user marked as favorites, the newest first (F14). They are
+ *   not part of a project, so the undo history does not keep them.
  */
 data class EditorSettings(
     val templateNews: Boolean = false,
     val watermark: Boolean = false,
+    val favoriteTextStyles: List<TextStyleType> = emptyList(),
 )
 
 /**

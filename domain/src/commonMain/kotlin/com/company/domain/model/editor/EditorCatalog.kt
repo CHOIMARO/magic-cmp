@@ -113,6 +113,9 @@ enum class TextEntrance {
     /** No animation. The text shows at once ("없음"). */
     NONE,
 
+    /** The letters show one by one from the first letter ("타이핑"). The length is 1 second when the user picks no length. */
+    TYPING,
+
     /** Grows from 60% with a small overshoot ("팝"). */
     POP,
 
@@ -139,6 +142,21 @@ enum class TextEntrance {
 
     /** Drops from above and bounces into place ("통통"). */
     BOUNCE,
+}
+
+/** Movement of a text that repeats while the text is on screen (F09 loop tab). */
+enum class TextLoop {
+    /** NONE : No movement ("없음"). */
+    NONE,
+
+    /** WAVE : The letters go up and down one after another, as a wave ("물결치기"). */
+    WAVE,
+
+    /** SHAKE : The whole text shakes a little ("떨리기"). */
+    SHAKE,
+
+    /** FIRE : An orange glow that flickers goes up from the letters ("불꽃"). */
+    FIRE,
 }
 
 /** How a text goes off screen. */

@@ -38,6 +38,7 @@
     <string name="sheet_title_caption_script">글로 자막 만들기</string>
     <string name="sheet_title_transition">화면 전환</string>
     <string name="sheet_intro_layout">화면을 나누거나 액자처럼 꾸며요</string>
+    <string name="layout_reset">레이아웃 초기화</string>
     <string name="sheet_intro_volume_clip">이 클립의 원본 소리 크기예요</string>
     <string name="sheet_intro_volume_dubbing">이 더빙의 소리 크기예요</string>
     <string name="sheet_intro_volume_effect">이 효과음의 소리 크기예요</string>
@@ -59,6 +60,10 @@
     <string name="decoration_selection">‘%1$s’에만 적용해요</string>
     <string name="decoration_all">글자 전체에 적용해요 · 입력창에서 글자를 고르면 그 부분만 꾸며요</string>
     <string name="decoration_reset">꾸미기 초기화</string>
+    <string name="template_reset">템플릿 초기화</string>
+    <string name="template_favorite_hint">하트를 누르거나 길게 누르면 즐겨찾기 · 맨 앞에 보여요</string>
+    <string name="template_favorite_add">즐겨찾기</string>
+    <string name="template_favorite_remove">즐겨찾기에서 빼기</string>
     <string name="decoration_size">크기</string>
     <string name="decoration_color_auto">색상 · 배경이 있는 글자는 글자색이 자동이에요</string>
     <string name="decoration_color">색상</string>
@@ -110,6 +115,8 @@
     <string name="caption_script_clips_after">재생선부터 구간 %1$d개</string>
     <string name="caption_script_insert">자막 넣기</string>
     <string name="animation_entrance">등장</string>
+    <string name="animation_loop">반복</string>
+    <string name="animation_loop_hint">글자가 보이는 동안 계속 움직여요</string>
     <string name="animation_exit">퇴장</string>
     <string name="animation_default">기본값</string>
     <string name="animation_length">길이</string>
@@ -261,6 +268,9 @@
     <string name="toast_duplicated">복제했어요</string>
     <string name="toast_deleted_undoable">삭제했어요 · 되돌리기 가능</string>
     <string name="toast_undone">되돌렸어요</string>
+    <string name="toast_layout_reset">레이아웃을 처음으로 돌렸어요</string>
+    <string name="toast_favorite_added">즐겨찾기에 넣었어요 · 맨 앞에 보여요</string>
+    <string name="toast_favorite_removed">즐겨찾기에서 뺐어요</string>
     <string name="toast_captions_removed">자막을 지웠어요 · 되돌리기 가능</string>
     <string name="toast_add_media_first">먼저 영상이나 사진을 넣어 주세요</string>
     <string name="toast_move_line_into_caption">흰 선을 자막 안쪽으로 옮겨 주세요</string>

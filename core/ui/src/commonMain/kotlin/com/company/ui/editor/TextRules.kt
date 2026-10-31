@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.company.domain.model.editor.TextEntrance
 import com.company.domain.model.editor.TextExit
 import com.company.domain.model.editor.TextFontType
+import com.company.domain.model.editor.TextLoop
 import kotlin.math.floor
 import kotlin.math.pow
 
@@ -54,6 +55,16 @@ private const val PREVIEW_PAUSE_MILLIS = 300L
 /** Opacity steps of the flicker entrance. */
 private val FlickerSteps = floatArrayOf(0f, 0.9f, 0.1f, 0.8f, 0.3f, 1f, 0.6f, 1f)
 
+/** Length of the typing entrance when the user picks no length, in milliseconds. */
+private const val TYPING_DEFAULT_MILLIS = 1000
+
+/**
+ * Default length of an entrance that the user picks, when it differs from the length of the text style.
+ *
+ * @return The length in milliseconds, or null to use the length of the text style.
+ */
+fun TextEntrance.defaultMillis(): Int? = if (this == TextEntrance.TYPING) TYPING_DEFAULT_MILLIS else null
+
 /**
  * Entrance and exit of a text.
  *
@@ -61,6 +72,7 @@ private val FlickerSteps = floatArrayOf(0f, 0.9f, 0.1f, 0.8f, 0.3f, 1f, 0.6f, 1f
  * @property entranceMillis Length of the entrance.
  * @property exitMillis Length of the exit.
  * @property exit How the text goes off screen.
+ * @property loop Movement that repeats while the text is on screen.
  */
 @Immutable
 data class TextAnimation(
@@ -68,6 +80,7 @@ data class TextAnimation(
     val entranceMillis: Int,
     val exitMillis: Int,
     val exit: TextExit = TextExit.FADE,
+    val loop: TextLoop = TextLoop.NONE,
 ) {
     /** Length of the entrance in seconds. */
     val entranceSeconds: Double
@@ -84,14 +97,16 @@ const val DEFAULT_TITLE_EXIT_MILLIS = 200
 /**
  * Applies the animation that the user picked for one text.
  *
- * A null value keeps the value of the style. The default exit is a fade. "없음" has no length. When the entrance and
- * the exit together are longer than the text, both become shorter in the same proportion.
+ * A null value keeps the value of the style. The default exit is a fade. "없음" has no length. A picked entrance
+ * without a picked length uses [defaultMillis], or the length of the style. When the entrance and the exit together
+ * are longer than the text, both become shorter in the same proportion.
  *
  * @param entrance Entrance that the user picked, or null.
  * @param entranceMillis Entrance length that the user picked, or null.
  * @param exit Exit that the user picked, or null.
  * @param exitMillis Exit length that the user picked, or null.
  * @param lengthSeconds Time of the text on screen.
+ * @param loop Loop that the user picked, or null for no loop.
  */
 fun TextAnimation.withChoices(
     entrance: TextEntrance?,
@@ -99,10 +114,12 @@ fun TextAnimation.withChoices(
     exit: TextExit?,
     exitMillis: Int?,
     lengthSeconds: Double,
+    loop: TextLoop? = null,
 ): TextAnimation {
     val newEntrance = entrance ?: this.entrance
     val newExit = exit ?: TextExit.FADE
-    var enterMs = if (newEntrance == TextEntrance.NONE) 0.0 else (entranceMillis ?: this.entranceMillis).toDouble()
+    val pickedDefault = if (entrance != null) entrance.defaultMillis() else null
+    var enterMs = if (newEntrance == TextEntrance.NONE) 0.0 else (entranceMillis ?: pickedDefault ?: this.entranceMillis).toDouble()
     var exitMs = if (newExit == TextExit.NONE) 0.0 else (exitMillis ?: DEFAULT_TITLE_EXIT_MILLIS).toDouble()
     val limit = lengthSeconds * 1000
     if (enterMs + exitMs > limit && enterMs + exitMs > 0.0) {
@@ -110,7 +127,7 @@ fun TextAnimation.withChoices(
         enterMs *= ratio
         exitMs *= ratio
     }
-    return TextAnimation(newEntrance, enterMs.toInt(), exitMs.toInt(), newExit)
+    return TextAnimation(newEntrance, enterMs.toInt(), exitMs.toInt(), newExit, loop ?: TextLoop.NONE)
 }
 
 /** How a caption shows the word that the speaker says now. */
@@ -130,6 +147,10 @@ enum class CaptionHighlight {
  * @property offsetY Vertical move in dp. A positive value moves down.
  * @property backgroundReveal Part of the background that shows, from the left edge, from 0 to 1.
  * @property textReveal Part of the text box that shows, from the left edge, from 0 to 1.
+ * @property charReveal Part of the characters that shows, in reading order, from 0 to 1. The hidden characters
+ *   keep their space.
+ * @property loop Movement that repeats while the text is on screen.
+ * @property loopTime Seconds since the text came on screen. The drawing of [loop] uses it.
  */
 @Immutable
 data class TextFrame(
@@ -138,6 +159,9 @@ data class TextFrame(
     val offsetY: Float = 0f,
     val backgroundReveal: Float = 1f,
     val textReveal: Float = 1f,
+    val charReveal: Float = 1f,
+    val loop: TextLoop = TextLoop.NONE,
+    val loopTime: Float = 0f,
 ) {
     companion object {
         /** Text without animation. */
@@ -150,12 +174,13 @@ data class TextFrame(
  *
  * @param elapsed Seconds since the text came on screen.
  * @param remaining Seconds until the text goes off screen.
- * @return The look. It is [TextFrame.Static] between the entrance and the exit.
+ * @return The look. Without a loop, it is [TextFrame.Static] between the entrance and the exit.
  */
 fun TextAnimation.frameAt(elapsed: Double, remaining: Double): TextFrame {
     val p = if (entranceMillis <= 0) 1f else (elapsed / entranceSeconds).coerceIn(0.0, 1.0).toFloat()
     var frame = when (entrance) {
         TextEntrance.NONE -> TextFrame.Static
+        TextEntrance.TYPING -> TextFrame(charReveal = p)
         TextEntrance.POP -> TextFrame(alpha = minOf(1f, p * 2.5f), scale = 0.6f + 0.4f * easeOutBack(p))
         TextEntrance.SLIDE_UP -> TextFrame(alpha = minOf(1f, p * 1.5f), offsetY = (1f - easeOutCubic(p)) * SLIDE_UP_DISTANCE_PX * DP_PER_SPEC_PX)
         TextEntrance.FADE -> TextFrame(alpha = easeInOutCubic(p))
@@ -168,6 +193,7 @@ fun TextAnimation.frameAt(elapsed: Double, remaining: Double): TextFrame {
     }
     val progress = if (exitMillis <= 0) 0f else ((exitSeconds - remaining) / exitSeconds).coerceIn(0.0, 1.0).toFloat()
     if (progress > 0f) frame = frame.exitFrame(exit, progress)
+    if (loop != TextLoop.NONE) frame = frame.copy(loop = loop, loopTime = elapsed.toFloat())
     return frame
 }
 
@@ -187,12 +213,18 @@ private fun TextFrame.exitFrame(exit: TextExit, progress: Float): TextFrame = wh
  * Seconds from the start of the text, or to its end, where the animation changes the look.
  *
  * @param length Time on screen in seconds.
- * @return The entrance range and the exit range, from the start of the text.
+ * @return The entrance range and the exit range, from the start of the text. With a loop, the look changes during
+ *   the whole time on screen, so the range is the whole time.
  */
-fun TextAnimation.animatedRanges(length: Double): List<ClosedFloatingPointRange<Double>> = listOf(
-    0.0..minOf(entranceSeconds, length),
-    maxOf(0.0, length - exitSeconds)..length,
-)
+fun TextAnimation.animatedRanges(length: Double): List<ClosedFloatingPointRange<Double>> =
+    if (loop != TextLoop.NONE) {
+        listOf(0.0..length)
+    } else {
+        listOf(
+            0.0..minOf(entranceSeconds, length),
+            maxOf(0.0, length - exitSeconds)..length,
+        )
+    }
 
 /** Length of one loop of the preview: the entrance, the hold, the exit, and the pause. */
 private val TextAnimation.previewLoopMillis: Long

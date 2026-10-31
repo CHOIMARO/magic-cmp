@@ -46,11 +46,14 @@ import com.company.domain.model.editor.MIN_ANIMATION_MILLIS
 import com.company.domain.model.editor.PasteTarget
 import com.company.domain.model.editor.TextEntrance
 import com.company.domain.model.editor.TextExit
+import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.hasCustomAnimation
 import com.company.domain.model.editor.pasteOptions
 import com.company.feature.editor.resources.*
 import com.company.ui.editor.DEFAULT_TITLE_EXIT_MILLIS
 import com.company.ui.editor.TextAnimation
+import com.company.ui.editor.TextFrame
+import com.company.ui.editor.defaultMillis
 import com.company.ui.editor.displayName
 import com.company.ui.editor.frameAt
 import com.company.ui.editor.look
@@ -71,8 +74,9 @@ private const val MIN_CARD_ENTRANCE_MILLIS = 300
 // =====================================================================
 
 /**
- * Animation sheet (F09): entrance and exit tabs, a card for each animation with the selected text in a loop, and the
- * length. A pick plays the animation once on the stage.
+ * Animation sheet (F09): entrance, loop, and exit tabs, a card for each animation with the selected text in a loop,
+ * and the length. A pick of an entrance or an exit plays it once on the stage. The stage plays the picked loop while
+ * the loop tab is open. A loop has no length.
  *
  * @param state Editor state.
  * @param onIntent Called with each user action.
@@ -82,14 +86,22 @@ internal fun AnimationSheet(state: EditorState, onIntent: (EditorIntent) -> Unit
     val text = state.selectedText ?: return
     val styleAnimation = text.style.look().animation
     val entranceTab = state.animationTab == AnimationTab.ENTRANCE
+    val loopTab = state.animationTab == AnimationTab.LOOP
     val currentEntrance = text.entrance ?: styleAnimation.entrance
     val currentExit = text.exit ?: TextExit.FADE
-    val millis = if (entranceTab) text.entranceMillis ?: styleAnimation.entranceMillis else text.exitMillis ?: DEFAULT_TITLE_EXIT_MILLIS
+    val currentLoop = text.loop ?: TextLoop.NONE
+    // 타이핑처럼 기본 길이가 따로 있는 등장은 길이를 고르지 않았을 때 그 길이를 쓴다.
+    val entranceMillis = text.entranceMillis ?: text.entrance?.defaultMillis() ?: styleAnimation.entranceMillis
+    val millis = if (entranceTab) entranceMillis else text.exitMillis ?: DEFAULT_TITLE_EXIT_MILLIS
     val none = if (entranceTab) currentEntrance == TextEntrance.NONE else currentExit == TextExit.NONE
 
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         SegmentedControl(
-            options = listOf(SegmentOption(stringResource(Res.string.animation_entrance)), SegmentOption(stringResource(Res.string.animation_exit))),
+            options = listOf(
+                SegmentOption(stringResource(Res.string.animation_entrance)),
+                SegmentOption(stringResource(Res.string.animation_loop)),
+                SegmentOption(stringResource(Res.string.animation_exit)),
+            ),
             selectedIndex = state.animationTab.ordinal,
             onSelect = { onIntent(EditorIntent.SelectAnimationTab(AnimationTab.entries[it])) },
             modifier = Modifier.weight(1f),
@@ -118,12 +130,21 @@ internal fun AnimationSheet(state: EditorState, onIntent: (EditorIntent) -> Unit
     val look = text.style.look(scale = STYLE_SAMPLE_SCALE, font = text.font)
     val cardMillis = maxOf(MIN_CARD_ENTRANCE_MILLIS, millis)
     Column(modifier = Modifier.fillMaxWidth().height(196.dp).verticalScroll(rememberScrollState())) {
-        if (entranceTab) {
+        if (loopTab) {
+            FixedGrid(items = TextLoop.entries, columns = 4, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { loop ->
+                TextSheetCard(label = loop.displayName, selected = currentLoop == loop, onClick = { onIntent(EditorIntent.PickLoop(loop)) }) {
+                    val frame = TextFrame(loop = loop, loopTime = clock.longValue / 1000f)
+                    StyleSample(text = text.text, look = look, frame = frame, scale = STYLE_SAMPLE_SCALE)
+                }
+            }
+        } else if (entranceTab) {
             FixedGrid(items = TextEntrance.entries, columns = 4, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { entrance ->
                 TextSheetCard(label = entrance.displayName, selected = currentEntrance == entrance, onClick = { onIntent(EditorIntent.PickEntrance(entrance)) }) {
-                    val time = clock.longValue % (cardMillis + 1500)
-                    val animation = TextAnimation(entrance, if (entrance == TextEntrance.NONE) 0 else cardMillis, DEFAULT_TITLE_EXIT_MILLIS)
-                    val frame = animation.frameAt(time / 1000.0, (cardMillis + 1200 - time) / 1000.0)
+                    // 길이를 고르지 않았으면 타이핑 카드는 타이핑의 기본 길이로 보여 준다.
+                    val entranceCardMillis = if (text.entranceMillis == null) entrance.defaultMillis()?.coerceAtLeast(MIN_CARD_ENTRANCE_MILLIS) ?: cardMillis else cardMillis
+                    val time = clock.longValue % (entranceCardMillis + 1500)
+                    val animation = TextAnimation(entrance, if (entrance == TextEntrance.NONE) 0 else entranceCardMillis, DEFAULT_TITLE_EXIT_MILLIS)
+                    val frame = animation.frameAt(time / 1000.0, (entranceCardMillis + 1200 - time) / 1000.0)
                     StyleSample(text = text.text, look = look, frame = frame, scale = STYLE_SAMPLE_SCALE)
                 }
             }
@@ -137,6 +158,12 @@ internal fun AnimationSheet(state: EditorState, onIntent: (EditorIntent) -> Unit
                 }
             }
         }
+    }
+    if (loopTab) {
+        Box(modifier = Modifier.fillMaxWidth().heightIn(min = 30.dp), contentAlignment = Alignment.Center) {
+            Text(text = stringResource(Res.string.animation_loop_hint), fontSize = 12.5.sp, color = MagicColors.OnSurface55)
+        }
+        return
     }
     Row(
         modifier = Modifier.alpha(if (none) 0.4f else 1f),
