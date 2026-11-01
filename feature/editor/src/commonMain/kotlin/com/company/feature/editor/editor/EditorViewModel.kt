@@ -802,17 +802,27 @@ class EditorViewModel(
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
             delay(AUTO_SAVE_DELAY_MILLIS)
-            saveNow(duringGesture = false)
+            // saveNow를 부르면 지금 이 작업을 스스로 취소해서 파일을 쓰지 못한다.
+            save(duringGesture = false)
         }
     }
 
     /**
-     * Saves the project to its work at once. A failure shows a message, and the next change tries again.
+     * Saves the project to its work at once, and stops the waiting auto-save.
      *
      * @param duringGesture True to save also during a drag. Otherwise a drag saves when the finger goes up.
      */
     private suspend fun saveNow(duringGesture: Boolean) {
         saveJob?.cancel()
+        save(duringGesture)
+    }
+
+    /**
+     * Saves the project to its work. A failure shows a message, and the next change tries again.
+     *
+     * @param duringGesture True to save also during a drag. Otherwise a drag saves when the finger goes up.
+     */
+    private suspend fun save(duringGesture: Boolean) {
         val state = currentState
         if (!duringGesture && (state.activeDrag != null || state.captionMoving)) return
         try {
