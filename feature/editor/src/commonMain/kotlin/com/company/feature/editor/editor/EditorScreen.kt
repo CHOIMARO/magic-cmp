@@ -190,20 +190,20 @@ private fun EditorTopBar(state: EditorState, onIntent: (EditorIntent) -> Unit) {
             onClick = { onIntent(EditorIntent.Undo) },
             enabled = state.canUndo,
         )
-        // 클립이 하나도 없으면 볼 것도, 저장할 것도 없다.
-        val hasClips = state.project.clips.isNotEmpty()
+        // 요소가 하나도 없으면 볼 것도, 저장할 것도 없다. 글자만 있는 영상도 만들 수 있다(F16).
+        val hasContent = !state.project.isEmpty
         MagicIconButton(
             icon = Icons.Rounded.Fullscreen,
             contentDescription = stringResource(Res.string.fullscreen_open),
             onClick = { onIntent(EditorIntent.OpenFullScreen) },
-            enabled = hasClips,
+            enabled = hasContent,
             iconSize = 26.dp,
         )
         MagicButton(
             text = stringResource(Res.string.editor_finish),
             onClick = { onIntent(EditorIntent.Export) },
             style = MagicButtonStyle.PRIMARY_SMALL,
-            enabled = hasClips,
+            enabled = hasContent,
         )
     }
 }

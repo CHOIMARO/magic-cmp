@@ -165,12 +165,13 @@
     <string name="transition_apply_all">모든 구간에 적용</string>
     <string name="transition_opening_button">시작 전환</string>
     <string name="transition_after_clip">%1$d번째 클립 뒤 전환</string>
-    <string name="stage_empty">아직 영상이 없어요</string>
+    <string name="stage_empty">글자를 넣거나 오른쪽 + 로 영상·사진을 붙여요</string>
     <string name="stage_text_placeholder">글자</string>
     <string name="stage_caption_placeholder">자막</string>
     <string name="stage_caption_move_default">스타일 기본 위치</string>
     <string name="stage_caption_move_all">모든 자막이 함께 움직여요</string>
     <string name="timeline_add">추가</string>
+    <string name="timeline_gap">클립 없음 · %1$s초</string>
     <string name="export_saving">저장하는 중</string>
     <string name="export_done">다 됐어요!</string>
     <string name="export_wait">앱을 닫지 말고 잠시만 기다려주세요</string>

@@ -452,7 +452,7 @@ sealed class EditorIntent : Intent() {
 
     /**
      * OpenFullScreen : Shows the project on the full screen and plays it from the playhead, or from the start at the end.
-     * It closes the sheet and clears the selection. Ignored when the project has no clips.
+     * It closes the sheet and clears the selection. Ignored when the project is empty (F16).
      */
     data object OpenFullScreen : EditorIntent()
 

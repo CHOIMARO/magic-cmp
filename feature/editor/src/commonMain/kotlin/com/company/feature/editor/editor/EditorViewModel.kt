@@ -385,7 +385,7 @@ class EditorViewModel(
             EditorIntent.DismissDialog -> reduce { copy(dialog = null) }
 
             EditorIntent.Undo -> undo()
-            EditorIntent.Export -> if (currentState.project.clips.isNotEmpty()) {
+            EditorIntent.Export -> if (!currentState.project.isEmpty) {
                 pause()
                 updateDraft()
                 postSideEffect { EditorSideEffect.OpenExport }
@@ -425,7 +425,7 @@ class EditorViewModel(
 
     /** Shows the full-screen preview and plays it. The controls show first and hide after a short time. */
     private fun openFullScreen() {
-        if (currentState.project.clips.isEmpty() || currentState.fullScreen != null) return
+        if (currentState.project.isEmpty || currentState.fullScreen != null) return
         pause()
         closeSheet()
         reduce { copy(fullScreen = FullScreenState(), activeDrag = null) }
