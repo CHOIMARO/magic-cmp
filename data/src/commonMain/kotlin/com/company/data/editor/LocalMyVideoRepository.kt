@@ -1,13 +1,9 @@
 package com.company.data.editor
 
-import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.EditorProject
-import com.company.domain.model.editor.TextOverlay
-import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.VideoSummary
 import com.company.domain.model.editor.WorkThumbnail
 import com.company.domain.model.editor.newEditorId
-import com.company.domain.repository.CaptionRepository
 import com.company.domain.repository.MyVideoRepository
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Clock
@@ -25,12 +21,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-
-/** One day in milliseconds. */
-private const val DAY_MILLIS = 24L * 60 * 60 * 1000
-
-/** Time between two sample entries of the same day, in milliseconds. It keeps the sample order stable. */
-private const val SAMPLE_STEP_MILLIS = 10L * 60 * 1000
 
 /** File of the work list. */
 private const val INDEX_FILE = "works.json"
@@ -51,27 +41,22 @@ private val WorkJson = Json { ignoreUnknownKeys = true }
  *
  * The memory has the latest state. When a file write fails, the next save of the work writes the files again.
  *
- * At the first start, the list has the sample works. A sample work opens the sample project, as in the prototype, and
- * its first change saves it as a normal work.
+ * At the first start, the list is empty. The list has only the works that the user made. Older app versions put
+ * sample works in the list; the repository leaves out the sample works that the user did not change.
  *
  * @param store Files of the works.
  * @param mediaPersister Copies the source files.
- * @param captionRepository Makes the captions of the sample project.
  * @param io Context of the file work. Tests use a context that does not change the thread.
  */
 internal class LocalMyVideoRepository(
     private val store: WorkFileStore,
     private val mediaPersister: MediaPersister,
-    private val captionRepository: CaptionRepository,
     private val io: CoroutineContext = Dispatchers.IO,
 ) : MyVideoRepository {
     private val mutex = Mutex()
     private val scope = CoroutineScope(SupervisorJob() + io)
     private val _works = MutableStateFlow<List<VideoSummary>>(emptyList())
     override val works: StateFlow<List<VideoSummary>> = _works.asStateFlow()
-
-    /** IDs of the sample works that still open the sample project. */
-    private val samples = mutableSetOf<String>()
 
     /** IDs of the works with changes that are not in the files yet. */
     private val unsaved = mutableSetOf<String>()
@@ -118,9 +103,8 @@ internal class LocalMyVideoRepository(
         ensureLoaded()
         val work = _works.value.find { it.id == id } ?: return@withCopies false
         val saved = useCopies(project.copy(workId = id), pending)
-        if (id !in unsaved && loadProject(id, work) == saved) return@withCopies false
+        if (id !in unsaved && loadProject(id) == saved) return@withCopies false
         projects[id] = saved
-        samples -= id
         unsaved += id
         val changed = saved.summary(id, now()).copy(exported = work.exported, storageBytes = work.storageBytes)
         _works.value = listOf(changed) + _works.value.filterNot { it.id == id }
@@ -130,21 +114,20 @@ internal class LocalMyVideoRepository(
 
     override suspend fun loadWork(id: String): EditorProject? = mutex.withLock {
         ensureLoaded()
-        val work = _works.value.find { it.id == id } ?: return@withLock null
-        loadProject(id, work)
+        if (_works.value.none { it.id == id }) return@withLock null
+        loadProject(id)
     }
 
     override suspend fun deleteWork(id: String) {
         mutex.withLock {
             ensureLoaded()
-            val work = _works.value.find { it.id == id } ?: return@withLock
-            val media = if (id in samples) emptySet() else loadProject(id, work)?.mediaUris().orEmpty()
+            if (_works.value.none { it.id == id }) return@withLock
+            val media = loadProject(id)?.mediaUris().orEmpty()
             val remaining = _works.value.filterNot { it.id == id }
             // 목록 파일을 먼저 쓴다. 쓰지 못하면 작업을 그대로 둔다.
             writeIndex(remaining)
             _works.value = remaining
             projects.remove(id)
-            samples -= id
             unsaved -= id
             withContext(io) { store.delete(projectFile(id)) }
             releaseUnused(media)
@@ -175,17 +158,18 @@ internal class LocalMyVideoRepository(
     // =====================================================================
 
     /**
-     * Reads the work list and the projects once. Without a list file, the list has the sample works. A list file that
-     * the app cannot read gives no works. After a good read, the files that no work uses go away (D51).
+     * Reads the work list and the projects once. Without a list file, the list is empty. A list file that the app
+     * cannot read gives no works. The sample works of older app versions stay out. After a good read, the files that
+     * no work uses go away (D51).
      */
     private suspend fun ensureLoaded() {
         if (loaded) return
         val index = readIndex()
-        samples += index.entries.filter { it.sample }.map { it.id }
+        // 예전 버전이 넣은 샘플 작업은 사용자가 만든 것이 아니므로 목록에서 뺀다. 다음에 목록을 쓸 때 파일에서도 빠진다.
+        val entries = index.entries.filterNot { it.sample }
         var allProjectsRead = true
-        val works = index.entries.map { entry ->
+        val works = entries.map { entry ->
             val work = entry.toDomain()
-            if (entry.sample) return@map work
             val project = readProject(entry.id)?.copy(workId = entry.id)?.let { restoreMedia(it) }
             if (project == null) {
                 allProjectsRead = false
@@ -194,7 +178,7 @@ internal class LocalMyVideoRepository(
             projects[entry.id] = project
             work.copy(storageBytes = storageBytes(project, encode(project)), thumbnail = project.thumbnail())
         }
-        if (index.trusted) removeUnusedFiles(index.entries.map { it.id }.toSet(), withCopies = allProjectsRead)
+        if (index.trusted) removeUnusedFiles(entries.map { it.id }.toSet(), withCopies = allProjectsRead)
         _works.value = works
         loaded = true
     }
@@ -203,7 +187,7 @@ internal class LocalMyVideoRepository(
     private suspend fun readIndex(): StoredIndex = try {
         val text = withContext(io) { store.read(INDEX_FILE) }
         if (text == null) {
-            StoredIndex(EditorSampleData.Works.toSampleEntries(now()), trusted = false)
+            StoredIndex(emptyList(), trusted = false)
         } else {
             StoredIndex(WorkJson.decodeFromString<WorkIndexDto>(text).works, trusted = true)
         }
@@ -228,18 +212,14 @@ internal class LocalMyVideoRepository(
     }
 
     private suspend fun writeIndex(works: List<VideoSummary>) {
-        val index = WorkIndexDto(works = works.map { it.toDto(sample = it.id in samples) })
+        val index = WorkIndexDto(works = works.map { it.toDto() })
         withContext(io) { store.write(INDEX_FILE, WorkJson.encodeToString(index)) }
     }
 
-    /** Last saved project of a work. A sample work that the user did not change gets the sample project. */
-    private suspend fun loadProject(id: String, work: VideoSummary): EditorProject? {
+    /** Last saved project of a work, or null when the app cannot read it. */
+    private suspend fun loadProject(id: String): EditorProject? {
         projects[id]?.let { return it }
-        val project = if (id in samples) {
-            sampleProject(work.name).copy(workId = id)
-        } else {
-            readProject(id)?.copy(workId = id)?.let { restoreMedia(it) } ?: return null
-        }
+        val project = readProject(id)?.copy(workId = id)?.let { restoreMedia(it) } ?: return null
         projects[id] = project
         return project
     }
@@ -356,44 +336,11 @@ internal class LocalMyVideoRepository(
     /** Removes the copies that no other saved work uses. */
     private suspend fun releaseUnused(media: Set<String>) {
         if (media.isEmpty()) return
-        val used = _works.value.filterNot { it.id in samples }.flatMap { loadProject(it.id, it)?.mediaUris().orEmpty() }.toSet()
+        val used = _works.value.flatMap { loadProject(it.id)?.mediaUris().orEmpty() }.toSet()
         val unused = media - used
         if (unused.isEmpty()) return
         withContext(io) { unused.forEach { mediaPersister.release(it) } }
         copies.entries.removeAll { it.value in unused }
-    }
-
-    /** Sample project of a sample work. */
-    private suspend fun sampleProject(name: String): EditorProject {
-        val clips = EditorSampleData.SampleClipIndexes.map { index ->
-            val source = EditorSampleData.SampleVideos[index]
-            val long = source.duration > 4
-            Clip(
-                id = newEditorId(),
-                name = source.name,
-                sourceDuration = source.duration,
-                inPoint = if (long) 0.4 else 0.0,
-                outPoint = if (long) minOf(source.duration, 3.8) else source.duration,
-                thumbnailHue = source.hue,
-            )
-        }
-        val project = EditorProject(
-            name = name,
-            clips = clips,
-            texts = listOf(
-                TextOverlay(
-                    id = newEditorId(),
-                    text = EditorSampleData.SampleTitle,
-                    start = 0.2,
-                    length = 2.8,
-                    style = TextStyleType.IMPACT,
-                    x = 50.0,
-                    y = 24.0,
-                )
-            ),
-            musicId = EditorSampleData.SampleMusicId,
-        )
-        return project.copy(captions = captionRepository.generateCaptions(project.totalDuration))
     }
 }
 
@@ -436,17 +383,3 @@ private fun EditorProject.mediaUris(): Set<String> = clips.mapNotNull { it.sourc
 private fun EditorProject.mapMedia(transform: (String) -> String): EditorProject =
     if (clips.none { it.sourceUri != null }) this
     else copy(clips = clips.map { clip -> clip.sourceUri?.let { clip.copy(sourceUri = transform(it)) } ?: clip })
-
-/** Makes the list entries of the sample works, with the most recent change first. */
-private fun List<EditorSampleData.SampleSummary>.toSampleEntries(now: Long): List<WorkSummaryDto> =
-    mapIndexed { index, sample ->
-        WorkSummaryDto(
-            id = newEditorId(),
-            name = sample.name,
-            duration = sample.duration,
-            thumbnailHue = sample.thumbnailHue,
-            modifiedAt = now - sample.daysAgo * DAY_MILLIS - index * SAMPLE_STEP_MILLIS,
-            exported = sample.exported,
-            sample = true,
-        )
-    }.sortedByDescending { it.modifiedAt }

@@ -47,7 +47,8 @@ internal data class WorkIndexDto(val version: Int = WORK_FILE_VERSION, val works
 /**
  * One work in the list.
  *
- * @property sample True for a sample work. It opens the sample project until the user changes it.
+ * @property sample True for a sample work that an older app version put in the list. The app leaves these works out
+ *   when it reads the list, and it does not write the field.
  */
 @Serializable
 internal data class WorkSummaryDto(
@@ -188,8 +189,8 @@ internal data class TransitionDto(val type: TransitionType, val direction: PushD
 internal fun WorkSummaryDto.toDomain(): VideoSummary =
     VideoSummary(id = id, name = name, duration = duration, thumbnailHue = thumbnailHue, modifiedAt = modifiedAt, exported = exported)
 
-internal fun VideoSummary.toDto(sample: Boolean): WorkSummaryDto = WorkSummaryDto(
-    id = id, name = name, duration = duration, thumbnailHue = thumbnailHue, modifiedAt = modifiedAt, exported = exported, sample = sample,
+internal fun VideoSummary.toDto(): WorkSummaryDto = WorkSummaryDto(
+    id = id, name = name, duration = duration, thumbnailHue = thumbnailHue, modifiedAt = modifiedAt, exported = exported,
 )
 
 internal fun EditorProject.toDto(): ProjectDto = ProjectDto(

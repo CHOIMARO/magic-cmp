@@ -50,7 +50,7 @@ class LocalMyVideoRepositoryTest {
     private val clip = Clip(id = "c", name = "c", sourceDuration = 5.0, inPoint = 0.0, outPoint = 5.0, thumbnailHue = 80)
 
     /** A repository that reads the same files, as after an app restart. */
-    private fun newRepository() = LocalMyVideoRepository(store, persister, FakeCaptionRepository(), Dispatchers.Unconfined)
+    private fun newRepository() = LocalMyVideoRepository(store, persister, Dispatchers.Unconfined)
 
     /** Runs a suspend function that never suspends, without a coroutine library. */
     private fun <T> runSuspend(block: suspend () -> T): T {
@@ -63,15 +63,25 @@ class LocalMyVideoRepositoryTest {
         runSuspend { StartNewProjectUseCase(projects, repository)(project) }
 
     @Test
-    fun samples_showTheMostRecentChangeFirst_inOneList() {
-        assertEquals(
-            listOf("바닷가 주말", "말차 레시피", "벚꽃 산책", "작업실 투어", "첫 출근 브이로그", "러닝 크루", "고양이 낮잠"),
-            repository.works.value.map { it.name },
-        )
-        val times = repository.works.value.map { it.modifiedAt }
-        assertEquals(times.sortedDescending(), times)
-        assertEquals(4, repository.works.value.count { it.exported })
-        assertEquals(repository.works.value.size, repository.works.value.map { it.id }.toSet().size)
+    fun firstStart_hasNoWorks() {
+        // 목록에는 사용자가 만든 작업만 있다. 샘플 작업은 넣지 않는다.
+        assertTrue(repository.works.value.isEmpty())
+        assertTrue(runSuspend { repository.workNames() }.isEmpty())
+    }
+
+    @Test
+    fun sampleWorksOfAnOlderVersion_areLeftOut() {
+        startNew()
+        val mine = repository.works.value.first()
+        // 예전 버전은 처음 켤 때 샘플 작업을 목록에 넣었다.
+        val sample = "{\"id\":\"s1\",\"name\":\"바닷가 주말\",\"duration\":18.0,\"thumbnailHue\":35,\"modifiedAt\":1,\"sample\":true},"
+        store.files["works.json"] = store.files.getValue("works.json").replace("\"works\":[", "\"works\":[$sample")
+
+        val restarted = newRepository()
+        assertEquals(listOf(mine.id), restarted.works.value.map { it.id })
+        // 다음에 목록을 쓰면 파일에서도 빠진다.
+        runSuspend { restarted.markExported(mine.id) }
+        assertFalse(store.files.getValue("works.json").contains("바닷가 주말"))
     }
 
     @Test
@@ -116,24 +126,26 @@ class LocalMyVideoRepositoryTest {
 
     @Test
     fun saveWork_onlyAChangeMovesTheWorkToTheTop() {
-        val third = repository.works.value[2]
+        startNew(EditorProject(name = "첫째", clips = listOf(clip)))
+        runSuspend { repository.markExported(repository.works.value.first().id) }
+        startNew(EditorProject(name = "둘째", clips = listOf(clip)))
+        val older = repository.works.value[1]
         // 열어 보기만 하면 순서와 시각이 그대로다.
-        assertTrue(runSuspend { OpenWorkUseCase(projects, repository)(third.id) })
+        assertTrue(runSuspend { OpenWorkUseCase(projects, repository)(older.id) })
         assertFalse(projects.canUndo.value)
         assertFalse(runSuspend { SaveWorkUseCase(projects, repository)() })
-        assertEquals(third, repository.works.value[2])
+        assertEquals(older, repository.works.value[1])
         // 고치면 맨 앞으로 오고 길이와 시각이 바뀐다. 내보낸 적 있음 표시는 남는다.
         projects.commit { it.copy(clips = listOf(clip.copy(outPoint = 2.0, thumbnailHue = 150))) }
         assertTrue(runSuspend { SaveWorkUseCase(projects, repository)() })
         val saved = repository.works.value.first()
-        assertEquals(third.id, saved.id)
-        // 샘플의 글자와 자막은 남아 있으므로 영상 길이는 가장 늦게 끝나는 요소까지다(F16).
-        assertEquals(projects.project.value.totalDuration, saved.duration)
+        assertEquals(older.id, saved.id)
+        assertEquals(2.0, saved.duration)
         assertEquals(150, saved.thumbnailHue)
-        assertTrue(saved.modifiedAt >= third.modifiedAt)
-        assertEquals(third.exported, saved.exported)
+        assertTrue(saved.modifiedAt >= older.modifiedAt)
+        assertTrue(saved.exported)
         // 다시 열면 마지막 저장 상태다.
-        assertEquals(projects.project.value, runSuspend { repository.loadWork(third.id) })
+        assertEquals(projects.project.value, runSuspend { repository.loadWork(older.id) })
     }
 
     @Test
@@ -158,15 +170,17 @@ class LocalMyVideoRepositoryTest {
 
     @Test
     fun markExported_keepsTheOrderAndTheTime() {
-        val index = repository.works.value.indexOfLast { !it.exported }
-        val work = repository.works.value[index]
-        runSuspend { repository.markExported(work.id) }
-        assertEquals(work.copy(exported = true), repository.works.value[index])
-        assertEquals(work.copy(exported = true), newRepository().works.value[index])
+        startNew(EditorProject(name = "첫째", clips = listOf(clip)))
+        startNew(EditorProject(name = "둘째", clips = listOf(clip)))
+        val older = repository.works.value[1]
+        runSuspend { repository.markExported(older.id) }
+        assertEquals(older.copy(exported = true), repository.works.value[1])
+        assertEquals(older.copy(exported = true), newRepository().works.value[1])
     }
 
     @Test
     fun deleteWork_removesTheWork() {
+        startNew()
         val first = repository.works.value.first()
         runSuspend { repository.deleteWork(first.id) }
         assertTrue(repository.works.value.none { it.id == first.id })
@@ -182,15 +196,13 @@ class LocalMyVideoRepositoryTest {
     fun restart_readsTheSameWorksAndProjects() {
         val project = fullProject()
         startNew(project)
-        val sample = repository.works.value[3]
+        startNew()
         val before = repository.works.value
 
         val restarted = newRepository()
         assertEquals(before, restarted.works.value)
-        val id = before.first().id
+        val id = before[1].id
         assertEquals(project.copy(workId = id), runSuspend { restarted.loadWork(id) })
-        // 고치지 않은 샘플은 다시 켜도 샘플 프로젝트를 연다.
-        assertEquals(sample.name, runSuspend { restarted.loadWork(sample.id) }?.name)
     }
 
     @Test

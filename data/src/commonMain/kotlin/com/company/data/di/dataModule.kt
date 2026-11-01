@@ -38,7 +38,7 @@ val dataModule = module {
     // Editor (메모리 기반 mock 구현)
     singleOf(::InMemoryEditorProjectRepository) { bind<EditorProjectRepository>() }
     // 작업 목록은 기기에 저장한다 (F15).
-    single<MyVideoRepository> { LocalMyVideoRepository(get(), get(), get()) }
+    single<MyVideoRepository> { LocalMyVideoRepository(get(), get()) }
     singleOf(::InMemoryEditorSettingsRepository) { bind<EditorSettingsRepository>() }
     singleOf(::FakeCaptionRepository) { bind<CaptionRepository>() }
     singleOf(::FakeDubbingRepository) { bind<DubbingRepository>() }
