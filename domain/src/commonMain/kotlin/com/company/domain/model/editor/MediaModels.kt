@@ -40,6 +40,8 @@ data class SourceMedia(
  * @property exported True after the user exported the work one time or more (D43).
  * @property storageBytes Bytes that the work uses on the device: the copies of its source files and its project
  *   file (D51).
+ * @property thumbnail First frame of the work for its card, or null when the first clip has no source file, for
+ *   example a sample work (D52). The card then shows the placeholder of [thumbnailHue].
  */
 data class VideoSummary(
     val id: String,
@@ -49,7 +51,18 @@ data class VideoSummary(
     val modifiedAt: Long,
     val exported: Boolean = false,
     val storageBytes: Long = 0,
+    val thumbnail: WorkThumbnail? = null,
 )
+
+/**
+ * First frame of a work for its card (D52): the frame at the start of the first clip. It has no texts, captions, or
+ * layout.
+ *
+ * @property uri Location of the source file of the first clip.
+ * @property type Photo or video.
+ * @property time Source time of the frame in seconds: the in point of the first clip. A photo ignores it.
+ */
+data class WorkThumbnail(val uri: String, val type: MediaType, val time: Double)
 
 /**
  * Background music track.

@@ -195,6 +195,8 @@ private class LongPressFlag {
  * @param onLongClick Action after a press of 0.4 seconds without a move, with a short vibration, or null. The click
  *   at the end of the long press does nothing.
  * @param held True while a menu of the card is open. The card is then a little smaller.
+ * @param background Image over the placeholder and under the text, for example the first frame of the video, or
+ *   null. The disabled state does not make it gray.
  */
 @Composable
 fun MagicVideoCard(
@@ -208,6 +210,7 @@ fun MagicVideoCard(
     exportedLabel: String? = null,
     onLongClick: (() -> Unit)? = null,
     held: Boolean = false,
+    background: (@Composable BoxScope.() -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -254,10 +257,12 @@ fun MagicVideoCard(
         }
     if (hue == null) {
         Box(modifier = cardModifier.clip(shape).background(Color.Black)) {
+            background?.invoke(this)
             VideoCardContent(title, duration, caption, exportedLabel, pressed && enabled)
         }
     } else {
         StripeBox(hue = hue, lightness = 0.46f, shape = shape, colorFilter = if (enabled) null else Grayscale, modifier = cardModifier) {
+            background?.invoke(this)
             VideoCardContent(title, duration, caption, exportedLabel, pressed && enabled)
         }
     }

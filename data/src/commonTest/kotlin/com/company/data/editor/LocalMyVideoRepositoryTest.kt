@@ -21,6 +21,7 @@ import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.TransitionType
+import com.company.domain.model.editor.WorkThumbnail
 import com.company.domain.usecase.editor.CheckMediaStorageUseCase
 import com.company.domain.usecase.editor.LeaveEditorUseCase
 import com.company.domain.usecase.editor.LeaveResult
@@ -93,6 +94,24 @@ class LocalMyVideoRepositoryTest {
         runSuspend { StartNewProjectUseCase(projects, newRepository())(EditorProject(name = "새 작업", clips = listOf(clip))) }
         assertEquals("새 작업 3", projects.project.value.name)
         assertEquals(listOf("새 작업 2", "새 작업"), repository.works.value.take(2).map { it.name })
+    }
+
+    @Test
+    fun cardThumbnail_isTheFirstFrameOfTheFirstClip() {
+        // 원본 파일이 없는 클립은 썸네일이 없고, 카드는 색 띠를 보여 준다.
+        startNew(EditorProject(name = "새 작업", clips = listOf(clip)))
+        assertNull(repository.works.value.first().thumbnail)
+
+        val video = clip.copy(sourceUri = "picked/a.mp4", inPoint = 1.5)
+        startNew(EditorProject(name = "새 작업", clips = listOf(video, clip.copy(id = "d", sourceUri = "picked/b.mp4"))))
+        // 복사가 끝나면 첫 클립 복사본의 시작 지점을 가리킨다(D52).
+        assertEquals(WorkThumbnail("saved/a.mp4", MediaType.VIDEO, 1.5), repository.works.value.first().thumbnail)
+        // 첫 클립의 시작 지점을 자르면 다음 저장에서 바뀐다.
+        projects.commit { project -> project.copy(clips = project.clips.map { if (it.id == "c") it.copy(inPoint = 2.0) else it }) }
+        assertTrue(runSuspend { SaveWorkUseCase(projects, repository)() })
+        assertEquals(2.0, repository.works.value.first().thumbnail?.time)
+        // 다시 켜면 지금 위치의 복사본을 가리킨다.
+        assertEquals(WorkThumbnail("current/a.mp4", MediaType.VIDEO, 2.0), newRepository().works.value.first().thumbnail)
     }
 
     @Test

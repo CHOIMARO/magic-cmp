@@ -5,6 +5,7 @@ import com.company.domain.model.editor.EditorProject
 import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.VideoSummary
+import com.company.domain.model.editor.WorkThumbnail
 import com.company.domain.model.editor.newEditorId
 import com.company.domain.repository.CaptionRepository
 import com.company.domain.repository.MyVideoRepository
@@ -191,7 +192,7 @@ internal class LocalMyVideoRepository(
                 return@map work
             }
             projects[entry.id] = project
-            work.copy(storageBytes = storageBytes(project, encode(project)))
+            work.copy(storageBytes = storageBytes(project, encode(project)), thumbnail = project.thumbnail())
         }
         if (index.trusted) removeUnusedFiles(index.entries.map { it.id }.toSet(), withCopies = allProjectsRead)
         _works.value = works
@@ -214,13 +215,14 @@ internal class LocalMyVideoRepository(
 
     /**
      * Writes the project file, then the list file with the new size of the work. The project file comes first, so that
-     * the list never points to a missing project.
+     * the list never points to a missing project. The card also gets the first frame of the saved project, so that it
+     * uses the copy when the copy is ready.
      */
     private suspend fun writeFiles(id: String, project: EditorProject) {
         val text = encode(project)
         withContext(io) { store.write(projectFile(id), text) }
         val bytes = storageBytes(project, text)
-        _works.value = _works.value.map { if (it.id == id) it.copy(storageBytes = bytes) else it }
+        _works.value = _works.value.map { if (it.id == id) it.copy(storageBytes = bytes, thumbnail = project.thumbnail()) else it }
         writeIndex(_works.value)
         unsaved -= id
     }
@@ -411,8 +413,21 @@ private fun encode(project: EditorProject): String = WorkJson.encodeToString(Pro
 private fun now(): Long = Clock.System.now().toEpochMilliseconds()
 
 /** Summary of the project as the work [id], changed at [time]. A project without clips has a black card. */
-private fun EditorProject.summary(id: String, time: Long): VideoSummary =
-    VideoSummary(id = id, name = name, duration = totalDuration, thumbnailHue = clips.firstOrNull()?.thumbnailHue, modifiedAt = time)
+private fun EditorProject.summary(id: String, time: Long): VideoSummary = VideoSummary(
+    id = id,
+    name = name,
+    duration = totalDuration,
+    thumbnailHue = clips.firstOrNull()?.thumbnailHue,
+    modifiedAt = time,
+    thumbnail = thumbnail(),
+)
+
+/** First frame of the project for its card (D52), or null when the first clip has no source file. */
+private fun EditorProject.thumbnail(): WorkThumbnail? {
+    val first = clips.firstOrNull() ?: return null
+    val uri = first.sourceUri ?: return null
+    return WorkThumbnail(uri = uri, type = first.type, time = first.inPoint)
+}
 
 /** Locations of the source files of the clips. */
 private fun EditorProject.mediaUris(): Set<String> = clips.mapNotNull { it.sourceUri }.toSet()
