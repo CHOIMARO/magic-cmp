@@ -35,7 +35,8 @@ class ExportOverlay(val start: Double, val end: Double, val png: ByteArray)
  * Everything that the encoder needs to make the video file.
  *
  * @property name Name of the project. The file name uses it.
- * @property clips Clips in play order. All clips must have a source file.
+ * @property clips Clips in play order. All clips must have a source file. The list can be empty (F16).
+ * @property duration Length of the video in seconds. After the last clip, the video is black (F16).
  * @property width Width of the output frame in pixels.
  * @property height Height of the output frame in pixels.
  * @property videoArea Area of the frame that shows the video.
@@ -46,6 +47,7 @@ class ExportOverlay(val start: Double, val end: Double, val png: ByteArray)
 data class ExportRequest(
     val name: String,
     val clips: List<Clip>,
+    val duration: Double,
     val width: Int,
     val height: Int,
     val videoArea: FrameArea = FrameArea.FULL,

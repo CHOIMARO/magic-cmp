@@ -24,9 +24,10 @@ internal interface PreviewPlayer {
      *
      * @param clips Clips in play order.
      * @param transitions Transitions in time order.
+     * @param duration Length of the video. After the last clip, the video is black (F16).
      * @param time Position to show after the change.
      */
-    fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, time: Double)
+    fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double, time: Double)
 
     /** Starts the playback from the current position. */
     fun play()
@@ -89,8 +90,8 @@ internal class ClockPreviewPlayer : PreviewPlayer {
     override val ended: Boolean
         get() = mark != null && currentTime >= duration
 
-    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, time: Double) {
-        duration = clips.sumOf { it.duration }
+    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double, time: Double) {
+        this.duration = duration
         seekTo(time)
     }
 

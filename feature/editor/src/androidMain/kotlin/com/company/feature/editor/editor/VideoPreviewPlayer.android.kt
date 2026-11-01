@@ -73,10 +73,11 @@ private class AndroidVideoPreviewPlayer(context: Context) : VideoPreviewPlayer {
     override val ended: Boolean
         get() = player.playbackState == Player.STATE_ENDED
 
-    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, time: Double) {
+    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double, time: Double) {
         if (clips.isEmpty()) return
         val composition = buildMediaComposition(
             clips = clips,
+            duration = duration,
             frameWidth = PREVIEW_FRAME_WIDTH,
             frameHeight = PREVIEW_FRAME_HEIGHT,
             transitions = transitions,

@@ -197,11 +197,14 @@ class ExportViewModel(
     // Export
     // =====================================================================
 
-    /** Starts the export. A project with source files first asks the screen for the overlay images. */
+    /**
+     * Starts the export. A project with source files first asks the screen for the overlay images. A project without
+     * clips makes a black video with the texts and the captions (F16).
+     */
     private fun start() {
         exportJob?.cancel()
         val project = currentState.project
-        if (project.clips.isEmpty()) return
+        if (project.isEmpty) return
         if (project.clips.any { it.sourceUri == null }) {
             simulateExport()
             return
@@ -232,6 +235,7 @@ class ExportViewModel(
         val request = ExportRequest(
             name = project.name,
             clips = project.clips,
+            duration = project.totalDuration,
             width = resolution.width,
             height = resolution.height,
             videoArea = project.layout.spec.cells.first().toFrameArea(),

@@ -58,7 +58,8 @@ internal data class TextLayerState(
 /**
  * Splits the timeline into ranges where the layout layer does not change.
  *
- * The layout layer holds the layout background and the other cells. They change where the next clip starts.
+ * The layout layer holds the layout background and the other cells. They change where the next clip starts. After
+ * the last clip, all cells are black (F16).
  *
  * @return Ranges in time order. It is empty for the full-screen layout.
  */
@@ -72,8 +73,12 @@ internal fun EditorProject.layoutSpans(): List<OverlaySpan> {
             add(start)
         }
     }
-    return spans(boundaries) { time -> clipAt(time)?.index }
+    val clipsEnd = clipsDuration
+    return spans(boundaries) { time -> clipAt(time)?.index?.takeIf { time < clipsEnd } ?: NO_CLIP_STATE }
 }
+
+/** State of the layout layer after the last clip. */
+private const val NO_CLIP_STATE = -1
 
 /**
  * Splits the timeline into ranges where the text layer does not change.

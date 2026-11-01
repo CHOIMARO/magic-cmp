@@ -22,8 +22,8 @@ private const val SEEK_TOLERANCE = 0.001
 /**
  * Creates the preview player for the project and keeps it in step with the editor state.
  *
- * When all clips have a source file, the platform player plays them. Other projects use
- * [ClockPreviewPlayer], and the stage shows placeholders.
+ * When all clips have a source file, the platform player plays them. Other projects, also a project without clips,
+ * use [ClockPreviewPlayer], and the stage shows placeholders.
  *
  * @param state Editor state.
  * @param onIntent Called with the playback progress and the end of the playback.
@@ -35,6 +35,8 @@ internal fun rememberEditorPlayback(state: EditorState, onIntent: (EditorIntent)
     val transitions = remember(state.project.clips, state.project.transitions, state.project.openingTransition) {
         state.project.transitionWindows()
     }
+    // 영상은 가장 늦게 끝나는 요소까지다. 마지막 클립 뒤는 검은 화면으로 재생한다(F16).
+    val duration = state.project.totalDuration
     val hasFiles = clips.isNotEmpty() && clips.all { it.sourceUri != null }
     val videoPlayer = if (hasFiles) rememberVideoPreviewPlayer() else null
     val player: PreviewPlayer = videoPlayer ?: remember { ClockPreviewPlayer() }
@@ -42,10 +44,10 @@ internal fun rememberEditorPlayback(state: EditorState, onIntent: (EditorIntent)
     val latestOnIntent by rememberUpdatedState(onIntent)
     val loaded = remember(player) { mutableStateOf(false) }
 
-    // 클립과 전환이 바뀌면 재생할 내용을 다시 만든다. 연속으로 바뀌면 마지막 변경만 반영한다.
-    LaunchedEffect(player, clips, transitions) {
+    // 클립, 전환, 영상 길이가 바뀌면 재생할 내용을 다시 만든다. 연속으로 바뀌면 마지막 변경만 반영한다.
+    LaunchedEffect(player, clips, transitions, duration) {
         if (loaded.value) delay(CONTENT_DELAY_MILLIS)
-        player.setClips(clips, transitions, latestState.time)
+        player.setClips(clips, transitions, duration, latestState.time)
         loaded.value = true
         if (latestState.playing) player.play()
     }

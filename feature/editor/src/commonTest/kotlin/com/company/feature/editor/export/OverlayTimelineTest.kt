@@ -67,4 +67,12 @@ class OverlayTimelineTest {
         val spans = project.copy(layout = LayoutType.SPLIT_VERTICAL).layoutSpans()
         assertEquals(listOf(0.0 to 2.0, 2.0 to 5.0), spans.map { it.start to it.end })
     }
+
+    @Test
+    fun splitLayout_givesTheTimeAfterTheLastClipItsOwnSpan() {
+        // 글자가 8초에 끝나면 5~8초는 클립이 없는 검은 구간이다(F16). 마지막 클립과 다른 이미지를 쓴다.
+        val text = TextOverlay(id = "t", text = "hi", start = 4.0, length = 4.0, style = TextStyleType.MINIMAL, x = 50.0, y = 50.0)
+        val spans = project.copy(layout = LayoutType.SPLIT_VERTICAL, texts = listOf(text)).layoutSpans()
+        assertEquals(listOf(0.0 to 2.0, 2.0 to 5.0, 5.0 to 8.0), spans.map { it.start to it.end })
+    }
 }

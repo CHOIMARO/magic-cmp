@@ -38,6 +38,9 @@ private const val PHOTO_FRAME_RATE = 30
 /** Largest number of audio channels that the clip volume supports. It is 7.1 sound. */
 private const val MAX_AUDIO_CHANNELS = 8
 
+/** A part of the video after the last clip shorter than this, in microseconds, gets no gap. */
+private const val MIN_GAP_US = 1_000L
+
 /**
  * Builds the Media3 composition of the clips. The preview player and the export use it.
  *
@@ -46,7 +49,10 @@ private const val MAX_AUDIO_CHANNELS = 8
  * outside are cut off. The transitions change only the video. The overlay tracks go on top of
  * the whole frame. The volume of each video clip changes only the sound of that clip.
  *
- * @param clips Clips in play order. All clips must have a source file.
+ * After the last clip, a gap makes the video [duration] long. The gap is black and silent (F16).
+ *
+ * @param clips Clips in play order. All clips must have a source file. The list can be empty.
+ * @param duration Length of the video in seconds. It is at least the length of the clips.
  * @param frameWidth Width of the output frame in pixels.
  * @param frameHeight Height of the output frame in pixels.
  * @param videoArea Area of the frame that shows the video.
@@ -57,6 +63,7 @@ private const val MAX_AUDIO_CHANNELS = 8
 @OptIn(UnstableApi::class, ExperimentalApi::class)
 fun buildMediaComposition(
     clips: List<Clip>,
+    duration: Double,
     frameWidth: Int,
     frameHeight: Int,
     videoArea: FrameArea = FrameArea.FULL,
@@ -89,8 +96,11 @@ fun buildMediaComposition(
         if (tracks.isNotEmpty()) add(OverlayEffect(tracks.map { TimedBitmapOverlay(it) }))
     }
     // 모든 클립이 같은 영상 효과 목록을 쓴다. 목록이 같으면 Media3가 클립마다 셰이더를 다시 만들지 않는다.
+    // 트랙 종류를 정해 두면 빈 구간(gap)으로 시작하는 시퀀스도 만들 수 있다. 클립이 없는 영상은 빈 구간만 있다.
+    val gapUs = (duration * 1_000_000).roundToLong() - clips.compositionEndUs()
     val sequence = EditedMediaItemSequence.Builder(setOf(C.TRACK_TYPE_AUDIO, C.TRACK_TYPE_VIDEO))
         .addItems(clips.map { it.toEditedMediaItem(itemEffects) })
+        .apply { if (gapUs >= MIN_GAP_US) addGap(gapUs) }
         .build()
     return Composition.Builder(sequence)
         .setEffects(Effects(emptyList(), compositionEffects))
@@ -141,12 +151,18 @@ private fun List<Clip>.compositionStartsUs(): List<Long> {
     var start = 0L
     return map { clip ->
         val clipStart = start
-        start += when (clip.type) {
-            MediaType.PHOTO -> clip.photoDurationMs() * 1000
-            MediaType.VIDEO -> ((clip.outPoint.toMillis() - clip.inPoint.toMillis()) * 1000 / clip.speed).roundToLong()
-        }
+        start += clip.compositionLengthUs()
         clipStart
     }
+}
+
+/** End of the last clip in the composition, in microseconds. It uses the same rounding as [compositionStartsUs]. */
+private fun List<Clip>.compositionEndUs(): Long = sumOf { it.compositionLengthUs() }
+
+/** Length of the clip in the composition, in microseconds. */
+private fun Clip.compositionLengthUs(): Long = when (type) {
+    MediaType.PHOTO -> photoDurationMs() * 1000
+    MediaType.VIDEO -> ((outPoint.toMillis() - inPoint.toMillis()) * 1000 / speed).roundToLong()
 }
 
 /**
