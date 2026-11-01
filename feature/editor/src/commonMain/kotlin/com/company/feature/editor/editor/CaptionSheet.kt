@@ -54,6 +54,7 @@ import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicTheme
 import com.company.domain.model.editor.CaptionStyleType
+import com.company.domain.model.editor.scriptClipCount
 import com.company.domain.model.editor.scriptLines
 import com.company.domain.model.editor.scriptStart
 import com.company.feature.editor.resources.*
@@ -74,6 +75,9 @@ private val WarningColor = com.company.core.designsystem.theme.oklch(0.84f, 0.12
 /** A playhead at this time or earlier, in seconds, counts as the start of the video. */
 private const val PLAYHEAD_START = 1e-6
 
+/** Opacity of a caption source that the user cannot use now. */
+private const val DISABLED_SOURCE_ALPHA = 0.4f
+
 /**
  * Caption sheet (F04): captions from speech or from a typed script, the start of the new captions, the caption style,
  * and the caption height reset.
@@ -87,10 +91,10 @@ internal fun CaptionSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
     if (script != null) {
         // 재생선부터 만들 때는 재생선이 있는 구간부터 남은 구간만 셈다.
         val fromPlayhead = state.captionFromPlayhead && state.time > PLAYHEAD_START
-        val firstClip = if (fromPlayhead) state.project.scriptStart(state.time).clipIndex else 0
+        val start = state.project.scriptStart(if (fromPlayhead) state.time else 0.0)
         CaptionScriptPage(
             script = script,
-            clipCount = state.project.clips.size - firstClip,
+            clipCount = state.project.scriptClipCount(start),
             fromPlayhead = fromPlayhead,
             onIntent = onIntent,
         )
@@ -98,13 +102,15 @@ internal fun CaptionSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
     }
     val progress = state.captionProgress
     val running = progress != null
+    // 말소리 자막은 영상 클립이 있어야 만든다(F16).
+    val hasClips = state.project.clips.isNotEmpty()
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         CaptionSourceButton(
             icon = Icons.Rounded.Mic,
             title = if (progress != null) stringResource(Res.string.caption_from_speech_progress, progress) else stringResource(Res.string.caption_from_speech),
-            note = stringResource(Res.string.caption_from_speech_note),
+            note = stringResource(if (hasClips) Res.string.caption_from_speech_note else Res.string.caption_from_speech_no_clips),
             progress = (progress ?: 0) / 100f,
-            enabled = !running,
+            enabled = !running && hasClips,
             modifier = Modifier.weight(1f),
             onClick = { onIntent(EditorIntent.GenerateCaptions) },
         )
@@ -272,7 +278,9 @@ private fun CaptionSourceButton(
             .height(88.dp)
             .pressClickable(enabled = enabled, onClick = onClick)
             .clip(RoundedCornerShape(20.dp))
-            .background(MagicColors.SurfaceHigh),
+            .background(MagicColors.SurfaceHigh)
+            // 진행 중일 때는 진행률을 보여 주도록 그대로 두고, 쓸 수 없을 때만 흐리게 한다.
+            .alpha(if (enabled || progress > 0f) 1f else DISABLED_SOURCE_ALPHA),
     ) {
         Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(progress).background(MagicColors.Accent.copy(alpha = 0.22f)))
         Column(
@@ -287,15 +295,16 @@ private fun CaptionSourceButton(
 }
 
 /**
- * Script field of the caption sheet. Each line is one caption, and the n-th line goes to the n-th clip.
+ * Script field of the caption sheet. Each line is one caption, and the n-th line goes to the n-th clip. Where no clip
+ * is left, each line stays on screen for 2 seconds (F16).
  *
  * @param script Text of the field.
- * @param clipCount Number of clips that can get a line.
+ * @param clipCount Number of clips that can get a line, or null when no clip is left.
  * @param fromPlayhead True when the lines start at the playhead. [clipCount] then counts from the clip at the playhead.
  * @param onIntent Called with each user action.
  */
 @Composable
-private fun CaptionScriptPage(script: String, clipCount: Int, fromPlayhead: Boolean, onIntent: (EditorIntent) -> Unit) {
+private fun CaptionScriptPage(script: String, clipCount: Int?, fromPlayhead: Boolean, onIntent: (EditorIntent) -> Unit) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
     val lines = scriptLines(script)
@@ -326,7 +335,7 @@ private fun CaptionScriptPage(script: String, clipCount: Int, fromPlayhead: Bool
         },
     )
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        val over = lines.size > clipCount
+        val over = clipCount != null && lines.size > clipCount
         Text(
             text = when {
                 lines.isEmpty() -> stringResource(Res.string.caption_script_empty)
@@ -338,7 +347,11 @@ private fun CaptionScriptPage(script: String, clipCount: Int, fromPlayhead: Bool
             color = if (over) WarningColor else MagicColors.OnSurface70,
         )
         Text(
-            text = stringResource(if (fromPlayhead) Res.string.caption_script_clips_after else Res.string.caption_script_clips, clipCount),
+            text = when {
+                clipCount == null -> stringResource(Res.string.caption_script_no_clips)
+                fromPlayhead -> stringResource(Res.string.caption_script_clips_after, clipCount)
+                else -> stringResource(Res.string.caption_script_clips, clipCount)
+            },
             fontSize = 13.sp,
             color = MagicColors.OnSurface45,
         )

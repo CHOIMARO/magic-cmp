@@ -61,7 +61,8 @@ fun EditorProject.clipAt(time: Double): ClipPosition? {
 }
 
 /**
- * Splits the clip at [time] into two clips.
+ * Splits the clip at [time] into two clips. A caption bound to the clip goes with the part that has the middle of
+ * its speech (D47).
  *
  * @param time Time on the timeline.
  * @return The changed project, or null if [time] is not inside a clip.
@@ -74,7 +75,11 @@ fun EditorProject.splitAt(time: Double): EditorProject? {
             val local = clip.inPoint + (time - start) * clip.speed
             val first = clip.copy(outPoint = local)
             val second = clip.copy(id = newEditorId(), inPoint = local)
-            return copy(clips = clips.take(index) + first + second + clips.drop(index + 1))
+            val captions = captions.map { caption ->
+                val middle = ((caption.sourceStart ?: clip.inPoint) + (caption.sourceEnd ?: clip.outPoint)) / 2
+                if (caption.clipId == clip.id && middle >= local) caption.copy(clipId = second.id) else caption
+            }
+            return copy(clips = clips.take(index) + first + second + clips.drop(index + 1), captions = captions)
         }
         start += length
     }
@@ -102,7 +107,8 @@ fun EditorProject.trimClipEnd(clipId: String, outPoint: Double): EditorProject =
 }
 
 /**
- * Puts a copy of a clip after the clip.
+ * Puts a copy of a clip after the clip. The captions bound to the clip get a copy that is bound to the new clip, because
+ * the copy has the same speech (D47).
  *
  * @param clipId ID of the clip.
  * @return The changed project and the ID of the copy, or null if the clip does not exist.
@@ -111,7 +117,8 @@ fun EditorProject.duplicateClip(clipId: String): Pair<EditorProject, String>? {
     val index = clips.indexOfFirst { it.id == clipId }
     if (index < 0) return null
     val copy = clips[index].copy(id = newEditorId())
-    return copy(clips = clips.take(index + 1) + copy + clips.drop(index + 1)) to copy.id
+    val copiedCaptions = captions.filter { it.clipId == clipId }.map { it.copy(id = newEditorId(), clipId = copy.id) }
+    return copy(clips = clips.take(index + 1) + copy + clips.drop(index + 1), captions = captions + copiedCaptions) to copy.id
 }
 
 /**

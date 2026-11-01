@@ -28,6 +28,7 @@ import com.company.domain.model.editor.TimelineRange
 import com.company.domain.model.editor.addDubbing
 import com.company.domain.model.editor.addSoundEffect
 import com.company.domain.model.editor.afterTextChange
+import com.company.domain.model.editor.boundTo
 import com.company.domain.model.editor.captionCountFrom
 import com.company.domain.model.editor.captionPositionFor
 import com.company.domain.model.editor.captionsBefore
@@ -48,6 +49,7 @@ import com.company.domain.model.editor.placedCaptions
 import com.company.domain.model.editor.removeAudioItem
 import com.company.domain.model.editor.removeClip
 import com.company.domain.model.editor.resetTextAnimation
+import com.company.domain.model.editor.scriptClipCount
 import com.company.domain.model.editor.scriptLines
 import com.company.domain.model.editor.scriptStart
 import com.company.domain.model.editor.setTextAnimation
@@ -115,19 +117,18 @@ class EditorV7EditsTest {
     // ----- Captions -----
 
     @Test
-    fun captionsFromScript_bindsOneLinePerClip_andFollowsTheClip() {
+    fun captionsFromScript_putsOneLinePerClip_withFixedTimes() {
         val lines = scriptLines(" 첫 줄 \n\n둘째 줄\n셋째\n넷째")
         assertEquals(listOf("첫 줄", "둘째 줄", "셋째", "넷째"), lines)
         val withCaptions = project.copy(captions = project.captionsFromScript(lines))
         assertEquals(3, withCaptions.captions.size)
+        assertTrue(withCaptions.captions.all { it.clipId == null })
         val placed = withCaptions.placedCaptions
         assertEquals(listOf(0.0, 4.0, 6.0), placed.map { it.start })
         assertEquals(listOf(4.0, 2.0, 3.0), placed.map { it.length })
-        // 클립 길이를 바꾸면 자막도 따라간다.
-        val trimmed = withCaptions.trimClipEnd("a", 3.0).placedCaptions
-        assertEquals(listOf(0.0, 3.0, 5.0), trimmed.map { it.start })
-        // 클립을 지우면 그 클립의 자막도 없어진다.
-        assertEquals(2, withCaptions.removeClip("b").placedCaptions.size)
+        // 글로 만든 자막은 시간에 고정된다(D47). 클립을 줄이거나 지워도 그대로다.
+        assertEquals(listOf(0.0, 4.0, 6.0), withCaptions.trimClipEnd("a", 3.0).placedCaptions.map { it.start })
+        assertEquals(3, withCaptions.removeClip("b").placedCaptions.size)
     }
 
     @Test
@@ -158,7 +159,8 @@ class EditorV7EditsTest {
 
     @Test
     fun captionsBefore_givesACutClipCaptionAFixedTime() {
-        val withCaptions = project.copy(captions = project.captionsFromScript(listOf("첫", "둘")))
+        val bound = CaptionSegment("k", "첫", start = 0.0, length = 4.0).boundTo(project.clips[0], clipStart = 0.0)
+        val withCaptions = project.copy(captions = listOf(bound))
         val kept = withCaptions.captionsBefore(2.0)
         assertEquals(1, kept.size)
         assertNull(kept.single().clipId)
@@ -172,18 +174,31 @@ class EditorV7EditsTest {
         assertEquals(ScriptStart(clipIndex = 0, offset = 1.5, time = 1.5), project.scriptStart(1.5))
         // 클립 끝 0.3초 안에 있으면 다음 클립 처음부터 넣는다.
         assertEquals(ScriptStart(clipIndex = 1, offset = 0.0, time = 4.0), project.scriptStart(3.8))
-        // 마지막 클립 끝이면 넣을 클립이 없다.
-        assertEquals(3, project.scriptStart(8.9).clipIndex)
+        // 마지막 클립 끝이면 넣을 클립이 없다. 그때는 재생선부터 넣는다(F16).
+        assertEquals(ScriptStart(clipIndex = 3, offset = 0.0, time = 8.9), project.scriptStart(8.9))
+        assertEquals(ScriptStart(clipIndex = 0, offset = 0.0, time = 2.0), EditorProject(name = "p").scriptStart(2.0))
     }
 
     @Test
     fun captionsFromScript_startsTheFirstLineAtTheOffset_andThenUsesTheNextClips() {
-        val withCaptions = project.copy(captions = project.captionsFromScript(listOf("x", "y", "z"), firstClip = 0, firstOffset = 1.5))
+        val withCaptions = project.copy(captions = project.captionsFromScript(listOf("x", "y", "z"), project.scriptStart(1.5)))
         val placed = withCaptions.placedCaptions
         assertEquals(listOf(1.5, 4.0, 6.0), placed.map { it.start })
         assertEquals(listOf(2.5, 2.0, 3.0), placed.map { it.length })
-        val fromSecond = project.captionsFromScript(listOf("x", "y", "z"), firstClip = 1)
-        assertEquals(listOf("b", "c"), fromSecond.map { it.clipId })
+        val fromSecond = project.captionsFromScript(listOf("x", "y", "z"), project.scriptStart(3.8))
+        assertEquals(listOf(4.0, 6.0), fromSecond.map { it.start })
+    }
+
+    @Test
+    fun captionsFromScript_withoutClipsLeft_putsTwoSecondsPerLine() {
+        // 마지막 클립 뒤(9초 뒤)나 클립이 없는 프로젝트에서는 한 줄에 2초씩 이어 넣는다(F16).
+        val after = project.captionsFromScript(listOf("a", "b", "c"), project.scriptStart(9.5))
+        assertEquals(listOf(9.5, 11.5, 13.5), after.map { it.start })
+        assertTrue(after.all { it.length == 2.0 && it.clipId == null })
+        assertNull(project.scriptClipCount(project.scriptStart(9.5)))
+        val empty = EditorProject(name = "p")
+        assertEquals(listOf(0.0, 2.0), empty.captionsFromScript(listOf("a", "b")).map { it.start })
+        assertEquals(3, project.scriptClipCount(project.scriptStart(0.0)))
     }
 
     @Test
@@ -217,7 +232,8 @@ class EditorV7EditsTest {
 
     @Test
     fun trimCaption_stopsAtNeighbors_andEndsTheBinding() {
-        val withCaptions = project.copy(captions = project.captionsFromScript(listOf("a", "b")))
+        val bound = CaptionSegment("k", "a", start = 0.0, length = 4.0).boundTo(project.clips[0], clipStart = 0.0)
+        val withCaptions = project.copy(captions = listOf(bound, CaptionSegment("m", "b", start = 4.0, length = 2.0)))
         val firstId = withCaptions.captions[0].id
         val trimmed = withCaptions.trimCaption(firstId, start = false, time = 5.0)
         val first = trimmed.captions.first { it.id == firstId }
@@ -297,6 +313,8 @@ class EditorV7EditsTest {
         val third = result.project.placedCaptions.last()
         assertEquals(6.0, third.start)
         assertEquals(3.0, third.length)
+        // 붙여 넣은 자막은 시간에 고정된다(D47).
+        assertNull(third.clipId)
     }
 
     // ----- Audio -----

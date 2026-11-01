@@ -155,8 +155,9 @@ data class TextOverlay(
 /**
  * One caption line.
  *
- * A caption from speech has a fixed time. A caption from a typed script is bound to a clip: it moves and changes its
- * length with the clip. A trim of the caption on the timeline ends the binding.
+ * A caption from speech is bound to its clip (D47). It keeps its part of the source video, so it stays with the
+ * speech when the clip is trimmed, moved, or played at another speed. Other captions (from a typed script, pasted, or
+ * added) have a fixed time. A trim or a split of a bound caption on the timeline ends the binding.
  *
  * @property id Unique ID in the project.
  * @property text Words of the line.
@@ -164,8 +165,8 @@ data class TextOverlay(
  * @property length Time on screen.
  * @property decorations Decorations of character ranges. They go on top of the caption style.
  * @property clipId ID of the clip that the caption is bound to, or null for a fixed time.
- * @property clipOffset Seconds from the clip start to the caption start, or null to cover the whole clip.
- * @property clipLength Time on screen of a bound caption with [clipOffset]. The clip end cuts it.
+ * @property sourceStart Start of a bound caption in the source video of its clip, in seconds.
+ * @property sourceEnd End of a bound caption in the source video of its clip, in seconds.
  */
 data class CaptionSegment(
     val id: String,
@@ -174,8 +175,8 @@ data class CaptionSegment(
     val length: Double,
     val decorations: List<DecorationRange> = emptyList(),
     val clipId: String? = null,
-    val clipOffset: Double? = null,
-    val clipLength: Double? = null,
+    val sourceStart: Double? = null,
+    val sourceEnd: Double? = null,
 ) {
     /** End time on the timeline. */
     val end: Double
