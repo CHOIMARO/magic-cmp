@@ -210,16 +210,16 @@ fun EditorProject.itemsOf(track: AudioTrack): List<TrackItem> = when (track) {
 }
 
 /**
- * Moves an audio item in time. The length stays, and the whole item stays inside the project. The row does not
- * change. Call [finishAudioMove] when the drag ends.
+ * Moves an audio item in time. The length stays. The item starts at 0 or later and ends not later than
+ * [MAX_PROJECT_LENGTH]. A place after the video end makes the video longer (F16). The row does not change. Call
+ * [finishAudioMove] when the drag ends.
  *
  * @param track Track of the item.
  * @param id ID of the item.
  * @param start New start time.
  */
 fun EditorProject.moveAudioItem(track: AudioTrack, id: String, start: Double): EditorProject {
-    val total = totalDuration
-    fun place(item: TrackItem) = start.coerceIn(0.0, maxOf(0.0, total - minOf(item.length, total)))
+    fun place(item: TrackItem) = start.coerceIn(0.0, maxOf(0.0, MAX_PROJECT_LENGTH - item.length))
     return when (track) {
         AudioTrack.DUBBING -> copy(dubbings = dubbings.map { if (it.id == id) it.copy(start = place(it)) else it })
         AudioTrack.SOUND_EFFECT -> copy(soundEffects = soundEffects.map { if (it.id == id) it.copy(start = place(it)) else it })

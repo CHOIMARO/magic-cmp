@@ -17,7 +17,8 @@ import kotlin.random.Random
  *   Use [placedCaptions] for the times on the timeline.
  * @property captionPosition Height of all captions from the bottom of the screen, in percent of the screen height.
  *   Null uses the height of the caption style. See [captionPositionFor].
- * @property musicRange Part of the music track that plays from the project start, or null for the whole track.
+ * @property musicRange Part of the music track that plays from the project start, or null for the whole track. The
+ *   music stops at the video end (see [totalDuration]).
  * @property musicFade True to fade the music in and out for 1 second at the start and the end.
  * @property musicVolume Volume of the music, from 0 to 100.
  * @property dubbings Dubbings: spoken audio that a voice made from a text.
@@ -45,9 +46,32 @@ data class EditorProject(
     val openingTransition: ClipTransition? = null,
     val draftId: String? = null,
 ) {
-    /** Length of the project. It is the sum of all clip lengths. */
-    val totalDuration: Double
+    /** Length of all clips. The clips play one after another without gaps, from the project start. */
+    val clipsDuration: Double
         get() = clips.sumOf { it.duration }
+
+    /**
+     * Length of the video (F16): the latest end of the clips, the texts, the captions, the dubbings, and the sound
+     * effects. After the last clip, the video is black. The music does not make the video longer: it stops at this
+     * length. A project with only music is as long as its music part. An empty project is 0 seconds long.
+     */
+    val totalDuration: Double
+        get() {
+            val end = maxOf(
+                clipsDuration,
+                texts.maxOfOrNull { it.end } ?: 0.0,
+                placedCaptions.maxOfOrNull { it.end } ?: 0.0,
+                dubbings.maxOfOrNull { it.end } ?: 0.0,
+                soundEffects.maxOfOrNull { it.end } ?: 0.0,
+            )
+            if (end > 0.0 || musicId == null) return end
+            return musicRange?.length ?: 0.0
+        }
+
+    /** True when the project has no clip, text, caption, music, dubbing, or sound effect (F15, F16). */
+    val isEmpty: Boolean
+        get() = clips.isEmpty() && texts.isEmpty() && captions.isEmpty() && musicId == null &&
+            dubbings.isEmpty() && soundEffects.isEmpty()
 }
 
 /**
@@ -279,6 +303,12 @@ interface TrackItem {
  * @property direction Side that the next scene comes from. Only [TransitionType.PUSH] uses it.
  */
 data class ClipTransition(val type: TransitionType, val direction: PushDirection = PushDirection.RIGHT)
+
+/**
+ * Longest video, in seconds (15 minutes). A text, a caption, a dubbing, or a sound effect cannot end later than this
+ * time, so the video cannot get longer by a drag.
+ */
+const val MAX_PROJECT_LENGTH = 900.0
 
 /** Size step of a new text. */
 const val DEFAULT_SIZE_STEP = 3

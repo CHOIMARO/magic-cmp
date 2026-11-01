@@ -8,7 +8,6 @@ import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.MY_VOICE_ID
 import com.company.domain.model.editor.MyVoiceStatus
 import com.company.domain.model.editor.compactTextLayers
-import com.company.domain.model.editor.cutTextAtEnd
 import com.company.domain.model.editor.duplicateClip
 import com.company.domain.model.editor.duplicateText
 import com.company.domain.model.editor.finishAudioMove
@@ -494,13 +493,6 @@ class EditorViewModel(
         if (currentState.project.dragOrigin(target) == null) return
         pause()
         projectRepository.saveCheckpoint()
-        // 타임라인은 글자를 프로젝트 끝까지만 보여 준다. 보이는 막대에서 끌기를 시작하도록 먼저 자른다.
-        val textId = when (target) {
-            is TimelineDragTarget.TextEdge -> target.textId
-            is TimelineDragTarget.TextMove -> target.textId
-            else -> null
-        }
-        if (textId != null) projectRepository.update { it.cutTextAtEnd(textId) }
         val project = projectRepository.project.value
         val origin = project.dragOrigin(target) ?: return
         dragOrigin = origin

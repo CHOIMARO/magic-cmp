@@ -227,22 +227,21 @@ class EditorV7EditsTest {
     }
 
     @Test
-    fun placedCaptions_cutAtTheProjectEnd_andKeepTheStoredTimes() {
+    fun placedCaptions_keepFixedTimesAfterTheClips_andMakeTheVideoLonger() {
         val withCaptions = project.copy(
             captions = listOf(
                 CaptionSegment("k", "자막", start = 5.5, length = 3.0),
                 CaptionSegment("m", "끝 뒤", start = 8.5, length = 0.5),
             ),
         )
-        // 마지막 클립을 줄이면 프로젝트가 7.5초에서 끝난다.
+        // 마지막 클립을 줄여도 시간에 고정된 자막은 그대로다. 영상은 가장 늦게 끝나는 자막까지다(F16).
         val shorter = withCaptions.trimClipEnd("c", 1.5)
-        assertEquals(listOf("k"), shorter.placedCaptions.map { it.id })
-        assertEquals(7.5, shorter.placedCaptions.single().end, 1e-9)
-        assertEquals(withCaptions.captions, shorter.captions)
-        // 영상을 다시 늘리면 자막 길이도 돌아온다.
-        assertEquals(8.5, shorter.trimClipEnd("c", 3.0).placedCaptions.first().end, 1e-9)
-        // 잘린 끝에서 끝을 당기면 바로 짧아진다.
-        assertEquals(7.0, shorter.trimCaption("k", start = false, time = 7.0).captions.first { it.id == "k" }.end, 1e-9)
+        assertEquals(listOf("k", "m"), shorter.placedCaptions.map { it.id })
+        assertEquals(8.5, shorter.placedCaptions.first().end, 1e-9)
+        assertEquals(7.5, shorter.clipsDuration, 1e-9)
+        assertEquals(9.0, shorter.totalDuration, 1e-9)
+        // 끝을 영상 끝 뒤로 끌면 영상이 길어진다.
+        assertEquals(9.5, shorter.trimCaption("m", start = false, time = 9.5).totalDuration, 1e-9)
     }
 
     // ----- Transitions -----

@@ -48,37 +48,30 @@ fun EditorProject.clipBoundaries(): List<Double> {
  * Captions with their times on the timeline, in the order of [EditorProject.captions].
  *
  * A caption bound to a clip gets the time of the clip. A caption with a clip offset starts that far after the clip
- * start, and the clip end cuts it. A caption of a clip that is not in the project is left out.
+ * start, and the clip end cuts it. A caption of a clip that is not in the project is left out. The stored times do
+ * not change, so a bound caption gets its length back when the clip gets longer again.
  *
- * The project end cuts all captions, and a caption that starts at the end or later is left out. The stored times do
- * not change, so a caption gets its length back when the clips get longer again.
+ * A caption with a fixed time keeps its time, also after the last clip. It then makes the video longer (F16).
  */
 val EditorProject.placedCaptions: List<CaptionSegment>
     get() {
-        val total = totalDuration
-        if (captions.all { it.clipId == null && it.end <= total }) return captions
+        if (captions.all { it.clipId == null }) return captions
         val starts = clipBoundaries()
         val indexes = clips.withIndex().associate { (index, clip) -> clip.id to index }
         return captions.mapNotNull { caption ->
-            val clipId = caption.clipId
-            val placed = if (clipId == null) {
-                caption
+            val clipId = caption.clipId ?: return@mapNotNull caption
+            val index = indexes[clipId] ?: return@mapNotNull null
+            val clipStart = starts[index]
+            val clipLength = clips[index].duration
+            val offset = caption.clipOffset
+            val placed = if (offset == null) {
+                caption.copy(start = clipStart, length = clipLength)
             } else {
-                val index = indexes[clipId] ?: return@mapNotNull null
-                val clipStart = starts[index]
-                val clipLength = clips[index].duration
-                val offset = caption.clipOffset
-                if (offset == null) {
-                    caption.copy(start = clipStart, length = clipLength)
-                } else {
-                    // 클립이 줄어 시작 거리가 클립보다 길면 클립 시작으로 당긴다.
-                    val from = if (offset >= clipLength) 0.0 else offset
-                    caption.copy(start = clipStart + from, length = minOf(caption.clipLength ?: clipLength, clipLength - from))
-                }
+                // 클립이 줄어 시작 거리가 클립보다 길면 클립 시작으로 당긴다.
+                val from = if (offset >= clipLength) 0.0 else offset
+                caption.copy(start = clipStart + from, length = minOf(caption.clipLength ?: clipLength, clipLength - from))
             }
-            // 클립이 줄어 프로젝트가 짧아지면 프로젝트 끝에서 자른다. 타임라인은 프로젝트 끝까지만 보인다.
-            val length = minOf(placed.length, total - placed.start)
-            if (length < MIN_PLACED_CAPTION_LENGTH) null else placed.copy(length = length)
+            if (placed.length < MIN_PLACED_CAPTION_LENGTH) null else placed
         }
     }
 
@@ -138,7 +131,7 @@ fun EditorProject.scriptStart(time: Double): ScriptStart {
         offset = 0.0
     }
     if (offset <= SCRIPT_OFFSET_MIN) offset = 0.0
-    val start = if (clipIndex < clips.size) boundaries[clipIndex] + offset else totalDuration
+    val start = if (clipIndex < clips.size) boundaries[clipIndex] + offset else clipsDuration
     return ScriptStart(clipIndex = clipIndex, offset = offset, time = start)
 }
 
@@ -283,7 +276,8 @@ fun EditorProject.splitCaption(captionId: String, time: Double): CaptionSplit {
 /**
  * Moves one edge of a caption. The caption gets a fixed time, so the binding to its clip ends.
  *
- * The edge stays between the neighbor captions, inside the project, and [MIN_CAPTION_LENGTH] from the other edge.
+ * The edge stays between the neighbor captions, [MIN_CAPTION_LENGTH] from the other edge, and not later than
+ * [MAX_PROJECT_LENGTH]. An end after the video end makes the video longer (F16).
  *
  * @param captionId ID of the caption.
  * @param start True to move the start, false to move the end.
@@ -295,7 +289,7 @@ fun EditorProject.trimCaption(captionId: String, start: Boolean, time: Double): 
     val others = placed.filter { it.id != captionId }
     val previousEnd = others.filter { it.start < caption.start }.maxOfOrNull { it.end }?.coerceAtMost(caption.start) ?: 0.0
     val nextStart = others.filter { it.start > caption.start }.minOfOrNull { it.start }?.coerceAtLeast(caption.end)
-        ?: maxOf(totalDuration, caption.end)
+        ?: MAX_PROJECT_LENGTH
     val newStart = if (start) time.coerceAtMost(caption.end - MIN_CAPTION_LENGTH).coerceAtLeast(previousEnd) else caption.start
     val newEnd = if (start) caption.end else time.coerceAtMost(nextStart).coerceAtLeast(caption.start + MIN_CAPTION_LENGTH)
     return copy(

@@ -27,6 +27,12 @@ const val MAX_ANIMATION_MILLIS = 1000
 /** Times closer than this, in seconds, count as the same time when the editor checks overlaps. */
 internal const val TIME_EPSILON = 1e-6
 
+/** Length of a new text, in seconds, when the video is long enough. */
+private const val NEW_TEXT_LENGTH = 3.0
+
+/** A new text starts at least this long before the video end, in seconds. */
+private const val NEW_TEXT_MIN_ROOM = 1.0
+
 /**
  * Clip at a time on the timeline.
  *
@@ -175,14 +181,14 @@ data class TextContent(
  * The overlay goes to the first row of the text track. When it overlaps a text in that row, it goes to the next row
  * without an overlap. When all rows have an overlap, it goes to a new row.
  *
+ * See [newTextTime] for the time of the overlay.
+ *
  * @param content Text and look of the overlay.
  * @param time Current time on the timeline.
  * @return The changed project and the ID of the new overlay.
  */
 fun EditorProject.addText(content: TextContent, time: Double): Pair<EditorProject, String> {
-    val total = totalDuration
-    val start = time.coerceIn(0.0, maxOf(0.0, total - 1))
-    val length = maxOf(1.0, minOf(3.0, total - start))
+    val (start, length) = newTextTime(time)
     val overlay = TextOverlay(
         id = newEditorId(),
         text = content.text,
@@ -197,6 +203,24 @@ fun EditorProject.addText(content: TextContent, time: Double): Pair<EditorProjec
         decorations = content.decorations,
     )
     return copy(texts = texts + overlay) to overlay.id
+}
+
+/**
+ * Start and length of a new text at [time] (F16).
+ *
+ * The text starts at [time], but not later than 1 second before the video end, and stays on screen for 3 seconds
+ * inside the video. In a video shorter than 1 second, for example an empty project, the text starts at 0 and stays
+ * for 3 seconds. The video then gets longer.
+ *
+ * @param time Current time on the timeline.
+ * @return The start and the length in seconds.
+ */
+fun EditorProject.newTextTime(time: Double): Pair<Double, Double> {
+    val total = totalDuration
+    val start = time.coerceIn(0.0, maxOf(0.0, total - NEW_TEXT_MIN_ROOM))
+    val room = total - start
+    val length = if (room >= NEW_TEXT_MIN_ROOM) minOf(NEW_TEXT_LENGTH, room) else NEW_TEXT_LENGTH
+    return start to length
 }
 
 /**
@@ -306,29 +330,15 @@ fun EditorProject.trimTextStart(textId: String, start: Double): EditorProject = 
  * Moves the end of a text overlay. The start stays.
  *
  * @param textId ID of the overlay.
- * @param end New end time. The function keeps it inside the project, before the next text in the same row,
- *   and [MIN_TEXT_LENGTH] after the start.
+ * @param end New end time. The function keeps it before the next text in the same row, [MIN_TEXT_LENGTH] after the
+ *   start, and not later than [MAX_PROJECT_LENGTH]. An end after the video end makes the video longer (F16).
  */
 fun EditorProject.trimTextEnd(textId: String, end: Double): EditorProject = mapText(textId) { text ->
     // 같은 줄의 뒤 글자와 겹치지 않게 한다. 이미 겹쳐 있던 글자는 지금 위치보다 앞으로 당기지 않는다.
     val nextStart = texts.filter { it.id != text.id && it.layer == text.layer && it.start > text.start }
-        .minOfOrNull { it.start }?.coerceAtLeast(text.end) ?: totalDuration
-    val newEnd = end.coerceAtMost(minOf(totalDuration, nextStart)).coerceAtLeast(text.start + MIN_TEXT_LENGTH)
+        .minOfOrNull { it.start }?.coerceAtLeast(text.end) ?: MAX_PROJECT_LENGTH
+    val newEnd = end.coerceAtMost(minOf(MAX_PROJECT_LENGTH, nextStart)).coerceAtLeast(text.start + MIN_TEXT_LENGTH)
     text.copy(length = newEnd - text.start)
-}
-
-/**
- * Cuts a text overlay at the project end. The timeline shows a text only up to the project end, so the edit tools
- * call this before they change the text. A text inside the project, or a text that starts at the end or later,
- * does not change.
- *
- * @param textId ID of the overlay.
- */
-fun EditorProject.cutTextAtEnd(textId: String): EditorProject {
-    val total = totalDuration
-    val text = texts.find { it.id == textId } ?: return this
-    if (text.end <= total || text.start >= total) return this
-    return mapText(textId) { it.copy(length = (total - it.start).coerceAtLeast(MIN_TEXT_LENGTH)) }
 }
 
 /**
@@ -338,12 +348,13 @@ fun EditorProject.cutTextAtEnd(textId: String): EditorProject {
  * when the move ends.
  *
  * @param textId ID of the overlay.
- * @param start New start time. The function keeps the whole overlay inside the project.
+ * @param start New start time. The function keeps it at 0 or later, and keeps the end not later than
+ *   [MAX_PROJECT_LENGTH]. A place after the video end makes the video longer (F16).
  * @param layer New row, or null to keep the row. The function keeps it at 0 or more.
  */
 fun EditorProject.moveTextTime(textId: String, start: Double, layer: Int? = null): EditorProject = mapText(textId) {
     it.copy(
-        start = start.coerceAtMost(totalDuration - it.length).coerceAtLeast(0.0),
+        start = start.coerceAtMost(MAX_PROJECT_LENGTH - it.length).coerceAtLeast(0.0),
         layer = layer?.coerceAtLeast(0) ?: it.layer,
     )
 }
@@ -484,7 +495,7 @@ fun EditorProject.applyTemplate(
                     id = newEditorId(),
                     text = defaultText,
                     start = 0.0,
-                    length = minOf(3.0, totalDuration),
+                    length = newTextTime(0.0).second,
                     style = template.style,
                     x = 50.0,
                     y = 26.0,

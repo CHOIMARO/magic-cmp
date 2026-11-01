@@ -3,12 +3,17 @@ package com.company.domain.editor
 import com.company.domain.model.editor.CaptionSegment
 import com.company.domain.model.editor.CaptionStyleType
 import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.Dubbing
+import com.company.domain.model.editor.DubbingSpeed
 import com.company.domain.model.editor.EditorProject
 import com.company.domain.model.editor.EditorTemplate
 import com.company.domain.model.editor.LayoutType
+import com.company.domain.model.editor.MAX_PROJECT_LENGTH
 import com.company.domain.model.editor.MAX_TEXT_SCALE
 import com.company.domain.model.editor.MIN_TEXT_LENGTH
 import com.company.domain.model.editor.MIN_TEXT_SCALE
+import com.company.domain.model.editor.MusicRange
+import com.company.domain.model.editor.SoundEffectClip
 import com.company.domain.model.editor.TextFontType
 import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.TextStyleType
@@ -16,7 +21,6 @@ import com.company.domain.model.editor.addText
 import com.company.domain.model.editor.applyTemplate
 import com.company.domain.model.editor.clipAt
 import com.company.domain.model.editor.compactTextLayers
-import com.company.domain.model.editor.cutTextAtEnd
 import com.company.domain.model.editor.duplicateClip
 import com.company.domain.model.editor.duplicateText
 import com.company.domain.model.editor.moveText
@@ -47,23 +51,47 @@ class EditorProjectEditsTest {
     private val project = EditorProject(name = "p", clips = listOf(clip("a", 4.0), clip("b", 2.0, speed = 2.0)))
 
     @Test
-    fun cutTextAtEnd_cutsOnlyATextThatGoesPastTheEnd() {
-        // 프로젝트 길이는 5초다.
-        val withTexts = project.copy(
-            texts = listOf(
-                TextOverlay("past", "hi", 3.0, 4.0, TextStyleType.IMPACT, 50.0, 50.0),
-                TextOverlay("inside", "hi", 0.0, 2.0, TextStyleType.IMPACT, 50.0, 50.0),
-                TextOverlay("after", "hi", 6.0, 1.0, TextStyleType.IMPACT, 50.0, 50.0, layer = 1),
-            ),
-        )
-        assertEquals(2.0, withTexts.cutTextAtEnd("past").texts.first { it.id == "past" }.length, 1e-9)
-        assertEquals(withTexts, withTexts.cutTextAtEnd("inside"))
-        assertEquals(withTexts, withTexts.cutTextAtEnd("after"))
+    fun totalDuration_usesClipSpeed() {
+        assertEquals(5.0, project.totalDuration)
+        assertEquals(5.0, project.clipsDuration)
     }
 
     @Test
-    fun totalDuration_usesClipSpeed() {
-        assertEquals(5.0, project.totalDuration)
+    fun totalDuration_isTheLatestEndOfAllItemsExceptMusic() {
+        // 클립은 5초에 끝난다. 다른 요소가 더 늦게 끝나면 영상이 그만큼 길다.
+        val text = TextOverlay("t", "hi", 4.0, 4.0, TextStyleType.IMPACT, 50.0, 50.0)
+        assertEquals(8.0, project.copy(texts = listOf(text)).totalDuration)
+        assertEquals(10.0, project.copy(captions = listOf(CaptionSegment("k", "hi", 9.0, 1.0))).totalDuration)
+        val dubbing = Dubbing("d", "hi", "v1", DubbingSpeed.NORMAL, start = 6.0, length = 1.5)
+        assertEquals(7.5, project.copy(dubbings = listOf(dubbing)).totalDuration)
+        val effect = SoundEffectClip("s", "s1", "띠링", start = 5.5, length = 0.6)
+        assertEquals(6.1, project.copy(soundEffects = listOf(effect)).totalDuration, 1e-9)
+        // 음악은 영상을 늘리지 않는다. 음악만 있으면 고른 구간 길이가 영상 길이다.
+        val music = EditorProject(name = "p", musicId = "m1", musicRange = MusicRange(4.0, 34.0))
+        assertEquals(5.0, project.copy(musicId = "m1", musicRange = MusicRange(4.0, 34.0)).totalDuration)
+        assertEquals(30.0, music.totalDuration)
+        assertEquals(0.0, EditorProject(name = "p").totalDuration)
+    }
+
+    @Test
+    fun isEmpty_countsEveryKindOfItem() {
+        val empty = EditorProject(name = "p")
+        assertTrue(empty.isEmpty)
+        assertFalse(project.isEmpty)
+        assertFalse(empty.addText("hi", TextStyleType.IMPACT, time = 0.0).isEmpty)
+        assertFalse(empty.copy(musicId = "m1").isEmpty)
+        assertFalse(empty.copy(captions = listOf(CaptionSegment("k", "hi", 0.0, 1.0))).isEmpty)
+    }
+
+    @Test
+    fun addText_inEmptyProject_staysThreeSeconds_andMakesTheVideo() {
+        val added = EditorProject(name = "p").addText("hi", TextStyleType.IMPACT, time = 0.0)
+        assertEquals(0.0, added.texts.single().start)
+        assertEquals(3.0, added.texts.single().length)
+        assertEquals(3.0, added.totalDuration)
+        // 템플릿의 기본 글자도 같은 규칙을 따른다.
+        val template = EditorProject(name = "p").applyTemplate(EditorTemplate.Text(TextStyleType.NEON), "title", emptyList())
+        assertEquals(3.0, template.texts.single().length)
     }
 
     @Test
@@ -119,21 +147,27 @@ class EditorProjectEditsTest {
         assertEquals(MIN_TEXT_LENGTH, shortest.length)
         assertEquals(0.0, withText.trimTextStart(id, -2.0).texts.single().start)
 
-        val longer = withText.trimTextEnd(id, 99.0).texts.single()
-        assertEquals(1.0, longer.start)
-        assertEquals(project.totalDuration, longer.start + longer.length)
+        // 영상 끝(5초) 뒤로 늘리면 영상이 길어진다. 최대 길이에서 멈춘다.
+        val longer = withText.trimTextEnd(id, 9.0)
+        assertEquals(1.0, longer.texts.single().start)
+        assertEquals(9.0, longer.texts.single().end)
+        assertEquals(9.0, longer.totalDuration)
+        assertEquals(MAX_PROJECT_LENGTH, withText.trimTextEnd(id, 2000.0).texts.single().end)
         assertEquals(MIN_TEXT_LENGTH, withText.trimTextEnd(id, 0.0).texts.single().length)
     }
 
     @Test
-    fun moveTextTime_keepsLengthInsideProject() {
+    fun moveTextTime_keepsLength_andCanGoPastTheVideoEnd() {
         val withText = project.addText("hi", TextStyleType.IMPACT, time = 1.0)
         val id = withText.texts.single().id
 
         assertEquals(2.0, withText.moveTextTime(id, 2.0).texts.single().start)
-        assertEquals(2.0, withText.moveTextTime(id, 9.0).texts.single().start)
+        val later = withText.moveTextTime(id, 9.0)
+        assertEquals(9.0, later.texts.single().start)
+        assertEquals(3.0, later.texts.single().length)
+        assertEquals(12.0, later.totalDuration)
         assertEquals(0.0, withText.moveTextTime(id, -1.0).texts.single().start)
-        assertEquals(3.0, withText.moveTextTime(id, 9.0).texts.single().length)
+        assertEquals(MAX_PROJECT_LENGTH - 3.0, withText.moveTextTime(id, 2000.0).texts.single().start)
     }
 
     @Test
