@@ -258,7 +258,7 @@ private fun ColumnScope.DoneContent(onIntent: (ExportIntent) -> Unit) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MagicButton(
                 text = stringResource(Res.string.export_edit_more),
-                onClick = { onIntent(ExportIntent.Back) },
+                onClick = { onIntent(ExportIntent.EditMore) },
                 modifier = Modifier.weight(1f),
                 style = MagicButtonStyle.SECONDARY,
             )

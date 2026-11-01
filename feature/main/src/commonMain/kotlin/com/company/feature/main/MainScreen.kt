@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.company.core.designsystem.component.MagicDialog
 import com.company.core.designsystem.component.MagicModalBottomSheet
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
@@ -25,6 +26,13 @@ import com.company.domain.model.editor.VideoSummary
 import com.company.feature.main.component.MainBottomBar
 import com.company.feature.main.sheet.AppInfoSheetContent
 import com.company.feature.main.sheet.TemplateSheetContent
+import com.company.feature.main.sheet.WorkMenuSheetContent
+import com.company.feature.main.resources.Res
+import com.company.feature.main.resources.work_delete_cancel
+import com.company.feature.main.resources.work_delete_confirm
+import com.company.feature.main.resources.work_delete_message
+import com.company.feature.main.resources.work_delete_title
+import org.jetbrains.compose.resources.stringResource
 import com.company.feature.main.tab.HomeTab
 import com.company.feature.main.tab.LibraryTab
 import com.company.feature.main.tab.MyTab
@@ -43,14 +51,18 @@ import kotlin.time.ExperimentalTime
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
+    // 작업 메뉴가 열려 있는 동안 그 카드는 살짝 줄어든 채로 있다.
+    val menuWorkId = (state.sheet as? MainSheet.Work)?.workId
     Box(modifier = Modifier.fillMaxSize().background(MagicColors.Background)) {
         when (state.tab) {
             MainTab.HOME -> HomeTab(
                 works = state.works,
+                menuWorkId = menuWorkId,
                 onNewVideo = { onIntent(MainIntent.StartNewVideo) },
                 onOpenCamera = { onIntent(MainIntent.OpenCamera) },
                 onShowAllWorks = { onIntent(MainIntent.ShowAllWorks) },
                 onOpenWork = { onIntent(MainIntent.OpenWork(it)) },
+                onOpenWorkMenu = { onIntent(MainIntent.OpenWorkMenu(it)) },
             )
             MainTab.TEMPLATES -> TemplateTab(
                 filter = state.templateFilter,
@@ -59,7 +71,9 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
             )
             MainTab.LIBRARY -> LibraryTab(
                 works = state.works,
+                menuWorkId = menuWorkId,
                 onOpenWork = { onIntent(MainIntent.OpenWork(it)) },
+                onOpenWorkMenu = { onIntent(MainIntent.OpenWorkMenu(it)) },
             )
             MainTab.MY -> MyTab(
                 settings = state.settings,
@@ -102,8 +116,25 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
                         onUseTemplate = { closeThen(MainIntent.UseSelectedTemplate) },
                     )
                     MainSheet.AppInfo -> AppInfoSheetContent()
+                    is MainSheet.Work -> WorkMenuSheetContent(
+                        name = state.works.find { it.id == sheet.workId }?.name.orEmpty(),
+                        onExport = { closeThen(MainIntent.ExportWork(sheet.workId)) },
+                        onDelete = { closeThen(MainIntent.RequestDeleteWork(sheet.workId)) },
+                    )
                 }
             }
+        }
+        if (state.deleteWorkId != null) {
+            MagicDialog(
+                title = stringResource(Res.string.work_delete_title),
+                message = stringResource(Res.string.work_delete_message),
+                confirmLabel = stringResource(Res.string.work_delete_confirm),
+                onConfirm = { onIntent(MainIntent.ConfirmDeleteWork) },
+                cancelLabel = stringResource(Res.string.work_delete_cancel),
+                onCancel = { onIntent(MainIntent.DismissDeleteWork) },
+                onDismissRequest = { onIntent(MainIntent.DismissDeleteWork) },
+                danger = true,
+            )
         }
     }
 }

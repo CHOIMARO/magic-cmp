@@ -17,12 +17,14 @@ object MainRoute
  * @param onOpenGallery Opens the photo and video picker for a new project with the template, or with no template.
  * @param onOpenCamera Opens the camera.
  * @param onOpenEditor Opens the editor with the current project.
+ * @param onOpenExport Opens the export screen of the current project, without the editor (S13).
  * @param onOpenMyVoice Opens the screen of the user's own voice.
  */
 fun NavGraphBuilder.mainScreen(
     onOpenGallery: (EditorTemplate?) -> Unit,
     onOpenCamera: () -> Unit,
     onOpenEditor: () -> Unit,
+    onOpenExport: () -> Unit,
     onOpenMyVoice: () -> Unit,
 ) {
     composable<MainRoute> { entry ->
@@ -30,6 +32,7 @@ fun NavGraphBuilder.mainScreen(
             onOpenGallery = entry.onlyWhenResumed(onOpenGallery),
             onOpenCamera = entry.onlyWhenResumed(onOpenCamera),
             onOpenEditor = entry.onlyWhenResumed(onOpenEditor),
+            onOpenExport = entry.onlyWhenResumed(onOpenExport),
             onOpenMyVoice = entry.onlyWhenResumed(onOpenMyVoice),
         )
     }

@@ -1,6 +1,10 @@
 package com.company.core.designsystem.component
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -35,7 +40,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextOverflow
@@ -155,6 +165,20 @@ private val Grayscale = ColorFilter.colorMatrix(ColorMatrix().apply { setToSatur
 /** Color of the mark of an exported video. oklch(0.86 0.12 300). */
 private val ExportedMarkColor = oklch(0.86f, 0.12f, 300f)
 
+/** Time of a long press on a video card, in milliseconds. */
+private const val VIDEO_CARD_LONG_PRESS_MILLIS = 400L
+
+/** Finger move that cancels a long press on a video card. It is a scroll then. */
+private val VideoCardLongPressSlop = 8.dp
+
+/** Size of a video card while its menu is open. */
+private const val VIDEO_CARD_HELD_SCALE = 0.95f
+
+/** Remembers a long press until the click at its end, so that the click does nothing. */
+private class LongPressFlag {
+    var fired = false
+}
+
 /**
  * Video card of the Magic Buttons spec, for example a recent work. It is 4:5 and shows the length
  * at the top and the title at the bottom.
@@ -168,6 +192,9 @@ private val ExportedMarkColor = oklch(0.86f, 0.12f, 300f)
  * @param caption Short line above the title, for example "어제", or null.
  * @param exportedLabel Screen reader text of a small mark after the length, or null for no mark. The mark tells that
  *   the user exported the video.
+ * @param onLongClick Action after a press of 0.4 seconds without a move, with a short vibration, or null. The click
+ *   at the end of the long press does nothing.
+ * @param held True while a menu of the card is open. The card is then a little smaller.
  */
 @Composable
 fun MagicVideoCard(
@@ -179,14 +206,52 @@ fun MagicVideoCard(
     enabled: Boolean = true,
     caption: String? = null,
     exportedLabel: String? = null,
+    onLongClick: (() -> Unit)? = null,
+    held: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val shape = RoundedCornerShape(22.dp)
+    val heldScale by animateFloatAsState(if (held) VIDEO_CARD_HELD_SCALE else 1f, tween(180))
+    val haptic = LocalHapticFeedback.current
+    val latestOnLongClick by rememberUpdatedState(onLongClick)
+    val longPress = remember { LongPressFlag() }
     val cardModifier = modifier
+        .graphicsLayer {
+            scaleX = heldScale
+            scaleY = heldScale
+        }
         .aspectRatio(4f / 5f)
         .then(if (enabled) Modifier else Modifier.alpha(0.35f))
-        .pressClickable(enabled = enabled, interactionSource = interactionSource, onClick = onClick)
+        .then(
+            if (onLongClick == null || !enabled) {
+                Modifier
+            } else {
+                Modifier.pointerInput(Unit) {
+                    awaitEachGesture {
+                        // 클릭보다 먼저 지켜본다. 이벤트를 소비하지 않아서 눌림 표시와 스크롤은 그대로 동작한다.
+                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        longPress.fired = false
+                        val slop = VideoCardLongPressSlop.toPx()
+                        val ended = withTimeoutOrNull(VIDEO_CARD_LONG_PRESS_MILLIS) {
+                            var change = down
+                            while (change.pressed && (change.position - down.position).getDistance() <= slop) {
+                                change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
+                            }
+                            true
+                        }
+                        if (ended == null) {
+                            longPress.fired = true
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            latestOnLongClick?.invoke()
+                        }
+                    }
+                }
+            },
+        )
+        .pressClickable(enabled = enabled, interactionSource = interactionSource) {
+            if (longPress.fired) longPress.fired = false else onClick()
+        }
     if (hue == null) {
         Box(modifier = cardModifier.clip(shape).background(Color.Black)) {
             VideoCardContent(title, duration, caption, exportedLabel, pressed && enabled)

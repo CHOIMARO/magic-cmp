@@ -32,12 +32,16 @@ import org.jetbrains.compose.resources.stringResource
  * short message.
  *
  * @param works Works of the user.
+ * @param menuWorkId Work whose menu is open, or null.
  * @param onOpenWork Called with the ID of the tapped work.
+ * @param onOpenWorkMenu Called with the ID of the work after a long press on its card.
  */
 @Composable
 internal fun LibraryTab(
     works: List<VideoSummary>,
+    menuWorkId: String?,
     onOpenWork: (String) -> Unit,
+    onOpenWorkMenu: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -58,7 +62,14 @@ internal fun LibraryTab(
         } else {
             val now = rememberNow()
             FixedGrid(items = works, columns = 2, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { work ->
-                WorkCard(work = work, now = now, onOpen = { onOpenWork(work.id) }, modifier = Modifier.fillMaxWidth())
+                WorkCard(
+                    work = work,
+                    now = now,
+                    onOpen = { onOpenWork(work.id) },
+                    onOpenMenu = { onOpenWorkMenu(work.id) },
+                    menuOpen = work.id == menuWorkId,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }

@@ -24,8 +24,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.graphics.Color
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
+import com.company.core.designsystem.theme.oklch
 
 /** Height of the popup buttons. */
 private val DialogButtonHeight = 48.dp
@@ -34,6 +36,13 @@ private val DialogButtonHeight = 48.dp
 private val CancelButtonColors = MagicButtonDefaults.colors(MagicButtonStyle.SECONDARY).copy(
     container = MagicColors.OnSurface.copy(alpha = 0.08f),
     pressedContainer = MagicColors.OnSurface.copy(alpha = 0.14f),
+)
+
+/** Colors of the confirm button of an action that the user cannot undo, for example a delete. */
+private val DangerConfirmColors = MagicButtonDefaults.colors(MagicButtonStyle.PRIMARY_SMALL).copy(
+    container = oklch(0.6f, 0.2f, 25f),
+    content = Color.White,
+    pressedContainer = oklch(0.53f, 0.2f, 25f),
 )
 
 /**
@@ -50,6 +59,7 @@ private val CancelButtonColors = MagicButtonDefaults.colors(MagicButtonStyle.SEC
  * @param onCancel Action of the cancel button.
  * @param onDismissRequest Action of the back action and of a tap outside the popup. Null keeps the popup open
  *   until the user taps a button.
+ * @param danger True for an action that the user cannot undo, for example a delete. The confirm button is red.
  */
 @Composable
 fun MagicDialog(
@@ -60,6 +70,7 @@ fun MagicDialog(
     cancelLabel: String? = null,
     onCancel: () -> Unit = {},
     onDismissRequest: (() -> Unit)? = null,
+    danger: Boolean = false,
 ) {
     Dialog(
         onDismissRequest = { onDismissRequest?.invoke() },
@@ -76,6 +87,7 @@ fun MagicDialog(
             onConfirm = onConfirm,
             cancelLabel = cancelLabel,
             onCancel = onCancel,
+            danger = danger,
         )
     }
 }
@@ -88,6 +100,7 @@ private fun MagicDialogCard(
     onConfirm: () -> Unit,
     cancelLabel: String?,
     onCancel: () -> Unit,
+    danger: Boolean = false,
 ) {
     Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp), contentAlignment = Alignment.Center) {
         Column(
@@ -135,6 +148,7 @@ private fun MagicDialogCard(
                     onClick = onConfirm,
                     modifier = Modifier.weight(1f),
                     style = MagicButtonStyle.PRIMARY_SMALL,
+                    colors = if (danger) DangerConfirmColors else MagicButtonDefaults.colors(MagicButtonStyle.PRIMARY_SMALL),
                     height = DialogButtonHeight,
                 )
             }
@@ -155,12 +169,28 @@ private fun DialogPreview(content: @Composable () -> Unit) {
 private fun MagicDialogTwoButtonsPreview() {
     DialogPreview {
         MagicDialogCard(
-            title = "편집을 그만둘까요?",
-            message = "지금 나가면 편집한 내용이 사라져요",
-            confirmLabel = "나가기",
+            title = "기존 자막을 바꿀까요?",
+            message = "지금 있는 자막 3개를 지우고 새로 넣어요",
+            confirmLabel = "바꾸기",
             onConfirm = {},
             cancelLabel = "취소",
             onCancel = {},
+        )
+    }
+}
+
+@Preview(name = "MagicDialog - danger", widthDp = 360)
+@Composable
+private fun MagicDialogDangerPreview() {
+    DialogPreview {
+        MagicDialogCard(
+            title = "이 작업을 삭제할까요?",
+            message = "편집 내용은 되돌릴 수 없어요. 갤러리에 저장한 영상은 그대로 남아요.",
+            confirmLabel = "삭제",
+            onConfirm = {},
+            cancelLabel = "취소",
+            onCancel = {},
+            danger = true,
         )
     }
 }

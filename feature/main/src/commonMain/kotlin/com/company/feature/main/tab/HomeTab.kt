@@ -64,18 +64,22 @@ private const val RECENT_WORK_COUNT = 4
  * the last change. Without works, the tab shows a guide card in place of the list, and the section header has no arrow.
  *
  * @param works Works of the user, the work with the most recent change first.
+ * @param menuWorkId Work whose menu is open, or null.
  * @param onNewVideo Action of the "새 영상 만들기" card and the button of the guide card.
  * @param onOpenCamera Action of the "촬영" card.
  * @param onShowAllWorks Action of the arrow in the section.
  * @param onOpenWork Called with the ID of the tapped work.
+ * @param onOpenWorkMenu Called with the ID of the work after a long press on its card.
  */
 @Composable
 internal fun HomeTab(
     works: List<VideoSummary>,
+    menuWorkId: String?,
     onNewVideo: () -> Unit,
     onOpenCamera: () -> Unit,
     onShowAllWorks: () -> Unit,
     onOpenWork: (String) -> Unit,
+    onOpenWorkMenu: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -113,7 +117,14 @@ internal fun HomeTab(
         } else {
             val now = rememberNow()
             FixedGrid(items = works.take(RECENT_WORK_COUNT), columns = 2, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { work ->
-                WorkCard(work = work, now = now, onOpen = { onOpenWork(work.id) }, modifier = Modifier.fillMaxWidth())
+                WorkCard(
+                    work = work,
+                    now = now,
+                    onOpen = { onOpenWork(work.id) },
+                    onOpenMenu = { onOpenWorkMenu(work.id) },
+                    menuOpen = work.id == menuWorkId,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }

@@ -126,8 +126,11 @@ sealed class ExportIntent : Intent() {
     /** Cancel : Stops the export and goes back to the setup step. */
     data object Cancel : ExportIntent()
 
-    /** Back : Stops the export and goes back to the editor. */
+    /** Back : Stops the export and goes back to the screen before, the editor or the tab. */
     data object Back : ExportIntent()
+
+    /** EditMore : Opens the work in the editor after the export ("더 편집하기"). */
+    data object EditMore : ExportIntent()
 
     /** GoHome : Goes to the home tab. */
     data object GoHome : ExportIntent()
@@ -138,8 +141,11 @@ sealed class ExportSideEffect : SideEffect() {
     /** ShowToast(message) : Shows a short message. */
     data class ShowToast(val message: UiText) : ExportSideEffect()
 
-    /** Close : Goes back to the editor. */
+    /** Close : Goes back to the screen before, the editor or the tab. */
     data object Close : ExportSideEffect()
+
+    /** EditMore : Opens the editor with the same work. */
+    data object EditMore : ExportSideEffect()
 
     /** GoHome : Navigates to the home tab. */
     data object GoHome : ExportSideEffect()
@@ -188,6 +194,7 @@ class ExportViewModel(
                 exportJob?.cancel()
                 postSideEffect { ExportSideEffect.Close }
             }
+            ExportIntent.EditMore -> postSideEffect { ExportSideEffect.EditMore }
             ExportIntent.GoHome -> postSideEffect { ExportSideEffect.GoHome }
         }
     }

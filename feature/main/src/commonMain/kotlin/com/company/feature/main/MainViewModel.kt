@@ -14,6 +14,12 @@ import com.company.domain.repository.EditorSettingsRepository
 import com.company.domain.repository.MyVoiceRepository
 import com.company.domain.repository.MyVideoRepository
 import com.company.domain.usecase.editor.OpenWorkUseCase
+import com.company.feature.main.resources.Res
+import com.company.feature.main.resources.toast_work_delete_failed
+import com.company.feature.main.resources.toast_work_deleted
+import com.company.ui.text.UiText
+import com.company.ui.text.uiText
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /** Tab of the main screen. */
@@ -47,6 +53,9 @@ sealed interface MainSheet {
 
     /** AppInfo : App version and links. */
     data object AppInfo : MainSheet
+
+    /** Work(workId) : Menu of a work: export and delete (S13). A long press on the work card opens it. */
+    data class Work(val workId: String) : MainSheet
 }
 
 /**
@@ -56,6 +65,7 @@ sealed interface MainSheet {
  * @property sheet Open bottom sheet. Null means no sheet.
  * @property templateFilter Template kind filter in the template tab. Null shows all kinds.
  * @property works Works of the user, the work with the most recent change first (F15).
+ * @property deleteWorkId Work that the delete popup asks about, or null when the popup is closed.
  * @property settings Editor settings.
  * @property myVoice State of the user's own voice for dubbings.
  */
@@ -64,6 +74,7 @@ data class MainState(
     val sheet: MainSheet? = null,
     val templateFilter: TemplateKind? = null,
     val works: List<VideoSummary> = emptyList(),
+    val deleteWorkId: String? = null,
     val settings: EditorSettings = EditorSettings(),
     val myVoice: MyVoiceStatus = MyVoiceStatus.None,
 ) : State()
@@ -103,6 +114,21 @@ sealed class MainIntent : Intent() {
     /** OpenWork(workId) : Opens the work in the editor, in its last saved state (F15). */
     data class OpenWork(val workId: String) : MainIntent()
 
+    /** OpenWorkMenu(workId) : Opens the menu of the work after a long press on its card (S13). */
+    data class OpenWorkMenu(val workId: String) : MainIntent()
+
+    /** ExportWork(workId) : Opens the export screen of the work, without the editor. */
+    data class ExportWork(val workId: String) : MainIntent()
+
+    /** RequestDeleteWork(workId) : Asks the user before the work goes away. */
+    data class RequestDeleteWork(val workId: String) : MainIntent()
+
+    /** ConfirmDeleteWork : Removes the work that the popup asks about. The gallery files stay. */
+    data object ConfirmDeleteWork : MainIntent()
+
+    /** DismissDeleteWork : Closes the delete popup. The work stays. */
+    data object DismissDeleteWork : MainIntent()
+
     /** OpenMyVoice : Opens the screen of the user's own voice. */
     data object OpenMyVoice : MainIntent()
 }
@@ -118,6 +144,12 @@ sealed class MainSideEffect : SideEffect() {
     /** OpenEditor : Navigates to the editor with the current project. */
     data object OpenEditor : MainSideEffect()
 
+    /** OpenExport : Navigates to the export screen of the current project. */
+    data object OpenExport : MainSideEffect()
+
+    /** ShowToast(message) : Shows a short message. */
+    data class ShowToast(val message: UiText) : MainSideEffect()
+
     /** OpenMyVoice : Navigates to the screen of the user's own voice. */
     data object OpenMyVoice : MainSideEffect()
 }
@@ -128,7 +160,7 @@ sealed class MainSideEffect : SideEffect() {
  * It shows the tabs and the sheets, keeps the settings, and starts the create flows.
  */
 class MainViewModel(
-    myVideoRepository: MyVideoRepository,
+    private val myVideoRepository: MyVideoRepository,
     private val settingsRepository: EditorSettingsRepository,
     private val openWork: OpenWorkUseCase,
     myVoiceRepository: MyVoiceRepository,
@@ -167,6 +199,11 @@ class MainViewModel(
             }
             MainIntent.UseSelectedTemplate -> useSelectedTemplate()
             is MainIntent.OpenWork -> openInEditor(intent.workId)
+            is MainIntent.OpenWorkMenu -> reduce { copy(sheet = MainSheet.Work(intent.workId)) }
+            is MainIntent.ExportWork -> exportWork(intent.workId)
+            is MainIntent.RequestDeleteWork -> reduce { copy(sheet = null, deleteWorkId = intent.workId) }
+            MainIntent.ConfirmDeleteWork -> deleteWork()
+            MainIntent.DismissDeleteWork -> reduce { copy(deleteWorkId = null) }
             MainIntent.OpenMyVoice -> postSideEffect { MainSideEffect.OpenMyVoice }
         }
     }
@@ -193,6 +230,39 @@ class MainViewModel(
     private fun openInEditor(workId: String) {
         viewModelScope.launch {
             if (openWork(workId)) postSideEffect { MainSideEffect.OpenEditor }
+        }
+    }
+
+    // =====================================================================
+    // Work menu (S13)
+    // =====================================================================
+
+    /**
+     * Opens the export screen of a work without the editor. Back on the export screen comes back to the tab.
+     *
+     * @param workId ID of the work.
+     */
+    private fun exportWork(workId: String) {
+        reduce { copy(sheet = null) }
+        viewModelScope.launch {
+            if (openWork(workId)) postSideEffect { MainSideEffect.OpenExport }
+        }
+    }
+
+    /** Removes the work that the popup asks about, and tells the user. */
+    private fun deleteWork() {
+        val workId = currentState.deleteWorkId ?: return
+        reduce { copy(deleteWorkId = null) }
+        viewModelScope.launch {
+            val message = try {
+                myVideoRepository.deleteWork(workId)
+                uiText(Res.string.toast_work_deleted)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                uiText(Res.string.toast_work_delete_failed)
+            }
+            postSideEffect { MainSideEffect.ShowToast(message) }
         }
     }
 

@@ -50,6 +50,7 @@ fun AppNavHost(
                 onOpenGallery = { template -> navController.navigateToGallery(GalleryMode.CREATE, template) },
                 onOpenCamera = { navController.navigateToCamera() },
                 onOpenEditor = { navController.navigate(EditorRoute) },
+                onOpenExport = { navController.navigate(ExportRoute(fromList = true)) },
                 onOpenMyVoice = { navController.navigate(MyVoiceRoute) },
             )
             galleryScreen(
@@ -64,12 +65,13 @@ fun AppNavHost(
             editorScreen(
                 onBack = { navController.popBackStack() },
                 onAddClips = { navController.navigateToGallery(GalleryMode.APPEND) },
-                onExport = { navController.navigate(ExportRoute) },
+                onExport = { navController.navigate(ExportRoute()) },
                 onOpenMyVoice = { navController.navigate(MyVoiceRoute) },
             )
             myVoiceScreen(onClose = { navController.popBackStack() })
             exportScreen(
                 onBack = { navController.popBackStack() },
+                onOpenEditor = { navController.navigateToEditorFromMain() },
                 onGoHome = {
                     navController.navigate(MainRoute) {
                         popUpTo<MainRoute> { inclusive = true }
