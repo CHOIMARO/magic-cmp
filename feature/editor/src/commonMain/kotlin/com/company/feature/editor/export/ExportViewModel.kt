@@ -16,7 +16,6 @@ import com.company.domain.repository.EditorProjectRepository
 import com.company.domain.repository.EditorSettingsRepository
 import com.company.domain.repository.MyVideoRepository
 import com.company.domain.repository.VideoExportRepository
-import com.company.domain.usecase.editor.DEFAULT_THUMBNAIL_HUE
 import com.company.feature.editor.resources.Res
 import com.company.feature.editor.resources.export_quality_best
 import com.company.feature.editor.resources.export_quality_light
@@ -277,14 +276,22 @@ class ExportViewModel(
         }
     }
 
-    /** Adds the video to the completed videos and shows the done step. */
+    /**
+     * Marks the work as exported and shows the done step (D43). The export does not make a new work, and the time of
+     * the last change stays.
+     */
     private fun finish() {
-        val project = currentState.project
-        myVideoRepository.addCompletedVideo(
-            name = project.name,
-            duration = project.totalDuration,
-            thumbnailHue = project.clips.firstOrNull()?.thumbnailHue ?: DEFAULT_THUMBNAIL_HUE,
-        )
+        currentState.project.workId?.let { workId ->
+            viewModelScope.launch {
+                try {
+                    myVideoRepository.markExported(workId)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // 영상은 이미 갤러리에 저장했다. 표시만 빠지므로 따로 알리지 않는다.
+                }
+            }
+        }
         reduce { copy(phase = ExportPhase.DONE, progress = 100) }
     }
 

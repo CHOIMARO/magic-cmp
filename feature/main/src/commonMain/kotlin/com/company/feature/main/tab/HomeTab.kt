@@ -35,13 +35,12 @@ import com.company.core.designsystem.component.MagicActionCardStyle
 import com.company.core.designsystem.component.MagicButton
 import com.company.core.designsystem.component.MagicButtonDefaults
 import com.company.core.designsystem.component.MagicButtonStyle
-import com.company.core.designsystem.component.MagicVideoCard
 import com.company.core.designsystem.theme.MagicColors
 import com.company.domain.model.editor.VideoSummary
 import com.company.feature.main.component.MagicLogo
 import com.company.feature.main.component.SectionHeader
 import com.company.feature.main.component.TabContentBottomPadding
-import com.company.feature.main.component.createdLabel
+import com.company.feature.main.component.WorkCard
 import com.company.feature.main.component.rememberNow
 import com.company.feature.main.resources.Res
 import com.company.feature.main.resources.home_camera
@@ -50,31 +49,33 @@ import com.company.feature.main.resources.home_empty_body
 import com.company.feature.main.resources.home_empty_title
 import com.company.feature.main.resources.home_new_video
 import com.company.feature.main.resources.home_recent
-import com.company.ui.editor.formatTime
 import org.jetbrains.compose.resources.stringResource
 
 /** Side padding of the home tab. */
 private val HomePadding = 16.dp
 
+/** Largest number of works in "최근 작업" (D35). */
+private const val RECENT_WORK_COUNT = 4
+
 /**
- * Home tab: start cards and recent drafts.
+ * Home tab: start cards and the recent works.
  *
- * Each draft card shows the day when the user made the project. Without drafts, the tab shows a guide card in place of
- * the list, and the section header has no arrow.
+ * "최근 작업" shows up to 4 works, the work with the most recent change first (D44). Each card shows the day of
+ * the last change. Without works, the tab shows a guide card in place of the list, and the section header has no arrow.
  *
- * @param drafts Draft projects. The newest draft is first.
+ * @param works Works of the user, the work with the most recent change first.
  * @param onNewVideo Action of the "새 영상 만들기" card and the button of the guide card.
  * @param onOpenCamera Action of the "촬영" card.
- * @param onShowAllDrafts Action of the arrow in the draft section.
- * @param onOpenProject Called with the name of the tapped draft.
+ * @param onShowAllWorks Action of the arrow in the section.
+ * @param onOpenWork Called with the ID of the tapped work.
  */
 @Composable
 internal fun HomeTab(
-    drafts: List<VideoSummary>,
+    works: List<VideoSummary>,
     onNewVideo: () -> Unit,
     onOpenCamera: () -> Unit,
-    onShowAllDrafts: () -> Unit,
-    onOpenProject: (String) -> Unit,
+    onShowAllWorks: () -> Unit,
+    onOpenWork: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -105,29 +106,22 @@ internal fun HomeTab(
 
         SectionHeader(
             title = stringResource(Res.string.home_recent),
-            onShowAll = if (drafts.isNotEmpty()) onShowAllDrafts else null,
+            onShowAll = if (works.isNotEmpty()) onShowAllWorks else null,
         )
-        if (drafts.isEmpty()) {
-            NoDraftsGuide(onPick = onNewVideo)
+        if (works.isEmpty()) {
+            NoWorksGuide(onPick = onNewVideo)
         } else {
             val now = rememberNow()
-            FixedGrid(items = drafts, columns = 2, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { draft ->
-                MagicVideoCard(
-                    title = draft.name,
-                    duration = formatTime(draft.duration),
-                    hue = draft.thumbnailHue.toFloat(),
-                    onClick = { onOpenProject(draft.name) },
-                    modifier = Modifier.fillMaxWidth(),
-                    caption = createdLabel(draft.createdAt, now),
-                )
+            FixedGrid(items = works.take(RECENT_WORK_COUNT), columns = 2, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { work ->
+                WorkCard(work = work, now = now, onOpen = { onOpenWork(work.id) }, modifier = Modifier.fillMaxWidth())
             }
         }
     }
 }
 
-/** Guide card with a dashed border. It shows in place of the draft list when the user has no drafts. */
+/** Guide card with a dashed border. It shows in place of the work list when the user has no works. */
 @Composable
-private fun NoDraftsGuide(onPick: () -> Unit) {
+private fun NoWorksGuide(onPick: () -> Unit) {
     val borderColor = MagicColors.OnSurface.copy(alpha = 0.16f)
     Column(
         modifier = Modifier

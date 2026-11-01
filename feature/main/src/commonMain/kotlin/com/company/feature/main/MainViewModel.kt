@@ -10,34 +10,25 @@ import com.company.domain.model.editor.MyVoiceStatus
 import com.company.domain.model.editor.EditorTemplate
 import com.company.domain.model.editor.TemplateKind
 import com.company.domain.model.editor.VideoSummary
-import com.company.domain.repository.EditorProjectRepository
 import com.company.domain.repository.EditorSettingsRepository
 import com.company.domain.repository.MyVoiceRepository
 import com.company.domain.repository.MyVideoRepository
+import com.company.domain.usecase.editor.OpenWorkUseCase
 import kotlinx.coroutines.launch
 
 /** Tab of the main screen. */
 enum class MainTab {
-    /** Start cards and recent drafts. */
+    /** Start cards and the recent works. */
     HOME,
 
     /** All templates with a kind filter. */
     TEMPLATES,
 
-    /** Drafts and completed videos of the user. */
+    /** All works of the user in one list (D43). */
     LIBRARY,
 
     /** Profile and settings. */
     MY,
-}
-
-/** List in the library tab. */
-enum class LibrarySegment {
-    /** Projects that the user did not complete. */
-    DRAFTS,
-
-    /** Videos that the user saved. */
-    COMPLETED,
 }
 
 /** Setting that the user can switch on and off in the "마이" tab. */
@@ -64,9 +55,7 @@ sealed interface MainSheet {
  * @property tab Selected tab.
  * @property sheet Open bottom sheet. Null means no sheet.
  * @property templateFilter Template kind filter in the template tab. Null shows all kinds.
- * @property librarySegment Selected list in the library tab.
- * @property drafts Draft projects. The newest draft is first.
- * @property completedVideos Saved videos. The newest video is first.
+ * @property works Works of the user, the work with the most recent change first (F15).
  * @property settings Editor settings.
  * @property myVoice State of the user's own voice for dubbings.
  */
@@ -74,9 +63,7 @@ data class MainState(
     val tab: MainTab = MainTab.HOME,
     val sheet: MainSheet? = null,
     val templateFilter: TemplateKind? = null,
-    val librarySegment: LibrarySegment = LibrarySegment.DRAFTS,
-    val drafts: List<VideoSummary> = emptyList(),
-    val completedVideos: List<VideoSummary> = emptyList(),
+    val works: List<VideoSummary> = emptyList(),
     val settings: EditorSettings = EditorSettings(),
     val myVoice: MyVoiceStatus = MyVoiceStatus.None,
 ) : State()
@@ -98,11 +85,8 @@ sealed class MainIntent : Intent() {
     /** SelectTemplateFilter(kind) : Filters the template grid. Null shows all kinds. */
     data class SelectTemplateFilter(val kind: TemplateKind?) : MainIntent()
 
-    /** SelectLibrarySegment(segment) : Shows the drafts or the completed videos. */
-    data class SelectLibrarySegment(val segment: LibrarySegment) : MainIntent()
-
-    /** ShowAllDrafts : Opens the library tab with the drafts. */
-    data object ShowAllDrafts : MainIntent()
+    /** ShowAllWorks : Opens the library tab with all works. */
+    data object ShowAllWorks : MainIntent()
 
     /** ToggleSetting(key) : Switches the setting on or off. */
     data class ToggleSetting(val key: SettingKey) : MainIntent()
@@ -116,8 +100,8 @@ sealed class MainIntent : Intent() {
     /** UseSelectedTemplate : Opens the video picker with the template of the open sheet. */
     data object UseSelectedTemplate : MainIntent()
 
-    /** OpenProject(name) : Loads the draft and opens the editor. */
-    data class OpenProject(val name: String) : MainIntent()
+    /** OpenWork(workId) : Opens the work in the editor, in its last saved state (F15). */
+    data class OpenWork(val workId: String) : MainIntent()
 
     /** OpenMyVoice : Opens the screen of the user's own voice. */
     data object OpenMyVoice : MainIntent()
@@ -144,17 +128,16 @@ sealed class MainSideEffect : SideEffect() {
  * It shows the tabs and the sheets, keeps the settings, and starts the create flows.
  */
 class MainViewModel(
-    private val myVideoRepository: MyVideoRepository,
+    myVideoRepository: MyVideoRepository,
     private val settingsRepository: EditorSettingsRepository,
-    private val projectRepository: EditorProjectRepository,
+    private val openWork: OpenWorkUseCase,
     myVoiceRepository: MyVoiceRepository,
 ) : BaseViewModel<MainState, MainIntent, MainSideEffect>(
     initialState = MainState()
 ) {
 
     init {
-        viewModelScope.launch { myVideoRepository.drafts.collect { reduce { copy(drafts = it) } } }
-        viewModelScope.launch { myVideoRepository.completedVideos.collect { reduce { copy(completedVideos = it) } } }
+        viewModelScope.launch { myVideoRepository.works.collect { reduce { copy(works = it) } } }
         viewModelScope.launch { settingsRepository.settings.collect { reduce { copy(settings = it) } } }
         viewModelScope.launch { myVoiceRepository.status.collect { reduce { copy(myVoice = it) } } }
     }
@@ -175,8 +158,7 @@ class MainViewModel(
             MainIntent.OpenAppInfo -> reduce { copy(sheet = MainSheet.AppInfo) }
             MainIntent.CloseSheet -> reduce { copy(sheet = null) }
             is MainIntent.SelectTemplateFilter -> reduce { copy(templateFilter = intent.kind) }
-            is MainIntent.SelectLibrarySegment -> reduce { copy(librarySegment = intent.segment) }
-            MainIntent.ShowAllDrafts -> reduce { copy(tab = MainTab.LIBRARY, librarySegment = LibrarySegment.DRAFTS) }
+            MainIntent.ShowAllWorks -> reduce { copy(tab = MainTab.LIBRARY) }
             is MainIntent.ToggleSetting -> toggleSetting(intent.key)
             MainIntent.StartNewVideo -> openGallery(template = null)
             MainIntent.OpenCamera -> {
@@ -184,7 +166,7 @@ class MainViewModel(
                 postSideEffect { MainSideEffect.OpenCamera }
             }
             MainIntent.UseSelectedTemplate -> useSelectedTemplate()
-            is MainIntent.OpenProject -> openProject(intent.name)
+            is MainIntent.OpenWork -> openInEditor(intent.workId)
             MainIntent.OpenMyVoice -> postSideEffect { MainSideEffect.OpenMyVoice }
         }
     }
@@ -203,10 +185,14 @@ class MainViewModel(
         openGallery(template)
     }
 
-    private fun openProject(name: String) {
+    /**
+     * Opens a work in the editor. The undo history is empty.
+     *
+     * @param workId ID of the work.
+     */
+    private fun openInEditor(workId: String) {
         viewModelScope.launch {
-            projectRepository.start(myVideoRepository.loadDraftProject(name))
-            postSideEffect { MainSideEffect.OpenEditor }
+            if (openWork(workId)) postSideEffect { MainSideEffect.OpenEditor }
         }
     }
 

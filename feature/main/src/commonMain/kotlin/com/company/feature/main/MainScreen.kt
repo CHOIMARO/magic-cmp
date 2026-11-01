@@ -46,11 +46,11 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
     Box(modifier = Modifier.fillMaxSize().background(MagicColors.Background)) {
         when (state.tab) {
             MainTab.HOME -> HomeTab(
-                drafts = state.drafts,
+                works = state.works,
                 onNewVideo = { onIntent(MainIntent.StartNewVideo) },
                 onOpenCamera = { onIntent(MainIntent.OpenCamera) },
-                onShowAllDrafts = { onIntent(MainIntent.ShowAllDrafts) },
-                onOpenProject = { onIntent(MainIntent.OpenProject(it)) },
+                onShowAllWorks = { onIntent(MainIntent.ShowAllWorks) },
+                onOpenWork = { onIntent(MainIntent.OpenWork(it)) },
             )
             MainTab.TEMPLATES -> TemplateTab(
                 filter = state.templateFilter,
@@ -58,15 +58,12 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
                 onOpenTemplate = { onIntent(MainIntent.OpenTemplate(it)) },
             )
             MainTab.LIBRARY -> LibraryTab(
-                segment = state.librarySegment,
-                drafts = state.drafts,
-                completedVideos = state.completedVideos,
-                onSelectSegment = { onIntent(MainIntent.SelectLibrarySegment(it)) },
-                onOpenProject = { onIntent(MainIntent.OpenProject(it)) },
+                works = state.works,
+                onOpenWork = { onIntent(MainIntent.OpenWork(it)) },
             )
             MainTab.MY -> MyTab(
                 settings = state.settings,
-                completedCount = state.completedVideos.size,
+                exportedCount = state.works.count { it.exported },
                 myVoice = state.myVoice,
                 onToggleSetting = { onIntent(MainIntent.ToggleSetting(it)) },
                 onOpenAppInfo = { onIntent(MainIntent.OpenAppInfo) },
@@ -114,35 +111,29 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
 /** Space between the handle and the content, and between the content items, of a main sheet. */
 private val SHEET_SPACING = 14.dp
 
-/** Preview entry that the user made [daysAgo] days before now. */
+/** Preview work that the user changed [daysAgo] days before now. A null [hue] is a work without clips. */
 @OptIn(ExperimentalTime::class)
-private fun previewVideo(name: String, duration: Double, hue: Int, daysAgo: Int) = VideoSummary(
+private fun previewWork(name: String, duration: Double, hue: Int?, daysAgo: Int, exported: Boolean = false) = VideoSummary(
     id = name,
     name = name,
     duration = duration,
     thumbnailHue = hue,
-    createdAt = Clock.System.now().toEpochMilliseconds() - daysAgo * 24L * 60 * 60 * 1000,
+    modifiedAt = Clock.System.now().toEpochMilliseconds() - daysAgo * 24L * 60 * 60 * 1000,
+    exported = exported,
 )
 
-private val PreviewDrafts = listOf(
-    previewVideo("바닷가 주말", 18.0, 35, daysAgo = 0),
-    previewVideo("말차 레시피", 27.0, 150, daysAgo = 1),
-    previewVideo("작업실 투어", 42.0, 200, daysAgo = 6),
-    previewVideo("러닝 크루", 15.0, 20, daysAgo = 13),
-)
-
-private val PreviewCompletedVideos = listOf(
-    previewVideo("벚꽃 산책", 21.0, 330, daysAgo = 3),
-    previewVideo("첫 출근 브이로그", 34.0, 60, daysAgo = 9),
+private val PreviewWorks = listOf(
+    previewWork("바닷가 주말", 18.0, 35, daysAgo = 0),
+    previewWork("말차 레시피", 27.0, 150, daysAgo = 1, exported = true),
+    previewWork("다음 편 예고", 8.0, null, daysAgo = 3),
+    previewWork("작업실 투어", 42.0, 200, daysAgo = 6),
+    previewWork("첫 출근 브이로그", 34.0, 60, daysAgo = 9, exported = true),
 )
 
 @Composable
-private fun MainScreenPreview(tab: MainTab, drafts: List<VideoSummary> = PreviewDrafts) {
+private fun MainScreenPreview(tab: MainTab, works: List<VideoSummary> = PreviewWorks) {
     MagicPreview {
-        MainScreen(
-            state = MainState(tab = tab, drafts = drafts, completedVideos = PreviewCompletedVideos),
-            onIntent = {},
-        )
+        MainScreen(state = MainState(tab = tab, works = works), onIntent = {})
     }
 }
 
@@ -152,7 +143,7 @@ private fun MainHomePreview() = MainScreenPreview(MainTab.HOME)
 
 @Preview(name = "홈 · 최근 작업 없음", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
 @Composable
-private fun MainHomeEmptyPreview() = MainScreenPreview(MainTab.HOME, drafts = emptyList())
+private fun MainHomeEmptyPreview() = MainScreenPreview(MainTab.HOME, works = emptyList())
 
 @Preview(name = "템플릿", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
 @Composable

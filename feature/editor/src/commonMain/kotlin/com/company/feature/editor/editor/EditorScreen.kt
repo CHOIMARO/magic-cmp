@@ -141,17 +141,6 @@ internal fun EditorScreen(
                 onDismissRequest = { onIntent(EditorIntent.DismissDialog) },
             )
         }
-        if (state.leaveDialog) {
-            MagicDialog(
-                title = stringResource(Res.string.editor_leave_title),
-                message = stringResource(Res.string.editor_leave_message),
-                confirmLabel = stringResource(Res.string.editor_leave_confirm),
-                onConfirm = { onIntent(EditorIntent.ConfirmLeave) },
-                cancelLabel = stringResource(Res.string.cancel),
-                onCancel = { onIntent(EditorIntent.DismissLeave) },
-                onDismissRequest = { onIntent(EditorIntent.DismissLeave) },
-            )
-        }
     }
 }
 

@@ -9,17 +9,15 @@
     <string name="filter_layout">레이아웃</string>
     <string name="filter_text">글자</string>
     <string name="filter_caption">자막</string>
-    <string name="library_drafts">작업 중</string>
-    <string name="library_completed">완성</string>
     <string name="home_new_video">새 영상\n만들기</string>
     <string name="home_camera">촬영</string>
     <string name="home_recent">최근 작업</string>
-    <string name="home_empty_title">첫 영상을 만들어 볼까요?</string>
-    <string name="home_empty_body">찍어 둔 영상이나 사진 몇 개만 고르면 바로 편집할 수 있어요. 만든 영상은 여기에 모여요.</string>
+    <string name="home_empty_title">아직 만든 영상이 없어요</string>
+    <string name="home_empty_body">새 영상 만들기를 눌러 첫 숏폼을 만들어 보세요</string>
     <string name="home_empty_action">영상·사진 고르기</string>
-    <string name="library_empty_drafts">아직 작업 중인 영상이 없어요</string>
-    <string name="library_empty_completed">아직 완성한 영상이 없어요</string>
-    <!-- 최근 작업·내 영상 카드의 만든 날 -->
+    <string name="library_empty">아직 만든 영상이 없어요</string>
+    <string name="work_exported">내보낸 적 있음</string>
+    <!-- 최근 작업·내 영상 카드의 마지막으로 고친 날 -->
     <string name="created_today">오늘</string>
     <string name="created_yesterday">어제</string>
     <string name="created_days_ago">%1$d일 전</string>
@@ -51,6 +49,6 @@
     <string name="my_terms">약관 및 개인정보</string>
     <string name="my_logout">로그아웃</string>
     <string name="my_profile_name">민지</string>
-    <string name="my_profile_summary">@minji.daily · 완성한 영상 %1$d개</string>
+    <string name="my_profile_summary">@minji.daily · 내보낸 영상 %1$d개</string>
     <string name="my_profile_modify">프로필 수정</string>
 </resources>

@@ -25,14 +25,15 @@ internal object EditorSampleData {
     data class SampleVideo(val name: String, val duration: Double, val hue: Int)
 
     /**
-     * Sample entry of the "내 영상" list.
+     * Sample work of "최근 작업" and "내 영상" (F15).
      *
      * @property name Name of the project.
-     * @property duration Length of the project in seconds.
+     * @property duration Length of the video in seconds.
      * @property thumbnailHue Hue of the placeholder thumbnail.
-     * @property daysAgo Number of days since the user made the project. 0 is today.
+     * @property daysAgo Number of days since the last change. 0 is today.
+     * @property exported True when the user exported the work.
      */
-    data class SampleSummary(val name: String, val duration: Double, val thumbnailHue: Int, val daysAgo: Int)
+    data class SampleSummary(val name: String, val duration: Double, val thumbnailHue: Int, val daysAgo: Int, val exported: Boolean = false)
 
     /** Videos that the sample draft project uses. */
     val SampleVideos: List<SampleVideo> = Hues.mapIndexed { index, hue ->
@@ -80,19 +81,15 @@ internal object EditorSampleData {
         SoundEffect("s16", SoundEffectCategory.DAILY, "알림음", 0.5),
     )
 
-    /** Draft projects at app start. */
-    val Drafts: List<SampleSummary> = listOf(
+    /** Works at app start. Some were exported, as in the prototype. */
+    val Works: List<SampleSummary> = listOf(
         SampleSummary(name = "바닷가 주말", duration = 18.0, thumbnailHue = 35, daysAgo = 0),
+        SampleSummary(name = "말차 레시피", duration = 27.0, thumbnailHue = 150, daysAgo = 1, exported = true),
+        SampleSummary(name = "벚꽃 산책", duration = 21.0, thumbnailHue = 330, daysAgo = 3, exported = true),
         SampleSummary(name = "작업실 투어", duration = 42.0, thumbnailHue = 200, daysAgo = 6),
-        SampleSummary(name = "말차 레시피", duration = 27.0, thumbnailHue = 150, daysAgo = 1),
+        SampleSummary(name = "첫 출근 브이로그", duration = 34.0, thumbnailHue = 60, daysAgo = 9, exported = true),
         SampleSummary(name = "러닝 크루", duration = 15.0, thumbnailHue = 20, daysAgo = 13),
-    )
-
-    /** Completed videos at app start. */
-    val CompletedVideos: List<SampleSummary> = listOf(
-        SampleSummary(name = "벚꽃 산책", duration = 21.0, thumbnailHue = 330, daysAgo = 3),
-        SampleSummary(name = "첫 출근 브이로그", duration = 34.0, thumbnailHue = 60, daysAgo = 9),
-        SampleSummary(name = "고양이 낮잠", duration = 12.0, thumbnailHue = 100, daysAgo = 20),
+        SampleSummary(name = "고양이 낮잠", duration = 12.0, thumbnailHue = 100, daysAgo = 20, exported = true),
     )
 
     /** Lines that the fake speech recognition "hears". */

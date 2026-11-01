@@ -5,6 +5,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.NorthEast
 import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
@@ -43,6 +45,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
+import com.company.core.designsystem.theme.oklch
 
 // =====================================================================
 // Action card
@@ -149,51 +152,67 @@ private val VideoCardPressedScrim = Brush.verticalGradient(
 /** Removes all color. The disabled video card uses it. */
 private val Grayscale = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
 
+/** Color of the mark of an exported video. oklch(0.86 0.12 300). */
+private val ExportedMarkColor = oklch(0.86f, 0.12f, 300f)
+
 /**
- * Video card of the Magic Buttons spec, for example a recent draft. It is 4:5 and shows the length
+ * Video card of the Magic Buttons spec, for example a recent work. It is 4:5 and shows the length
  * at the top and the title at the bottom.
  *
  * @param title Name of the video.
  * @param duration Length of the video, for example "0:18".
- * @param hue Hue of the placeholder thumbnail.
+ * @param hue Hue of the placeholder thumbnail, or null for a black card, for example a video without clips.
  * @param onClick Action on click.
  * @param modifier Modifier for the card. Give it a width.
  * @param enabled Set to false for the disabled state.
  * @param caption Short line above the title, for example "어제", or null.
+ * @param exportedLabel Screen reader text of a small mark after the length, or null for no mark. The mark tells that
+ *   the user exported the video.
  */
 @Composable
 fun MagicVideoCard(
     title: String,
     duration: String,
-    hue: Float,
+    hue: Float?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     caption: String? = null,
+    exportedLabel: String? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    StripeBox(
-        hue = hue,
-        lightness = 0.46f,
-        shape = RoundedCornerShape(22.dp),
-        colorFilter = if (enabled) null else Grayscale,
-        modifier = modifier
-            .aspectRatio(4f / 5f)
-            .then(if (enabled) Modifier else Modifier.alpha(0.35f))
-            .pressClickable(enabled = enabled, interactionSource = interactionSource, onClick = onClick),
+    val shape = RoundedCornerShape(22.dp)
+    val cardModifier = modifier
+        .aspectRatio(4f / 5f)
+        .then(if (enabled) Modifier else Modifier.alpha(0.35f))
+        .pressClickable(enabled = enabled, interactionSource = interactionSource, onClick = onClick)
+    if (hue == null) {
+        Box(modifier = cardModifier.clip(shape).background(Color.Black)) {
+            VideoCardContent(title, duration, caption, exportedLabel, pressed && enabled)
+        }
+    } else {
+        StripeBox(hue = hue, lightness = 0.46f, shape = shape, colorFilter = if (enabled) null else Grayscale, modifier = cardModifier) {
+            VideoCardContent(title, duration, caption, exportedLabel, pressed && enabled)
+        }
+    }
+}
+
+/** Scrim, length, mark, caption, and title of a [MagicVideoCard]. */
+@Composable
+private fun BoxScope.VideoCardContent(title: String, duration: String, caption: String?, exportedLabel: String?, pressed: Boolean) {
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .background(if (pressed) VideoCardPressedScrim else VideoCardScrim)
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 12.dp, top = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top,
     ) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(if (pressed && enabled) VideoCardPressedScrim else VideoCardScrim)
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 12.dp, top = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top,
-        ) {
-            val light = Color.White.copy(alpha = 0.88f)
+        val light = Color.White.copy(alpha = 0.88f)
+        Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = duration,
                 color = light,
@@ -201,27 +220,30 @@ fun MagicVideoCard(
                 fontWeight = FontWeight.SemiBold,
                 style = LocalTextStyle.current.copy(fontFeatureSettings = "tnum"),
             )
-            Icon(Icons.Rounded.NorthEast, contentDescription = null, tint = light, modifier = Modifier.size(18.dp))
-        }
-        Column(
-            modifier = Modifier.align(Alignment.BottomStart).padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            if (caption != null) {
-                Text(text = caption, color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            if (exportedLabel != null) {
+                Icon(Icons.Rounded.Verified, contentDescription = exportedLabel, tint = ExportedMarkColor, modifier = Modifier.size(16.dp))
             }
-            Text(
-                text = title,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.ExtraBold,
-                lineHeight = 1.2.em,
-                letterSpacing = (-0.03).em,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                // 제목 줄 길이를 고르게 나눈다(CSS text-wrap: balance).
-                style = LocalTextStyle.current.copy(lineBreak = LineBreak.Heading),
-            )
         }
+        Icon(Icons.Rounded.NorthEast, contentDescription = null, tint = light, modifier = Modifier.size(18.dp))
+    }
+    Column(
+        modifier = Modifier.align(Alignment.BottomStart).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (caption != null) {
+            Text(text = caption, color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Text(
+            text = title,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.ExtraBold,
+            lineHeight = 1.2.em,
+            letterSpacing = (-0.03).em,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            // 제목 줄 길이를 고르게 나눈다(CSS text-wrap: balance).
+            style = LocalTextStyle.current.copy(lineBreak = LineBreak.Heading),
+        )
     }
 }
 

@@ -25,8 +25,8 @@ import kotlin.random.Random
  * @property soundEffects Short sound effects.
  * @property transitions Transitions between clips. The key is the ID of the clip after the boundary.
  * @property openingTransition Transition at the start of the video, or null.
- * @property draftId ID of the draft in the "내 영상" list that shows this project, or null. The draft gets the length
- *   and the thumbnail of the project when the user leaves the editor.
+ * @property workId ID of the work that this project saves to (F15), or null for a project that is not a work. The
+ *   editor saves the project to the work after each change.
  */
 data class EditorProject(
     val name: String,
@@ -44,7 +44,7 @@ data class EditorProject(
     val soundEffects: List<SoundEffectClip> = emptyList(),
     val transitions: Map<String, ClipTransition> = emptyMap(),
     val openingTransition: ClipTransition? = null,
-    val draftId: String? = null,
+    val workId: String? = null,
 ) {
     /** Length of all clips. The clips play one after another without gaps, from the project start. */
     val clipsDuration: Double

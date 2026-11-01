@@ -81,9 +81,10 @@ private fun civilDate(epochDay: Long): CreatedDay.Date {
 internal fun rememberNow(): Long = remember { Clock.System.now().toEpochMilliseconds() }
 
 /**
- * Returns the label of a creation time: "오늘", "어제", "N일 전", or "M월 D일".
+ * Returns the day label of a time: "오늘", "어제", "N일 전", or "M월 D일". A work card uses the time of its last
+ * change (D44).
  *
- * @param createdAt Creation time in milliseconds since 1970-01-01 UTC.
+ * @param createdAt Time in milliseconds since 1970-01-01 UTC.
  * @param now Current time in milliseconds since 1970-01-01 UTC.
  */
 @Composable

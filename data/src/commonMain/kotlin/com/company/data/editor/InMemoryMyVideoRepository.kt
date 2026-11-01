@@ -22,39 +22,54 @@ private const val DAY_MILLIS = 24L * 60 * 60 * 1000
 private const val SAMPLE_STEP_MILLIS = 10L * 60 * 1000
 
 /**
- * Keeps the drafts and the completed videos in memory. Both lists keep the newest entry first.
+ * Keeps the works and their projects in memory (F15). The work with the most recent change is first.
  *
- * Every draft opens the same sample project, as in the prototype.
+ * A sample work opens the sample project, as in the prototype. The project is made when the user opens the work the
+ * first time, and the later changes stay.
  */
 class InMemoryMyVideoRepository(
     private val captionRepository: CaptionRepository,
 ) : MyVideoRepository {
-    private val _drafts = MutableStateFlow(EditorSampleData.Drafts.toSummaries(now()))
-    override val drafts: StateFlow<List<VideoSummary>> = _drafts.asStateFlow()
+    private val _works = MutableStateFlow(EditorSampleData.Works.toSummaries(now()))
+    override val works: StateFlow<List<VideoSummary>> = _works.asStateFlow()
 
-    private val _completedVideos = MutableStateFlow(EditorSampleData.CompletedVideos.toSummaries(now()))
-    override val completedVideos: StateFlow<List<VideoSummary>> = _completedVideos.asStateFlow()
+    /** Last saved project of each work. */
+    private val projects = mutableMapOf<String, EditorProject>()
 
-    override fun addDraft(name: String, duration: Double, thumbnailHue: Int): VideoSummary {
-        val draft = VideoSummary(newEditorId(), name, duration, thumbnailHue, createdAt = now())
-        _drafts.update { listOf(draft) + it }
-        return draft
+    override suspend fun addWork(project: EditorProject): VideoSummary {
+        val id = newEditorId()
+        val work = project.summary(id, now())
+        projects[id] = project.copy(workId = id)
+        _works.update { listOf(work) + it }
+        return work
     }
 
-    override fun updateDraft(id: String, duration: Double, thumbnailHue: Int?) {
-        _drafts.update { list ->
-            list.map { draft ->
-                if (draft.id == id) draft.copy(duration = duration, thumbnailHue = thumbnailHue ?: draft.thumbnailHue) else draft
-            }
-        }
+    override suspend fun saveWork(id: String, project: EditorProject): Boolean {
+        val work = _works.value.find { it.id == id } ?: return false
+        val saved = project.copy(workId = id)
+        if (projects[id] == saved) return false
+        projects[id] = saved
+        val changed = saved.summary(id, now()).copy(exported = work.exported)
+        _works.update { list -> listOf(changed) + list.filterNot { it.id == id } }
+        return true
     }
 
-    override fun addCompletedVideo(name: String, duration: Double, thumbnailHue: Int) {
-        val video = VideoSummary(newEditorId(), name, duration, thumbnailHue, createdAt = now())
-        _completedVideos.update { listOf(video) + it }
+    override suspend fun loadWork(id: String): EditorProject? {
+        val work = _works.value.find { it.id == id } ?: return null
+        return projects[id] ?: sampleProject(work.name).copy(workId = id).also { projects[id] = it }
     }
 
-    override suspend fun loadDraftProject(name: String): EditorProject {
+    override suspend fun deleteWork(id: String) {
+        projects.remove(id)
+        _works.update { list -> list.filterNot { it.id == id } }
+    }
+
+    override suspend fun markExported(id: String) {
+        _works.update { list -> list.map { if (it.id == id) it.copy(exported = true) else it } }
+    }
+
+    /** Sample project of a sample work. */
+    private suspend fun sampleProject(name: String): EditorProject {
         val clips = EditorSampleData.SampleClipIndexes.map { index ->
             val source = EditorSampleData.SampleVideos[index]
             val long = source.duration > 4
@@ -91,7 +106,11 @@ class InMemoryMyVideoRepository(
 @OptIn(ExperimentalTime::class)
 private fun now(): Long = Clock.System.now().toEpochMilliseconds()
 
-/** Makes the list entries of the samples, with the newest entry first. */
+/** Summary of the project as the work [id], changed at [time]. A project without clips has a black card. */
+private fun EditorProject.summary(id: String, time: Long): VideoSummary =
+    VideoSummary(id = id, name = name, duration = totalDuration, thumbnailHue = clips.firstOrNull()?.thumbnailHue, modifiedAt = time)
+
+/** Makes the works of the samples, with the most recent change first. */
 private fun List<EditorSampleData.SampleSummary>.toSummaries(now: Long): List<VideoSummary> =
     mapIndexed { index, sample ->
         VideoSummary(
@@ -99,6 +118,7 @@ private fun List<EditorSampleData.SampleSummary>.toSummaries(now: Long): List<Vi
             name = sample.name,
             duration = sample.duration,
             thumbnailHue = sample.thumbnailHue,
-            createdAt = now - sample.daysAgo * DAY_MILLIS - index * SAMPLE_STEP_MILLIS,
+            modifiedAt = now - sample.daysAgo * DAY_MILLIS - index * SAMPLE_STEP_MILLIS,
+            exported = sample.exported,
         )
-    }.sortedByDescending { it.createdAt }
+    }.sortedByDescending { it.modifiedAt }

@@ -4,46 +4,53 @@ import com.company.domain.model.editor.EditorProject
 import com.company.domain.model.editor.VideoSummary
 import kotlinx.coroutines.flow.StateFlow
 
-/** Gives the projects of the user: drafts and completed videos. */
+/**
+ * Keeps the works of the user (F15). A work is one edit that the user started in the editor: its project and its
+ * summary in "최근 작업" and "내 영상".
+ *
+ * The functions that write can fail, for example when the device storage is full. They then throw an exception.
+ */
 interface MyVideoRepository {
-    /** Projects that the user did not complete. The newest draft is first. */
-    val drafts: StateFlow<List<VideoSummary>>
-
-    /** Videos that the user saved. The newest video is first. */
-    val completedVideos: StateFlow<List<VideoSummary>>
+    /** Works, the work with the most recent change first (D44). */
+    val works: StateFlow<List<VideoSummary>>
 
     /**
-     * Adds a new draft to the top of [drafts]. The draft gets a new ID and the current time.
+     * Adds a new work at the top of [works]. The work gets a new ID and the current time.
      *
-     * @param name Name of the project.
-     * @param duration Length of the project in seconds.
-     * @param thumbnailHue Hue of the placeholder thumbnail.
-     * @return The new draft.
+     * @param project Project of the work. The work keeps it with [EditorProject.workId] set to the new ID.
+     * @return The new work.
      */
-    fun addDraft(name: String, duration: Double, thumbnailHue: Int): VideoSummary
+    suspend fun addWork(project: EditorProject): VideoSummary
 
     /**
-     * Changes the length and the thumbnail of a draft. The draft keeps its place in [drafts].
+     * Saves the project of a work. When the project is the same as the last saved project, nothing changes. Otherwise
+     * the work gets the length, the thumbnail, and the current time, and it goes to the top of [works].
      *
-     * @param id ID of the draft. Nothing changes when no draft has this ID.
-     * @param duration New length in seconds.
-     * @param thumbnailHue New hue of the placeholder thumbnail, or null to keep the hue.
+     * @param id ID of the work. Nothing changes when no work has this ID.
+     * @param project Project to save.
+     * @return True when the project changed and the repository saved it.
      */
-    fun updateDraft(id: String, duration: Double, thumbnailHue: Int?)
+    suspend fun saveWork(id: String, project: EditorProject): Boolean
 
     /**
-     * Adds a saved video to the top of [completedVideos]. The video gets a new ID and the current time.
+     * Loads the last saved project of a work.
      *
-     * @param name Name of the project.
-     * @param duration Length of the video in seconds.
-     * @param thumbnailHue Hue of the placeholder thumbnail.
+     * @param id ID of the work.
+     * @return The project with [EditorProject.workId] set, or null when no work has this ID.
      */
-    fun addCompletedVideo(name: String, duration: Double, thumbnailHue: Int)
+    suspend fun loadWork(id: String): EditorProject?
 
     /**
-     * Loads a draft project.
+     * Removes a work and its project. The source files and the exported videos in the gallery stay.
      *
-     * @param name Name of the draft.
+     * @param id ID of the work.
      */
-    suspend fun loadDraftProject(name: String): EditorProject
+    suspend fun deleteWork(id: String)
+
+    /**
+     * Marks a work as exported. The time of the last change and the order of [works] do not change.
+     *
+     * @param id ID of the work.
+     */
+    suspend fun markExported(id: String)
 }

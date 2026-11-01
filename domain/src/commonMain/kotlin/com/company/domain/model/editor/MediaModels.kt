@@ -28,20 +28,24 @@ data class SourceMedia(
 )
 
 /**
- * Short summary of a project in the "내 영상" list.
+ * Short summary of a work in "최근 작업" and "내 영상" (F15). A work is one edit that the user started in the editor.
+ * Saves and exports do not make a new work.
  *
- * @property id Unique ID in its list.
+ * @property id Unique ID of the work.
  * @property name Name of the project.
- * @property duration Length of the project in seconds.
- * @property thumbnailHue Hue of the placeholder thumbnail.
- * @property createdAt Time when the user made the project or saved the video, in milliseconds since 1970-01-01 UTC.
+ * @property duration Length of the video in seconds.
+ * @property thumbnailHue Hue of the first clip, or null for a black card when the project has no clips (F16).
+ * @property modifiedAt Time of the last saved change, in milliseconds since 1970-01-01 UTC. When the user only opens
+ *   or exports the work, it does not change (D44).
+ * @property exported True after the user exported the work one time or more (D43).
  */
 data class VideoSummary(
     val id: String,
     val name: String,
     val duration: Double,
-    val thumbnailHue: Int,
-    val createdAt: Long,
+    val thumbnailHue: Int?,
+    val modifiedAt: Long,
+    val exported: Boolean = false,
 )
 
 /**

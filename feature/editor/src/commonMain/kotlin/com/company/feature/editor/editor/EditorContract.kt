@@ -352,7 +352,6 @@ data class FullScreenState(
  *   when the user picks an animation.
  * @property clipboard Copied text or caption, or null.
  * @property dialog Open popup, or null.
- * @property leaveDialog True while the popup that asks before the editor closes shows.
  * @property watermark True to show the "magic" watermark on the stage.
  * @property fullScreen Full-screen preview, or null when the editor shows.
  * @property favoriteTextStyles Text templates that the user marked as favorites, the newest first. The template lists
@@ -392,7 +391,6 @@ data class EditorState(
     val animationReplay: Int = 0,
     val clipboard: ElementClipboard? = null,
     val dialog: EditorDialog? = null,
-    val leaveDialog: Boolean = false,
     val watermark: Boolean = false,
     val fullScreen: FullScreenState? = null,
     val favoriteTextStyles: List<TextStyleType> = emptyList(),
@@ -785,17 +783,17 @@ sealed class EditorIntent : Intent() {
     /** Undo : Restores the last undo step. */
     data object Undo : EditorIntent()
 
-    /** Export : Opens the export screen. The draft of a new project gets the length and the first clip. */
+    /** Export : Saves the work and opens the export screen. Ignored when the project is empty. */
     data object Export : EditorIntent()
 
-    /** Back : Asks the user before the editor closes. The back button and the system back action send it. */
+    /**
+     * Back : Saves the work and closes the editor without a question (F15). A work without items goes away (D45). The
+     * back button and the system back action send it.
+     */
     data object Back : EditorIntent()
 
-    /** ConfirmLeave : Closes the editor. The user confirmed the leave popup. The draft of a new project gets the length and the first clip. */
-    data object ConfirmLeave : EditorIntent()
-
-    /** DismissLeave : Closes the leave popup. The user stays in the editor. */
-    data object DismissLeave : EditorIntent()
+    /** SaveNow : Saves the work at once. The screen sends it when the app goes to the background (D42). */
+    data object SaveNow : EditorIntent()
 }
 
 /** One-time events of the editor screen. */

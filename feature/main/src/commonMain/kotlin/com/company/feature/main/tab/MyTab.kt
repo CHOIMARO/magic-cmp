@@ -79,7 +79,7 @@ private data class SettingRow(
  * "마이" tab: profile, settings, and logout.
  *
  * @param settings Current editor settings.
- * @param completedCount Number of completed videos.
+ * @param exportedCount Number of works that the user exported (D43).
  * @param myVoice State of the user's own voice.
  * @param onToggleSetting Called with the tapped setting.
  * @param onOpenAppInfo Action of the "앱 정보" row.
@@ -88,7 +88,7 @@ private data class SettingRow(
 @Composable
 internal fun MyTab(
     settings: EditorSettings,
-    completedCount: Int,
+    exportedCount: Int,
     myVoice: MyVoiceStatus,
     onToggleSetting: (SettingKey) -> Unit,
     onOpenAppInfo: () -> Unit,
@@ -132,7 +132,7 @@ internal fun MyTab(
             .padding(top = 12.dp, bottom = TabContentBottomPadding),
     ) {
         TabTitle(text = stringResource(Res.string.tab_my), modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 22.dp))
-        ProfileRow(completedCount = completedCount)
+        ProfileRow(exportedCount = exportedCount)
         groups.forEach { (title, rows) ->
             Column(
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 20.dp),
@@ -165,7 +165,7 @@ internal fun MyTab(
 }
 
 @Composable
-private fun ProfileRow(completedCount: Int) {
+private fun ProfileRow(exportedCount: Int) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -175,7 +175,7 @@ private fun ProfileRow(completedCount: Int) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = stringResource(Res.string.my_profile_name), fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(
-                text = stringResource(Res.string.my_profile_summary, completedCount),
+                text = stringResource(Res.string.my_profile_summary, exportedCount),
                 modifier = Modifier.padding(top = 2.dp),
                 fontSize = 13.sp,
                 color = MagicColors.OnSurface55,

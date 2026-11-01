@@ -5,10 +5,10 @@ import com.company.domain.repository.EditorProjectRepository
 import com.company.domain.repository.MyVideoRepository
 
 /**
- * Starts a new project that the user made from picked media or from the camera.
+ * Starts a new project that the user made from picked media or from the camera (F15).
  *
- * The project goes to the top of the drafts at once. The draft gets the length and the thumbnail of the project when
- * the user leaves the editor (see [UpdateDraftUseCase]).
+ * The project has clips, so it is saved at once as a new work at the top of "최근 작업". The editor then saves each
+ * change to the work (see [SaveWorkUseCase]).
  */
 class StartNewProjectUseCase(
     private val projectRepository: EditorProjectRepository,
@@ -16,16 +16,10 @@ class StartNewProjectUseCase(
 ) {
     /**
      * @param project New project. It replaces the current project and clears the undo history.
+     * @throws Exception When the work cannot be saved. The current project then does not change.
      */
-    operator fun invoke(project: EditorProject) {
-        val draft = myVideoRepository.addDraft(
-            name = project.name,
-            duration = project.totalDuration,
-            thumbnailHue = project.clips.firstOrNull()?.thumbnailHue ?: DEFAULT_THUMBNAIL_HUE,
-        )
-        projectRepository.start(project.copy(draftId = draft.id))
+    suspend operator fun invoke(project: EditorProject) {
+        val work = myVideoRepository.addWork(project)
+        projectRepository.start(project.copy(workId = work.id))
     }
 }
-
-/** Hue of the placeholder thumbnail of a project without clips. */
-const val DEFAULT_THUMBNAIL_HUE = 300

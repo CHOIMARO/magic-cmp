@@ -149,9 +149,6 @@
     <string name="music_range_short">구간이 끝나면 음악 없이 이어져요</string>
     <string name="music_range_fit">영상 길이와 딱 맞아요</string>
     <string name="music_fade">페이드</string>
-    <string name="editor_leave_title">편집을 그만둘까요?</string>
-    <string name="editor_leave_message">지금 나가면 편집한 내용이 사라져요</string>
-    <string name="editor_leave_confirm">나가기</string>
     <string name="editor_undo">되돌리기</string>
     <string name="editor_finish">완성</string>
     <string name="color_dialog_title">색 직접 고르기</string>
@@ -273,6 +270,8 @@
     <string name="toast_layout_reset">레이아웃을 처음으로 돌렸어요</string>
     <string name="toast_favorite_added">즐겨찾기에 넣었어요 · 맨 앞에 보여요</string>
     <string name="toast_favorite_removed">즐겨찾기에서 뺐어요</string>
+    <string name="toast_work_save_failed">저장하지 못했어요</string>
+    <string name="toast_empty_work_removed">빈 작업은 남기지 않았어요</string>
     <string name="toast_captions_removed">자막을 지웠어요 · 되돌리기 가능</string>
     <string name="toast_move_line_into_caption">흰 선을 자막 안쪽으로 옮겨 주세요</string>
     <string name="toast_one_word">단어가 하나라 나눌 수 없어요</string>
