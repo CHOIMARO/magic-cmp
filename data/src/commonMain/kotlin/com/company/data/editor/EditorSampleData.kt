@@ -6,39 +6,13 @@ import com.company.domain.model.editor.SoundEffect
 import com.company.domain.model.editor.SoundEffectCategory
 
 /**
- * Sample content of the prototype.
+ * Sample content of the prototype: the catalogs of music, voices, and sound effects, and the lines of the fake speech
+ * recognition.
  *
  * The app has no real music service, speech recognition, or text to speech yet.
- * The fake repositories use this data instead.
+ * The fake repositories use this data instead. The work list has no sample works; it has only the works of the user.
  */
 internal object EditorSampleData {
-    private val Hues = listOf(35, 80, 150, 200, 250, 300, 20, 120, 180, 270, 330, 60, 220, 100, 0, 160, 45, 240)
-    private val Durations = listOf(4.2, 6.8, 3.1, 8.4, 5.0, 2.6, 7.2, 4.8, 3.6, 9.1, 5.5, 3.9, 6.1, 4.4, 2.9, 5.7, 4.0, 6.4)
-
-    /**
-     * Video of the sample draft project. It has no real file.
-     *
-     * @property name File name of the video.
-     * @property duration Length of the video in seconds.
-     * @property hue Hue of the placeholder thumbnail.
-     */
-    data class SampleVideo(val name: String, val duration: Double, val hue: Int)
-
-    /**
-     * Sample entry of the "내 영상" list.
-     *
-     * @property name Name of the project.
-     * @property duration Length of the project in seconds.
-     * @property thumbnailHue Hue of the placeholder thumbnail.
-     * @property daysAgo Number of days since the user made the project. 0 is today.
-     */
-    data class SampleSummary(val name: String, val duration: Double, val thumbnailHue: Int, val daysAgo: Int)
-
-    /** Videos that the sample draft project uses. */
-    val SampleVideos: List<SampleVideo> = Hues.mapIndexed { index, hue ->
-        SampleVideo(name = "VID_${4021 + index * 7}", duration = Durations[index], hue = hue)
-    }
-
     /** Background music tracks. They are free for commercial use. */
     val MusicTracks: List<MusicTrack> = listOf(
         MusicTrack(id = "m1", title = "한밤의 드라이브", mood = "몽환", durationSeconds = 42, thumbnailHue = 250),
@@ -80,32 +54,8 @@ internal object EditorSampleData {
         SoundEffect("s16", SoundEffectCategory.DAILY, "알림음", 0.5),
     )
 
-    /** Draft projects at app start. */
-    val Drafts: List<SampleSummary> = listOf(
-        SampleSummary(name = "바닷가 주말", duration = 18.0, thumbnailHue = 35, daysAgo = 0),
-        SampleSummary(name = "작업실 투어", duration = 42.0, thumbnailHue = 200, daysAgo = 6),
-        SampleSummary(name = "말차 레시피", duration = 27.0, thumbnailHue = 150, daysAgo = 1),
-        SampleSummary(name = "러닝 크루", duration = 15.0, thumbnailHue = 20, daysAgo = 13),
-    )
-
-    /** Completed videos at app start. */
-    val CompletedVideos: List<SampleSummary> = listOf(
-        SampleSummary(name = "벚꽃 산책", duration = 21.0, thumbnailHue = 330, daysAgo = 3),
-        SampleSummary(name = "첫 출근 브이로그", duration = 34.0, thumbnailHue = 60, daysAgo = 9),
-        SampleSummary(name = "고양이 낮잠", duration = 12.0, thumbnailHue = 100, daysAgo = 20),
-    )
-
     /** Lines that the fake speech recognition "hears". */
     val CaptionPhrases: List<String> = listOf(
         "자 오늘은", "바닷가로 떠나볼게요", "노을이 진짜", "예술이었어요", "마무리는 타코", "당연하죠",
     )
-
-    /** Title text of the sample draft project. */
-    const val SampleTitle = "바닷가 주말"
-
-    /** Music of the sample draft project. */
-    const val SampleMusicId = "m5"
-
-    /** Indexes in [SampleVideos] that make the sample draft project. */
-    val SampleClipIndexes = listOf(0, 3, 6, 2)
 }

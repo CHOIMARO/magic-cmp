@@ -4,46 +4,78 @@ import com.company.domain.model.editor.EditorProject
 import com.company.domain.model.editor.VideoSummary
 import kotlinx.coroutines.flow.StateFlow
 
-/** Gives the projects of the user: drafts and completed videos. */
+/**
+ * Keeps the works of the user (F15). A work is one edit that the user started in the editor: its project and its
+ * summary in "최근 작업" and "내 영상".
+ *
+ * The repository copies the source photos and videos of a work into the app storage, and the work uses the copies
+ * (D50). Thus a work opens after an app restart, also when the user removed the original from the gallery.
+ *
+ * The functions that write can fail, for example when the device storage is full. They then throw an exception.
+ */
 interface MyVideoRepository {
-    /** Projects that the user did not complete. The newest draft is first. */
-    val drafts: StateFlow<List<VideoSummary>>
-
-    /** Videos that the user saved. The newest video is first. */
-    val completedVideos: StateFlow<List<VideoSummary>>
+    /** Works, the work with the most recent change first (D44). */
+    val works: StateFlow<List<VideoSummary>>
 
     /**
-     * Adds a new draft to the top of [drafts]. The draft gets a new ID and the current time.
-     *
-     * @param name Name of the project.
-     * @param duration Length of the project in seconds.
-     * @param thumbnailHue Hue of the placeholder thumbnail.
-     * @return The new draft.
+     * Gives the names of all works. Unlike [works], it waits until the list is read from the device after the app
+     * starts, so that a new name does not repeat a saved name (D53).
      */
-    fun addDraft(name: String, duration: Double, thumbnailHue: Int): VideoSummary
+    suspend fun workNames(): List<String>
 
     /**
-     * Changes the length and the thumbnail of a draft. The draft keeps its place in [drafts].
+     * Adds a new work at the top of [works]. The work gets a new ID and the current time.
      *
-     * @param id ID of the draft. Nothing changes when no draft has this ID.
-     * @param duration New length in seconds.
-     * @param thumbnailHue New hue of the placeholder thumbnail, or null to keep the hue.
+     * @param project Project of the work. The work keeps it with [EditorProject.workId] set to the new ID.
+     * @return The new work.
      */
-    fun updateDraft(id: String, duration: Double, thumbnailHue: Int?)
+    suspend fun addWork(project: EditorProject): VideoSummary
 
     /**
-     * Adds a saved video to the top of [completedVideos]. The video gets a new ID and the current time.
+     * Saves the project of a work. When the project is the same as the last saved project, nothing changes. Otherwise
+     * the work gets the length, the thumbnail, and the current time, and it goes to the top of [works].
      *
-     * @param name Name of the project.
-     * @param duration Length of the video in seconds.
-     * @param thumbnailHue Hue of the placeholder thumbnail.
+     * @param id ID of the work. Nothing changes when no work has this ID.
+     * @param project Project to save.
+     * @return True when the project changed and the repository saved it.
      */
-    fun addCompletedVideo(name: String, duration: Double, thumbnailHue: Int)
+    suspend fun saveWork(id: String, project: EditorProject): Boolean
 
     /**
-     * Loads a draft project.
+     * Loads the last saved project of a work.
      *
-     * @param name Name of the draft.
+     * @param id ID of the work.
+     * @return The project with [EditorProject.workId] set, or null when no work has this ID.
      */
-    suspend fun loadDraftProject(name: String): EditorProject
+    suspend fun loadWork(id: String): EditorProject?
+
+    /**
+     * Removes a work, its project, and the copies of its source files that no other work uses. The originals and the
+     * exported videos in the gallery stay.
+     *
+     * @param id ID of the work.
+     */
+    suspend fun deleteWork(id: String)
+
+    /**
+     * Marks a work as exported. The time of the last change and the order of [works] do not change.
+     *
+     * @param id ID of the work.
+     */
+    suspend fun markExported(id: String)
+
+    /**
+     * Tells how many bytes the copies of source files need (D51). A file that a work already copied needs no bytes.
+     *
+     * @param uris Locations of the source photos and videos.
+     * @return The bytes. A file with an unknown size counts as 0.
+     */
+    suspend fun bytesToCopy(uris: List<String>): Long
+
+    /**
+     * Tells the free bytes on the device storage of the works (D51).
+     *
+     * @return The bytes, or [Long.MAX_VALUE] when the device does not tell them.
+     */
+    suspend fun freeBytes(): Long
 }

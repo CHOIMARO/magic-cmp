@@ -97,14 +97,14 @@ private class IosVideoPreviewPlayer(private val scope: CoroutineScope) : VideoPr
             return if (seconds.isNaN()) targetTime else seconds
         }
 
-    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, time: Double) {
+    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double, time: Double) {
         if (clips.isEmpty()) return
         targetTime = time
         ended = false
         loading = true
         loadJob?.cancel()
         loadJob = scope.launch {
-            val item = buildPlayerItem(clips, transitions)
+            val item = buildPlayerItem(clips, transitions, duration)
             loading = false
             if (item == null) {
                 NSLog("Preview: cannot build the player item")
@@ -204,11 +204,12 @@ private class PlayerLayerView(player: AVPlayer) : UIView(frame = CGRectMake(0.0,
     }
 }
 
-/** Makes the player item of the clips with the same composition as the export. */
+/** Makes the player item of the clips with the same composition as the export. After the last clip, it is black until [duration]. */
 @OptIn(ExperimentalForeignApi::class)
-private suspend fun buildPlayerItem(clips: List<Clip>, transitions: List<TransitionWindow>): AVPlayerItem? {
+private suspend fun buildPlayerItem(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double): AVPlayerItem? {
     val composition = buildMediaComposition(
         clips = clips,
+        duration = duration,
         frameWidth = PREVIEW_FRAME_WIDTH,
         frameHeight = PREVIEW_FRAME_HEIGHT,
         transitions = transitions,

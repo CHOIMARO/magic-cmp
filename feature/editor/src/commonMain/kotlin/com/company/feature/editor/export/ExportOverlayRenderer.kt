@@ -139,20 +139,20 @@ internal fun ExportOverlayRenderer(
 /**
  * Layout layer of the export at [time]: layout background, labels, and the other cells.
  *
- * The first layout cell is transparent, because the video shows there.
+ * The first layout cell is transparent, because the video shows there. A cell without a clip is black (F16).
  */
 @Composable
 private fun ExportLayoutFrame(project: EditorProject, time: Double, thumbnails: Map<String, ImageBitmap>) {
     StageCanvas(modifier = Modifier.fillMaxSize()) {
         StageLayoutCells(
             project = project,
-            clipIndex = project.clipAt(time)?.index ?: 0,
+            clipIndex = project.clipAt(time)?.index?.takeIf { time < project.clipsDuration },
             modifier = Modifier.fillMaxSize(),
         ) { index, clip ->
-            if (index == 0) {
-                Box(modifier = Modifier.matchParentSize().drawBehind { drawRect(Color.Black, blendMode = BlendMode.Clear) })
-            } else {
-                CellThumbnail(clip = clip, image = thumbnails[clip.id], modifier = Modifier.matchParentSize())
+            when {
+                index == 0 -> Box(modifier = Modifier.matchParentSize().drawBehind { drawRect(Color.Black, blendMode = BlendMode.Clear) })
+                clip != null -> CellThumbnail(clip = clip, image = thumbnails[clip.id], modifier = Modifier.matchParentSize())
+                else -> Box(modifier = Modifier.matchParentSize().drawBehind { drawRect(Color.Black) })
             }
         }
     }

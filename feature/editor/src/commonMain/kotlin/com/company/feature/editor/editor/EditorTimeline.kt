@@ -56,10 +56,19 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.toRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -97,6 +106,7 @@ import com.company.feature.editor.resources.Res
 import com.company.feature.editor.resources.seconds
 import com.company.feature.editor.resources.speed_factor
 import com.company.feature.editor.resources.timeline_add
+import com.company.feature.editor.resources.timeline_gap
 import com.company.ui.editor.formatTime
 import com.company.ui.media.rememberFilmstripFrame
 import kotlin.math.abs
@@ -634,12 +644,87 @@ private fun ClipTrack(
             }
             start += clip.duration
         }
+        // 마지막 클립 뒤로 다른 요소가 더 길면, 클립이 없는 검은 구간을 따로 보여 준다(F16).
+        val gap = state.totalDuration - start
+        if (gap > MIN_GAP_SECONDS) {
+            ClipGapBlock(
+                seconds = gap,
+                modifier = Modifier
+                    .offset(x = HandleInset + secondWidth * start.toFloat())
+                    .width(maxOf(8.dp, secondWidth * gap.toFloat() - TimelineItemGap)),
+            )
+        }
         // 클립을 고르거나 끄는 동안에는 손잡이를 가리지 않도록 전환 버튼을 숨긴다.
         if (state.selectedClipId == null && state.activeDrag == null) {
             TransitionButtons(state = state, onIntent = onIntent, secondWidth = secondWidth)
         }
     }
 }
+
+/** A part of the video without clips shorter than this, in seconds, does not show on the clip track. */
+private const val MIN_GAP_SECONDS = 0.05
+
+/** Narrowest gap block that shows its label. */
+private val GapLabelMinWidth = 92.dp
+
+/** Color of the stripes, the border, and the label of a gap block. */
+private val GapLineColor = Color(0xFFF3F1F6)
+
+/**
+ * Part of the video after the last clip, where the video is black (F16): a black block with diagonal stripes, a
+ * dashed border, and its length.
+ *
+ * @param seconds Length of the part.
+ * @param modifier Modifier for the block. Give it the position and the width.
+ */
+@Composable
+private fun ClipGapBlock(seconds: Double, modifier: Modifier) {
+    BoxWithConstraints(
+        modifier = modifier
+            .height(ClipTrackHeight)
+            .drawBehind {
+                val radius = CornerRadius(10.dp.toPx())
+                val outline = Path().apply { addRoundRect(RoundRect(size.toRect(), radius)) }
+                clipPath(outline) {
+                    drawRect(Color.Black)
+                    // CSS repeating-linear-gradient(135deg)와 같이 6dp 두께의 빗금을 12dp 간격으로 긋는다.
+                    val step = 12.dp.toPx() * GAP_STRIPE_DIAGONAL
+                    var x = -size.height
+                    while (x < size.width) {
+                        drawLine(
+                            color = GapLineColor.copy(alpha = 0.06f),
+                            start = Offset(x, size.height),
+                            end = Offset(x + size.height, 0f),
+                            strokeWidth = 6.dp.toPx(),
+                        )
+                        x += step
+                    }
+                }
+                val inset = 0.75.dp.toPx()
+                drawRoundRect(
+                    color = GapLineColor.copy(alpha = 0.24f),
+                    topLeft = Offset(inset, inset),
+                    size = Size(size.width - inset * 2, size.height - inset * 2),
+                    cornerRadius = radius,
+                    style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))),
+                )
+            },
+    ) {
+        if (maxWidth > GapLabelMinWidth) {
+            Text(
+                text = stringResource(Res.string.timeline_gap, ((seconds * 10).roundToInt() / 10.0).toString()),
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 7.dp, bottom = 5.dp),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = GapLineColor.copy(alpha = 0.62f),
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/** Horizontal distance between stripes, as a part of their distance at a right angle: 1 / sin(45°). */
+private const val GAP_STRIPE_DIAGONAL = 1.4142135f
 
 /**
  * One clip on the timeline: a filmstrip of its frames with the length and the speed.

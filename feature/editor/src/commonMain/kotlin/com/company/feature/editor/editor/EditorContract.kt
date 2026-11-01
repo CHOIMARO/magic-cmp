@@ -313,6 +313,21 @@ data class FullScreenState(
 )
 
 /**
+ * Center lines of the stage that the dragged text is on (v10). The stage shows each line while the text is on it.
+ *
+ * @property vertical True while the text center is on the vertical center line (x = 50 %).
+ * @property horizontal True while the text center is on the horizontal center line (y = 50 %).
+ */
+data class TextSnapGuide(val vertical: Boolean = false, val horizontal: Boolean = false) {
+    /**
+     * Tells if the text is on a line that it was not on before. A new line gives a short vibration.
+     *
+     * @param before Lines before the move.
+     */
+    fun hasNewLine(before: TextSnapGuide): Boolean = (vertical && !before.vertical) || (horizontal && !before.horizontal)
+}
+
+/**
  * State of the editor screen.
  *
  * @property project Project that the user edits.
@@ -337,6 +352,7 @@ data class FullScreenState(
  * @property captionFromPlayhead True when the caption sheet makes captions from the playhead. False makes them from
  *   the start of the video (0:00).
  * @property captionMoving True while the user drags a caption up or down on the stage. All captions move together.
+ * @property textSnapGuide Center lines that the dragged text is on, or null when no text drag runs.
  * @property musicTracks Music tracks that the user can pick.
  * @property musicDraft Music that the user tries in the music sheet, or null.
  * @property voices Voices for dubbings. The user's own voice is not in the list.
@@ -352,7 +368,7 @@ data class FullScreenState(
  *   when the user picks an animation.
  * @property clipboard Copied text or caption, or null.
  * @property dialog Open popup, or null.
- * @property leaveDialog True while the popup that asks before the editor closes shows.
+ * @property renaming True while the rename popup of the work shows (D54).
  * @property watermark True to show the "magic" watermark on the stage.
  * @property fullScreen Full-screen preview, or null when the editor shows.
  * @property favoriteTextStyles Text templates that the user marked as favorites, the newest first. The template lists
@@ -378,6 +394,7 @@ data class EditorState(
     val captionScript: String? = null,
     val captionFromPlayhead: Boolean = false,
     val captionMoving: Boolean = false,
+    val textSnapGuide: TextSnapGuide? = null,
     val musicTracks: List<MusicTrack> = emptyList(),
     val musicDraft: MusicDraft? = null,
     val voices: List<DubbingVoice> = emptyList(),
@@ -392,7 +409,7 @@ data class EditorState(
     val animationReplay: Int = 0,
     val clipboard: ElementClipboard? = null,
     val dialog: EditorDialog? = null,
-    val leaveDialog: Boolean = false,
+    val renaming: Boolean = false,
     val watermark: Boolean = false,
     val fullScreen: FullScreenState? = null,
     val favoriteTextStyles: List<TextStyleType> = emptyList(),
@@ -452,7 +469,7 @@ sealed class EditorIntent : Intent() {
 
     /**
      * OpenFullScreen : Shows the project on the full screen and plays it from the playhead, or from the start at the end.
-     * It closes the sheet and clears the selection. Ignored when the project has no clips.
+     * It closes the sheet and clears the selection. Ignored when the project is empty (F16).
      */
     data object OpenFullScreen : EditorIntent()
 
@@ -541,8 +558,14 @@ sealed class EditorIntent : Intent() {
     /** StartTextDrag : Keeps an undo step before the first text move. */
     data object StartTextDrag : EditorIntent()
 
-    /** MoveText(textId, x, y) : Moves a text overlay to a percent position. */
-    data class MoveText(val textId: String, val x: Double, val y: Double) : EditorIntent()
+    /**
+     * MoveText(textId, x, y, snapX, snapY) : Moves a text overlay to a percent position. A text center nearer than
+     * snapX or snapY percent to a center line of the stage snaps to that line.
+     */
+    data class MoveText(val textId: String, val x: Double, val y: Double, val snapX: Double, val snapY: Double) : EditorIntent()
+
+    /** EndTextDrag : Ends a text drag and hides the center lines. */
+    data object EndTextDrag : EditorIntent()
 
     /** StartTextTransform : Pauses the preview and keeps an undo step before the first change of a size and angle gesture. */
     data object StartTextTransform : EditorIntent()
@@ -785,17 +808,32 @@ sealed class EditorIntent : Intent() {
     /** Undo : Restores the last undo step. */
     data object Undo : EditorIntent()
 
-    /** Export : Opens the export screen. The draft of a new project gets the length and the first clip. */
+    /** Export : Saves the work and opens the export screen. Ignored when the project is empty. */
     data object Export : EditorIntent()
 
-    /** Back : Asks the user before the editor closes. The back button and the system back action send it. */
+    /**
+     * Back : Saves the work and closes the editor without a question (F15). A work without items goes away (D45). The
+     * back button and the system back action send it.
+     */
     data object Back : EditorIntent()
 
-    /** ConfirmLeave : Closes the editor. The user confirmed the leave popup. The draft of a new project gets the length and the first clip. */
-    data object ConfirmLeave : EditorIntent()
+    /** SaveNow : Saves the work at once. The screen sends it when the app goes to the background (D42). */
+    data object SaveNow : EditorIntent()
 
-    /** DismissLeave : Closes the leave popup. The user stays in the editor. */
-    data object DismissLeave : EditorIntent()
+    /**
+     * OpenRename : Opens the rename popup of the work (D54). It opens only when no sheet and no popup show, and it
+     * stops the preview (D59).
+     */
+    data object OpenRename : EditorIntent()
+
+    /**
+     * ConfirmRename(name) : Gives the work the name that the user typed (D57). An empty name does nothing, and the
+     * same name changes nothing. The undo history keeps the new name (D55).
+     */
+    data class ConfirmRename(val name: String) : EditorIntent()
+
+    /** DismissRename : Closes the rename popup without a change. */
+    data object DismissRename : EditorIntent()
 }
 
 /** One-time events of the editor screen. */

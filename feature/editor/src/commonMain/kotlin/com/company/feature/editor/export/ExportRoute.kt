@@ -14,13 +14,15 @@ import org.koin.compose.viewmodel.koinViewModel
  * Connects [ExportViewModel] to [ExportScreen] and sends navigation events out.
  * It also draws the overlay images of the export when the ViewModel asks for them.
  *
- * @param onBack Goes back to the editor.
+ * @param onBack Goes back to the screen before, the editor or the tab.
+ * @param onEditMore Opens the editor with the same work ("더 편집하기").
  * @param onGoHome Navigates to the home tab.
  * @param viewModel ViewModel of the screen.
  */
 @Composable
 internal fun ExportRoute(
     onBack: () -> Unit,
+    onEditMore: () -> Unit,
     onGoHome: () -> Unit,
     viewModel: ExportViewModel = koinViewModel(),
 ) {
@@ -33,6 +35,7 @@ internal fun ExportRoute(
             when (effect) {
                 is ExportSideEffect.ShowToast -> toast.show(effect.message.resolve())
                 ExportSideEffect.Close -> onBack()
+                ExportSideEffect.EditMore -> onEditMore()
                 ExportSideEffect.GoHome -> onGoHome()
             }
         }

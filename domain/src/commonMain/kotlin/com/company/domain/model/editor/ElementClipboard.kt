@@ -139,7 +139,7 @@ data class PasteResult(val project: EditorProject, val pasted: List<PastedElemen
  * each whole target clip. The clip end cuts the element. When the distance is longer than the clip, the element
  * starts at the clip start. A clip that gives less than [MIN_PASTE_LENGTH] is skipped.
  *
- * A text keeps its row when the row is free, or else it goes to the first free row. A caption is bound to its clip.
+ * A text keeps its row when the row is free, or else it goes to the first free row. A caption gets a fixed time (D47).
  *
  * @param clipboard The clipboard.
  * @param clipIndexes Target clips.
@@ -186,12 +186,9 @@ fun EditorProject.paste(clipboard: ElementClipboard, clipIndexes: List<Int>, rep
                 val caption = CaptionSegment(
                     id = newEditorId(),
                     text = element.text,
-                    start = 0.0,
-                    length = 0.0,
+                    start = start,
+                    length = length,
                     decorations = element.decorations,
-                    clipId = clip.id,
-                    clipOffset = if (clipboard.coversClip) null else offset,
-                    clipLength = if (clipboard.coversClip) null else length,
                 )
                 captions = captions + caption
                 pasted += PastedElement(index, caption.id, start)

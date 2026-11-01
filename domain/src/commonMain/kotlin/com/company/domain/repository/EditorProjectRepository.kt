@@ -40,6 +40,14 @@ interface EditorProjectRepository {
     fun update(transform: (EditorProject) -> EditorProject)
 
     /**
+     * Changes the name of the project without a new undo step (D55). The states in the undo history get the new name
+     * too, so that an undo of an earlier change does not bring back the old name.
+     *
+     * @param name New name.
+     */
+    fun rename(name: String)
+
+    /**
      * Restores the last state in the undo history.
      *
      * @return True if a state was restored.

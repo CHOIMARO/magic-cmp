@@ -28,21 +28,41 @@ data class SourceMedia(
 )
 
 /**
- * Short summary of a project in the "내 영상" list.
+ * Short summary of a work in "최근 작업" and "내 영상" (F15). A work is one edit that the user started in the editor.
+ * Saves and exports do not make a new work.
  *
- * @property id Unique ID in its list.
+ * @property id Unique ID of the work.
  * @property name Name of the project.
- * @property duration Length of the project in seconds.
- * @property thumbnailHue Hue of the placeholder thumbnail.
- * @property createdAt Time when the user made the project or saved the video, in milliseconds since 1970-01-01 UTC.
+ * @property duration Length of the video in seconds.
+ * @property thumbnailHue Hue of the first clip, or null for a black card when the project has no clips (F16).
+ * @property modifiedAt Time of the last saved change, in milliseconds since 1970-01-01 UTC. When the user only opens
+ *   or exports the work, it does not change (D44).
+ * @property exported True after the user exported the work one time or more (D43).
+ * @property storageBytes Bytes that the work uses on the device: the copies of its source files and its project
+ *   file (D51).
+ * @property thumbnail First frame of the work for its card, or null when the first clip has no source file, for
+ *   example a sample work (D52). The card then shows the placeholder of [thumbnailHue].
  */
 data class VideoSummary(
     val id: String,
     val name: String,
     val duration: Double,
-    val thumbnailHue: Int,
-    val createdAt: Long,
+    val thumbnailHue: Int?,
+    val modifiedAt: Long,
+    val exported: Boolean = false,
+    val storageBytes: Long = 0,
+    val thumbnail: WorkThumbnail? = null,
 )
+
+/**
+ * First frame of a work for its card (D52): the frame at the start of the first clip. It has no texts, captions, or
+ * layout.
+ *
+ * @property uri Location of the source file of the first clip.
+ * @property type Photo or video.
+ * @property time Source time of the frame in seconds: the in point of the first clip. A photo ignores it.
+ */
+data class WorkThumbnail(val uri: String, val type: MediaType, val time: Double)
 
 /**
  * Background music track.

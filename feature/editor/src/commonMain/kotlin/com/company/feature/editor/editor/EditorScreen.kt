@@ -1,6 +1,9 @@
 package com.company.feature.editor.editor
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,13 +16,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -41,12 +48,15 @@ import com.company.core.designsystem.component.MagicButton
 import com.company.core.designsystem.component.MagicButtonStyle
 import com.company.core.designsystem.component.MagicDialog
 import com.company.core.designsystem.component.MagicIconButton
+import com.company.core.designsystem.component.MagicInputDialog
 import com.company.core.designsystem.component.MagicModalBottomSheet
 import com.company.core.designsystem.component.SystemBackHandler
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
+import com.company.domain.model.editor.MAX_WORK_NAME_LENGTH
+import com.company.domain.model.editor.workNameOf
 import com.company.feature.editor.preview.EditorPreviewData
 import com.company.feature.editor.resources.*
 import com.company.ui.editor.formatTime
@@ -141,15 +151,17 @@ internal fun EditorScreen(
                 onDismissRequest = { onIntent(EditorIntent.DismissDialog) },
             )
         }
-        if (state.leaveDialog) {
-            MagicDialog(
-                title = stringResource(Res.string.editor_leave_title),
-                message = stringResource(Res.string.editor_leave_message),
-                confirmLabel = stringResource(Res.string.editor_leave_confirm),
-                onConfirm = { onIntent(EditorIntent.ConfirmLeave) },
+        if (state.renaming) {
+            MagicInputDialog(
+                title = stringResource(Res.string.rename_title),
+                initialText = state.project.name,
+                maxLength = MAX_WORK_NAME_LENGTH,
+                confirmLabel = stringResource(Res.string.save),
                 cancelLabel = stringResource(Res.string.cancel),
-                onCancel = { onIntent(EditorIntent.DismissLeave) },
-                onDismissRequest = { onIntent(EditorIntent.DismissLeave) },
+                onConfirm = { onIntent(EditorIntent.ConfirmRename(it)) },
+                onDismissRequest = { onIntent(EditorIntent.DismissRename) },
+                inputDescription = stringResource(Res.string.rename_input),
+                canConfirm = { workNameOf(it) != null },
             )
         }
     }
@@ -176,35 +188,57 @@ private fun EditorTopBar(state: EditorState, onIntent: (EditorIntent) -> Unit) {
             onClick = { onIntent(EditorIntent.Back) },
             iconSize = 26.dp,
         )
-        Text(
-            text = state.project.name,
-            modifier = Modifier.weight(1f),
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        ProjectNameButton(name = state.project.name, onClick = { onIntent(EditorIntent.OpenRename) }, modifier = Modifier.weight(1f))
         MagicIconButton(
             icon = Icons.AutoMirrored.Rounded.Undo,
             contentDescription = stringResource(Res.string.editor_undo),
             onClick = { onIntent(EditorIntent.Undo) },
             enabled = state.canUndo,
         )
-        // 클립이 하나도 없으면 볼 것도, 저장할 것도 없다.
-        val hasClips = state.project.clips.isNotEmpty()
+        // 요소가 하나도 없으면 볼 것도, 저장할 것도 없다. 글자만 있는 영상도 만들 수 있다(F16).
+        val hasContent = !state.project.isEmpty
         MagicIconButton(
             icon = Icons.Rounded.Fullscreen,
             contentDescription = stringResource(Res.string.fullscreen_open),
             onClick = { onIntent(EditorIntent.OpenFullScreen) },
-            enabled = hasClips,
+            enabled = hasContent,
             iconSize = 26.dp,
         )
         MagicButton(
             text = stringResource(Res.string.editor_finish),
             onClick = { onIntent(EditorIntent.Export) },
             style = MagicButtonStyle.PRIMARY_SMALL,
-            enabled = hasClips,
+            enabled = hasContent,
         )
+    }
+}
+
+/**
+ * Name of the project with a pencil icon. A tap opens the rename popup (D54). A long name gets an ellipsis, and the
+ * icon stays visible.
+ */
+@Composable
+private fun ProjectNameButton(name: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val renameLabel = stringResource(Res.string.rename_title)
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    Row(
+        modifier = modifier
+            .height(44.dp)
+            .graphicsLayer { alpha = if (pressed) 0.6f else 1f }
+            .clickable(interactionSource = interactionSource, indication = null, onClickLabel = renameLabel, role = Role.Button, onClick = onClick),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = name,
+            modifier = Modifier.weight(1f, fill = false),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Icon(Icons.Rounded.Edit, contentDescription = renameLabel, tint = MagicColors.OnSurface50, modifier = Modifier.size(16.dp))
     }
 }
 

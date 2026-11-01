@@ -59,6 +59,7 @@ internal fun GalleryRoute(
                     toast.show(effect.message.resolve())
                     onReturnToEditor()
                 }
+                is GallerySideEffect.ShowToast -> toast.show(effect.message.resolve())
                 GallerySideEffect.Close -> {
                     // 시스템 피커 결과는 이 화면이 RESUMED가 되기 전에 올 수 있다.
                     // onClose는 RESUMED일 때만 동작하므로, RESUMED가 된 뒤에 닫는다.

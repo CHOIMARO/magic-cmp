@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 이하: 작업 목록·편집 정보·영상 복사본은 백업에서 뺀다(D51). -->
+<full-backup-content>
+    <exclude domain="file" path="works" />
+    <exclude domain="file" path="media" />
+</full-backup-content>

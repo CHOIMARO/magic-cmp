@@ -4,7 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.company.core.designsystem.component.LocalMagicToast
 import com.company.domain.model.editor.EditorTemplate
+import com.company.ui.text.resolve
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -13,6 +15,7 @@ import org.koin.compose.viewmodel.koinViewModel
  * @param onOpenGallery Opens the photo and video picker for a new project with the template, or with no template.
  * @param onOpenCamera Opens the camera.
  * @param onOpenEditor Opens the editor with the current project.
+ * @param onOpenExport Opens the export screen of the current project, without the editor.
  * @param onOpenMyVoice Opens the screen of the user's own voice.
  * @param viewModel ViewModel of the screen.
  */
@@ -21,10 +24,12 @@ internal fun MainRoute(
     onOpenGallery: (EditorTemplate?) -> Unit,
     onOpenCamera: () -> Unit,
     onOpenEditor: () -> Unit,
+    onOpenExport: () -> Unit,
     onOpenMyVoice: () -> Unit,
     viewModel: MainViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val toast = LocalMagicToast.current
 
     LaunchedEffect(viewModel) {
         viewModel.sideEffect.collect { effect ->
@@ -32,7 +37,9 @@ internal fun MainRoute(
                 is MainSideEffect.OpenGallery -> onOpenGallery(effect.template)
                 MainSideEffect.OpenCamera -> onOpenCamera()
                 MainSideEffect.OpenEditor -> onOpenEditor()
+                MainSideEffect.OpenExport -> onOpenExport()
                 MainSideEffect.OpenMyVoice -> onOpenMyVoice()
+                is MainSideEffect.ShowToast -> toast.show(effect.message.resolve())
             }
         }
     }

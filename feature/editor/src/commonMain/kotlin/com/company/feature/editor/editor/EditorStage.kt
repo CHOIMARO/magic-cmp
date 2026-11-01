@@ -11,19 +11,17 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
@@ -57,6 +55,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -64,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
 import com.company.domain.model.editor.EditorProject
+import com.company.domain.model.editor.LayoutType
 import com.company.domain.model.editor.MAX_TEXT_SCALE
 import com.company.domain.model.editor.MIN_TEXT_SCALE
 import com.company.domain.model.editor.MediaType
@@ -100,7 +100,8 @@ import org.jetbrains.compose.resources.stringResource
  * 9:16 preview of the project at the playhead.
  *
  * With [video], the first layout cell shows the video of the clip at the playhead. The other cells
- * show a thumbnail of the next clips. Without [video], all cells show placeholder stripes.
+ * show a thumbnail of the next clips. Without [video], all cells show placeholder stripes. The stage is black
+ * where no clip plays: after the last clip, and in a project without clips (F16).
  *
  * @param state Editor state.
  * @param onIntent Called with each user action.
@@ -118,12 +119,15 @@ internal fun EditorStage(
     fullScreen: Boolean = false,
 ) {
     val project = state.project
-    val current = project.clipAt(state.time)
+    // 마지막 클립 뒤에는 재생하는 클립이 없다. 끝 시각은 마지막 클립의 마지막 장면으로 본다.
+    val current = project.clipAt(state.time)?.takeIf { state.time <= project.clipsDuration + CLIP_END_TOLERANCE }
+    // 분할 레이아웃은 클립이 없는 시간에도 칸과 바탕을 보여 주고, 빈 칸은 검게 칠한다.
+    val showCells = project.clips.isNotEmpty() && (current != null || project.layout != LayoutType.FULL)
 
     BoxWithConstraints(
         modifier = modifier
             .clip(if (fullScreen) RectangleShape else RoundedCornerShape(16.dp))
-            .background(MagicColors.Surface)
+            .background(StageBackground)
             .then(
                 if (fullScreen) {
                     Modifier
@@ -143,60 +147,67 @@ internal fun EditorStage(
         val loopSlot = state.transitionSlot.takeIf { state.sheet == EditorSheet.TRANSITION && !fullScreen }
 
         // 레이아웃·글자·자막·워터마크는 기준 무대(StageCanvas) 위에 그린다. 저장할 때도 같은 코드로 그린다.
-        if (current != null) {
+        if (video != null) {
+            // 영상 화면은 클립 뒤 빈 구간에서도 그대로 두고 검게 덮는다. 다시 만들면 잠깐 깜빡인다.
             StageCanvas(modifier = Modifier.fillMaxSize()) {
-                if (video != null) {
-                    StageLayoutCells(project = project, clipIndex = current.index, modifier = Modifier.fillMaxSize()) { index, clip ->
-                        if (index == 0) {
-                            // iOS 영상 뷰는 LocalDensity로 화면 좌표를 계산하므로, 영상은 화면의 실제 배율로 그린다.
-                            CompositionLocalProvider(LocalDensity provides screenDensity) {
-                                video(Modifier.matchParentSize())
-                            }
-                            // 전환은 영상 영역만 바꾼다.
-                            loopSlot?.let { SheetTransitionLoop(project = project, slot = it, modifier = Modifier.matchParentSize()) }
-                        } else {
-                            // 칸마다 영상을 합성하기 전까지, 다음 클립은 시작 화면으로 보여 준다.
-                            MediaThumbnail(
-                                uri = clip.sourceUri,
-                                type = clip.type,
-                                hue = clip.thumbnailHue,
-                                modifier = Modifier.matchParentSize(),
-                                time = clip.inPoint,
-                            )
+                StageLayoutCells(project = project, clipIndex = current?.index, modifier = Modifier.fillMaxSize()) { index, clip ->
+                    if (index == 0) {
+                        // iOS 영상 뷰는 LocalDensity로 화면 좌표를 계산하므로, 영상은 화면의 실제 배율로 그린다.
+                        CompositionLocalProvider(LocalDensity provides screenDensity) {
+                            video(Modifier.matchParentSize())
                         }
+                        if (current == null) Box(modifier = Modifier.matchParentSize().background(StageBackground))
+                        // 전환은 영상 영역만 바꾼다.
+                        loopSlot?.let { SheetTransitionLoop(project = project, slot = it, modifier = Modifier.matchParentSize()) }
+                    } else if (clip != null) {
+                        // 칸마다 영상을 합성하기 전까지, 다음 클립은 시작 화면으로 보여 준다.
+                        MediaThumbnail(
+                            uri = clip.sourceUri,
+                            type = clip.type,
+                            hue = clip.thumbnailHue,
+                            modifier = Modifier.matchParentSize(),
+                            time = clip.inPoint,
+                        )
+                    } else {
+                        Box(modifier = Modifier.matchParentSize().background(StageBackground))
                     }
-                } else {
-                    StageLayoutCells(
-                        project = project,
-                        clipIndex = current.index,
-                        modifier = Modifier.fillMaxSize(),
-                        stripeOffset = { index -> (state.time * 26 + index * 40).dp },
-                    )
                 }
             }
-            if (video == null) {
-                Text(
-                    text = "${current.clip.name} · ${formatTime(current.localTime)}",
+        } else if (showCells) {
+            StageCanvas(modifier = Modifier.fillMaxSize()) {
+                StageLayoutCells(
+                    project = project,
+                    clipIndex = current?.index,
+                    modifier = Modifier.fillMaxSize(),
+                    stripeOffset = { index -> (state.time * 26 + index * 40).dp },
+                )
+            }
+        }
+        if (video == null && current != null) {
+            Text(
+                text = "${current.clip.name} · ${formatTime(current.localTime)}",
                     modifier = Modifier
                         .align(Alignment.Center)
                         .clip(RoundedCornerShape(6.dp))
                         .background(Color.Black.copy(alpha = 0.45f))
                         .padding(horizontal = 9.dp, vertical = 5.dp),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.85f),
-                    maxLines = 1,
-                )
-            }
-        } else {
-            Column(
-                modifier = Modifier.align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Icon(Icons.Outlined.VideoLibrary, contentDescription = null, tint = MagicColors.OnSurface60, modifier = Modifier.size(34.dp))
-                Text(text = stringResource(Res.string.stage_empty), fontSize = 14.sp, color = MagicColors.OnSurface60)
-            }
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.85f),
+                maxLines = 1,
+            )
+        }
+        if (project.isEmpty) {
+            // 요소가 하나도 없을 때만 무엇을 할 수 있는지 알려 준다(F16).
+            Text(
+                text = stringResource(Res.string.stage_empty),
+                modifier = Modifier.align(Alignment.Center).widthIn(max = 220.dp).padding(horizontal = 28.dp),
+                fontSize = 14.sp,
+                lineHeight = 21.sp,
+                fontWeight = FontWeight.Medium,
+                color = MagicColors.OnSurface60,
+                textAlign = TextAlign.Center,
+            )
         }
 
         // 손잡이를 끄는 동안 자르는 위치의 프레임을 무대 전체에 보여 준다. 글자와 자막은 그 위에 그린다.
@@ -211,6 +222,12 @@ internal fun EditorStage(
         if (video == null && current != null) {
             loopSlot?.let { SheetTransitionLoop(project = project, slot = it, modifier = Modifier.fillMaxSize()) }
         }
+
+        // 글자를 끄는 동안 붙은 가운데 축을 글자 아래에 선으로 보여 준다(v10).
+        state.textSnapGuide?.takeIf { !fullScreen && (it.vertical || it.horizontal) }?.let { guide ->
+            StageCenterGuide(guide = guide, modifier = Modifier.matchParentSize())
+        }
+        val snapDistance = with(screenDensity) { TextSnapDistance.toPx() }
 
         // 선택한 글자가 무대에 보이면, 무대 어디에서든 두 손가락으로 그 글자의 크기와 각도를 바꾼다.
         val transformTarget by rememberUpdatedState(
@@ -240,6 +257,7 @@ internal fun EditorStage(
                         selected = overlay.id == state.selectedTextId && !state.playing && draft == null && !fullScreen,
                         stageWidth = stageWidth,
                         stageHeight = stageHeight,
+                        snapDistance = snapDistance,
                         onIntent = onIntent,
                         interactive = overlay.id != DRAFT_TEXT_ID && !fullScreen,
                     )
@@ -283,7 +301,7 @@ internal fun EditorStage(
             )
         }
 
-        if (!state.playing && current != null && state.sheet == null && state.activeDrag == null && !fullScreen) {
+        if (!state.playing && !project.isEmpty && state.sheet == null && state.activeDrag == null && !fullScreen) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -301,6 +319,9 @@ internal fun EditorStage(
 
 /** Time before the end of a clip that shows its last frame. It is one frame at 30 fps. */
 private const val LAST_FRAME_OFFSET = 1.0 / 30
+
+/** A playhead this near after the end of the last clip still shows the last clip, in seconds. */
+private const val CLIP_END_TOLERANCE = 1e-3
 
 /**
  * Finds the frame at the trim edge that the user drags.
@@ -331,6 +352,37 @@ private fun TrimEdgeFrame(uri: String, time: Double, modifier: Modifier) {
     )
 }
 
+/** Width of a center line of the stage. */
+private val CenterGuideWidth = 1.dp
+
+/** Width of the soft dark edge under a center line. It keeps the line visible on a light video. */
+private val CenterGuideEdgeWidth = 3.dp
+
+/** Color of the soft dark edge under a center line. */
+private val CenterGuideEdgeColor = Color.Black.copy(alpha = 0.25f)
+
+/**
+ * Center lines of the stage that the dragged text is on (v10). Each line goes across the full stage.
+ *
+ * @param guide Lines to show.
+ * @param modifier Modifier for the lines. Fill the stage with it.
+ */
+@Composable
+private fun StageCenterGuide(guide: TextSnapGuide, modifier: Modifier) {
+    Box(
+        modifier = modifier.drawBehind {
+            val width = size.width
+            val height = size.height
+            val lines = buildList {
+                if (guide.vertical) add(Offset(width / 2, 0f) to Offset(width / 2, height))
+                if (guide.horizontal) add(Offset(0f, height / 2) to Offset(width, height / 2))
+            }
+            lines.forEach { (start, end) -> drawLine(CenterGuideEdgeColor, start, end, strokeWidth = CenterGuideEdgeWidth.toPx()) }
+            lines.forEach { (start, end) -> drawLine(MagicColors.AccentSparkle, start, end, strokeWidth = CenterGuideWidth.toPx()) }
+        },
+    )
+}
+
 /** Space between the selected text and its frame. */
 private val SelectionFramePadding = 6.dp
 
@@ -355,6 +407,7 @@ private const val ROTATION_SNAP_DEGREES = 5f
  * @param selected True to show the selection frame, the delete button, and the handle.
  * @param stageWidth Width of the stage in pixels.
  * @param stageHeight Height of the stage in pixels.
+ * @param snapDistance Distance from a center line of the stage that snaps the dragged text to the line, in pixels.
  * @param onIntent Called with each user action.
  * @param interactive False for the text of a new draft. It does not take touches.
  */
@@ -365,6 +418,7 @@ private fun DraggableOverlay(
     selected: Boolean,
     stageWidth: Float,
     stageHeight: Float,
+    snapDistance: Float,
     onIntent: (EditorIntent) -> Unit,
     interactive: Boolean = true,
 ) {
@@ -396,12 +450,22 @@ private fun DraggableOverlay(
                             y = latest.y
                             onIntent(EditorIntent.StartTextDrag)
                         },
+                        onDragEnd = { onIntent(EditorIntent.EndTextDrag) },
+                        onDragCancel = { onIntent(EditorIntent.EndTextDrag) },
                         onDrag = { change, amount ->
                             change.consume()
                             val moved = amount.toStageDistance(latest)
                             x += moved.x / stageWidth * 100
                             y += moved.y / stageHeight * 100
-                            onIntent(EditorIntent.MoveText(overlay.id, x.coerceIn(12.0, 88.0), y.coerceIn(6.0, 94.0)))
+                            onIntent(
+                                EditorIntent.MoveText(
+                                    textId = overlay.id,
+                                    x = x.coerceIn(12.0, 88.0),
+                                    y = y.coerceIn(6.0, 94.0),
+                                    snapX = snapDistance / stageWidth * 100.0,
+                                    snapY = snapDistance / stageHeight * 100.0,
+                                ),
+                            )
                         },
                     )
                 }

@@ -1,5 +1,9 @@
 package com.company.data.di
 
+import com.company.data.editor.IosMediaPersister
+import com.company.data.editor.IosWorkFileStore
+import com.company.data.editor.MediaPersister
+import com.company.data.editor.WorkFileStore
 import com.company.data.export.IosVideoExportRepository
 import com.company.data.font.FontFileStore
 import com.company.data.font.IosFontFileStore
@@ -13,4 +17,6 @@ internal actual val platformDataModule: Module = module {
     single<MediaMetadataReader> { IosMediaMetadataReader() }
     single<VideoExportRepository> { IosVideoExportRepository() }
     single<FontFileStore> { IosFontFileStore() }
+    single<WorkFileStore> { IosWorkFileStore() }
+    single<MediaPersister> { IosMediaPersister() }
 }

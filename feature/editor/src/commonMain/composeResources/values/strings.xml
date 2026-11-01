@@ -14,6 +14,8 @@
     <string name="pause">일시정지</string>
     <string name="fullscreen_open">전체 화면으로 보기</string>
     <string name="fullscreen_close">전체 화면 닫기</string>
+    <string name="rename_title">이름 바꾸기</string>
+    <string name="rename_input">작업 이름</string>
     <string name="all">전체</string>
     <string name="none">없음</string>
     <string name="save">저장</string>
@@ -99,6 +101,7 @@
     <string name="caption_from_speech_progress">만드는 중 %1$d%</string>
     <string name="caption_from_speech">말소리로 만들기</string>
     <string name="caption_from_speech_note">말하는 소리를 알아들어요</string>
+    <string name="caption_from_speech_no_clips">영상을 넣으면 쓸 수 있어요</string>
     <string name="caption_from_script">글로 만들기</string>
     <string name="caption_from_script_note">한 줄이 자막 하나가 돼요</string>
     <string name="caption_style_title">스타일 · 모든 자막에 바로 적용돼요</string>
@@ -113,6 +116,7 @@
     <string name="caption_script_lines">%1$d줄</string>
     <string name="caption_script_clips">영상 구간 %1$d개</string>
     <string name="caption_script_clips_after">재생선부터 구간 %1$d개</string>
+    <string name="caption_script_no_clips">클립이 없는 구간 · 한 줄에 2초씩 넣어요</string>
     <string name="caption_script_insert">자막 넣기</string>
     <string name="animation_entrance">등장</string>
     <string name="animation_loop">반복</string>
@@ -147,9 +151,6 @@
     <string name="music_range_short">구간이 끝나면 음악 없이 이어져요</string>
     <string name="music_range_fit">영상 길이와 딱 맞아요</string>
     <string name="music_fade">페이드</string>
-    <string name="editor_leave_title">편집을 그만둘까요?</string>
-    <string name="editor_leave_message">지금 나가면 편집한 내용이 사라져요</string>
-    <string name="editor_leave_confirm">나가기</string>
     <string name="editor_undo">되돌리기</string>
     <string name="editor_finish">완성</string>
     <string name="color_dialog_title">색 직접 고르기</string>
@@ -163,12 +164,13 @@
     <string name="transition_apply_all">모든 구간에 적용</string>
     <string name="transition_opening_button">시작 전환</string>
     <string name="transition_after_clip">%1$d번째 클립 뒤 전환</string>
-    <string name="stage_empty">아직 영상이 없어요</string>
+    <string name="stage_empty">글자를 넣거나 오른쪽 + 로 영상·사진을 붙여요</string>
     <string name="stage_text_placeholder">글자</string>
     <string name="stage_caption_placeholder">자막</string>
     <string name="stage_caption_move_default">스타일 기본 위치</string>
     <string name="stage_caption_move_all">모든 자막이 함께 움직여요</string>
     <string name="timeline_add">추가</string>
+    <string name="timeline_gap">클립 없음 · %1$s초</string>
     <string name="export_saving">저장하는 중</string>
     <string name="export_done">다 됐어요!</string>
     <string name="export_wait">앱을 닫지 말고 잠시만 기다려주세요</string>
@@ -261,7 +263,6 @@
     <string name="toast_my_voice_notify">다 되면 알려 드릴게요</string>
     <string name="toast_no_speech">말소리가 있는 영상이 없어요</string>
     <string name="toast_no_speech_after_playhead">재생선 뒤에는 말소리가 있는 영상이 없어요</string>
-    <string name="toast_no_clip_after_playhead">재생선 뒤에 넣을 구간이 없어요</string>
     <string name="toast_caption_position_reset">자막 위치를 처음으로 돌렸어요</string>
     <string name="toast_move_line_into_clip">흰 선을 클립 안쪽으로 옮겨주세요</string>
     <string name="toast_split_at_line">흰 선 위치에서 나눴어요</string>
@@ -271,8 +272,9 @@
     <string name="toast_layout_reset">레이아웃을 처음으로 돌렸어요</string>
     <string name="toast_favorite_added">즐겨찾기에 넣었어요 · 맨 앞에 보여요</string>
     <string name="toast_favorite_removed">즐겨찾기에서 뺐어요</string>
+    <string name="toast_work_save_failed">저장하지 못했어요</string>
+    <string name="toast_empty_work_removed">빈 작업은 남기지 않았어요</string>
     <string name="toast_captions_removed">자막을 지웠어요 · 되돌리기 가능</string>
-    <string name="toast_add_media_first">먼저 영상이나 사진을 넣어 주세요</string>
     <string name="toast_move_line_into_caption">흰 선을 자막 안쪽으로 옮겨 주세요</string>
     <string name="toast_one_word">단어가 하나라 나눌 수 없어요</string>
     <string name="toast_copied">복사했어요</string>

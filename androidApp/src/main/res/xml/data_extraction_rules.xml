@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12 이상: 작업 목록·편집 정보·영상 복사본은 클라우드 백업에서 뺀다(D51). 앱당 25MB를 넘으면 백업 전체가 멈춘다. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="works" />
+        <exclude domain="file" path="media" />
+    </cloud-backup>
+</data-extraction-rules>

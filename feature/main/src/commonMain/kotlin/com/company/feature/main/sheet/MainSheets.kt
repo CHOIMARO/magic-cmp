@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.IosShare
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,19 +27,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.MagicButton
 import com.company.core.designsystem.component.MagicButtonStyle
+import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.MagicTheme
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
+import com.company.core.designsystem.theme.oklch
 import com.company.domain.model.editor.EditorTemplate
 import com.company.domain.model.editor.LayoutType
 import com.company.feature.main.resources.Res
@@ -47,6 +54,8 @@ import com.company.feature.main.resources.app_info_licenses
 import com.company.feature.main.resources.app_info_version
 import com.company.feature.main.resources.app_info_whats_new
 import com.company.feature.main.resources.template_use
+import com.company.feature.main.resources.work_menu_delete
+import com.company.feature.main.resources.work_menu_export
 import com.company.ui.editor.TemplatePreview
 import com.company.ui.editor.description
 import com.company.ui.editor.displayName
@@ -93,6 +102,56 @@ internal fun ColumnScope.TemplateSheetContent(template: EditorTemplate, onUseTem
         modifier = Modifier.fillMaxWidth(),
         style = MagicButtonStyle.PRIMARY,
     )
+}
+
+/** Color of the delete action of the work menu. oklch(0.76 0.15 25). */
+private val DeleteActionColor = oklch(0.76f, 0.15f, 25f)
+
+/**
+ * Content of the work menu (S13): the work name and size, "내보내기", and "삭제하기".
+ *
+ * @param name Name of the work.
+ * @param size Label of the storage that the work uses, for example "320MB" (D51).
+ * @param onExport Opens the export screen of the work.
+ * @param onDelete Asks the user before the work goes away.
+ */
+@Composable
+internal fun ColumnScope.WorkMenuSheetContent(name: String, size: String, onExport: () -> Unit, onDelete: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(
+            modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = name,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(text = size, fontSize = 13.sp, color = MagicColors.OnSurface60)
+        }
+        WorkMenuAction(icon = Icons.Rounded.IosShare, label = stringResource(Res.string.work_menu_export), color = MagicColors.OnSurface, onClick = onExport)
+        WorkMenuAction(icon = Icons.Rounded.Delete, label = stringResource(Res.string.work_menu_delete), color = DeleteActionColor, onClick = onDelete)
+    }
+}
+
+/** One row of the work menu: an icon and a label. */
+@Composable
+private fun WorkMenuAction(icon: ImageVector, label: String, color: Color, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .pressClickable(pressedScale = 0.99f, onClick = onClick)
+            .clip(RoundedCornerShape(16.dp))
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
+        Text(text = label, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = color)
+    }
 }
 
 /** Content of the app information sheet. */

@@ -13,10 +13,12 @@ import com.company.domain.model.editor.toClip
 import com.company.domain.repository.EditorProjectRepository
 import com.company.domain.repository.MediaLibraryRepository
 import com.company.domain.usecase.editor.ApplyTemplateUseCase
+import com.company.domain.usecase.editor.CheckMediaStorageUseCase
 import com.company.domain.usecase.editor.StartNewProjectUseCase
 import com.company.feature.capture.resources.Res
-import com.company.feature.capture.resources.new_project_name
+import com.company.feature.capture.resources.new_work_name
 import com.company.feature.capture.resources.toast_clips_added
+import com.company.feature.capture.resources.toast_storage_full
 import com.company.ui.editor.DefaultTitleText
 import com.company.ui.editor.GalleryMode
 import com.company.ui.text.StringResolver
@@ -82,6 +84,9 @@ sealed class GallerySideEffect : SideEffect() {
     /** ReturnToEditor(message) : Goes back to the editor and shows the message. */
     data class ReturnToEditor(val message: UiText) : GallerySideEffect()
 
+    /** ShowToast(message) : Shows the message, and the picker stays open. */
+    data class ShowToast(val message: UiText) : GallerySideEffect()
+
     /** Close : Leaves the picker because the user picked nothing in the first full-screen picker. */
     data object Close : GallerySideEffect()
 }
@@ -90,7 +95,8 @@ sealed class GallerySideEffect : SideEffect() {
  * ViewModel of the photo and video picker.
  *
  * It reads the photos and videos that the system picker gave, keeps the pick order,
- * and starts a new project or adds clips to the current project.
+ * and starts a new project or adds clips to the current project. Before that, it checks that the device has space for
+ * the copies of the picked files (D51).
  */
 class GalleryViewModel(
     args: GalleryArgs,
@@ -98,11 +104,15 @@ class GalleryViewModel(
     private val projectRepository: EditorProjectRepository,
     private val applyTemplate: ApplyTemplateUseCase,
     private val startNewProject: StartNewProjectUseCase,
+    private val checkMediaStorage: CheckMediaStorageUseCase,
     private val strings: StringResolver,
 ) : BaseViewModel<GalleryState, GalleryIntent, GallerySideEffect>(
     initialState = GalleryState(mode = args.mode, template = args.template)
 ) {
     private var selectionJob: Job? = null
+
+    /** Step after [GalleryIntent.Next]. A second tap while it runs does nothing. */
+    private var nextJob: Job? = null
 
     // =====================================================================
     // Intent
@@ -172,22 +182,32 @@ class GalleryViewModel(
     // Next step
     // =====================================================================
 
+    /**
+     * Starts a new project or adds the clips. When the device has no space for the copies, a message shows and the
+     * picker stays open, so that the user can pick fewer items (D51).
+     */
     private fun next() {
         val state = currentState
         val clips = state.pickedMedia.map { it.toClip() }
-        if (clips.isEmpty()) return
+        if (clips.isEmpty() || nextJob?.isActive == true) return
 
-        when (state.mode) {
-            GalleryMode.APPEND -> {
-                projectRepository.commit { it.addClips(clips) }
-                postSideEffect { GallerySideEffect.ReturnToEditor(uiText(Res.string.toast_clips_added, clips.size)) }
+        nextJob = viewModelScope.launch {
+            if (!checkMediaStorage(state.pickedIds)) {
+                postSideEffect { GallerySideEffect.ShowToast(uiText(Res.string.toast_storage_full)) }
+                return@launch
             }
-            GalleryMode.CREATE -> viewModelScope.launch {
-                val name = strings.resolve(uiText(Res.string.new_project_name))
-                val defaultText = strings.resolve(UiText.Resource(DefaultTitleText))
-                val project = applyTemplate(EditorProject(name = name, clips = clips), state.template, defaultText)
-                startNewProject(project)
-                postSideEffect { GallerySideEffect.OpenEditor }
+            when (state.mode) {
+                GalleryMode.APPEND -> {
+                    projectRepository.commit { it.addClips(clips) }
+                    postSideEffect { GallerySideEffect.ReturnToEditor(uiText(Res.string.toast_clips_added, clips.size)) }
+                }
+                GalleryMode.CREATE -> {
+                    val name = strings.resolve(uiText(Res.string.new_work_name))
+                    val defaultText = strings.resolve(UiText.Resource(DefaultTitleText))
+                    val project = applyTemplate(EditorProject(name = name, clips = clips), state.template, defaultText)
+                    startNewProject(project)
+                    postSideEffect { GallerySideEffect.OpenEditor }
+                }
             }
         }
     }

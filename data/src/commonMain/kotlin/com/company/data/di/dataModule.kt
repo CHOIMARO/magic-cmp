@@ -5,7 +5,7 @@ import com.company.data.editor.FakeDubbingRepository
 import com.company.data.editor.FakeMyVoiceRepository
 import com.company.data.editor.InMemoryEditorProjectRepository
 import com.company.data.editor.InMemoryEditorSettingsRepository
-import com.company.data.editor.InMemoryMyVideoRepository
+import com.company.data.editor.LocalMyVideoRepository
 import com.company.data.font.RemoteFontRepository
 import com.company.data.media.MediaLibraryRepositoryImpl
 import com.company.data.repository.PixabayRepositoryImpl
@@ -37,7 +37,8 @@ val dataModule = module {
 
     // Editor (메모리 기반 mock 구현)
     singleOf(::InMemoryEditorProjectRepository) { bind<EditorProjectRepository>() }
-    singleOf(::InMemoryMyVideoRepository) { bind<MyVideoRepository>() }
+    // 작업 목록은 기기에 저장한다 (F15).
+    single<MyVideoRepository> { LocalMyVideoRepository(get(), get()) }
     singleOf(::InMemoryEditorSettingsRepository) { bind<EditorSettingsRepository>() }
     singleOf(::FakeCaptionRepository) { bind<CaptionRepository>() }
     singleOf(::FakeDubbingRepository) { bind<DubbingRepository>() }

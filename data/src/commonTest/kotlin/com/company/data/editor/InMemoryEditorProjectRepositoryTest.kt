@@ -1,5 +1,6 @@
 package com.company.data.editor
 
+import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.EditorProject
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -33,6 +34,21 @@ class InMemoryEditorProjectRepositoryTest {
 
         assertTrue(repository.undo())
         assertEquals("start", repository.project.value.name)
+        assertFalse(repository.canUndo.value)
+    }
+
+    @Test
+    fun rename_addsNoUndoStep_andAnUndoKeepsTheNewName() {
+        val repository = InMemoryEditorProjectRepository()
+        val clip = Clip(id = "c", name = "c", sourceDuration = 5.0, inPoint = 0.0, outPoint = 5.0, thumbnailHue = 0)
+        repository.start(EditorProject(name = "새 작업"))
+        repository.commit { it.copy(clips = listOf(clip)) }
+
+        repository.rename("바닷가")
+        assertEquals("바닷가", repository.project.value.name)
+        // 이름 바꾸기 전의 편집을 되돌려도 이름은 그대로다(D55).
+        assertTrue(repository.undo())
+        assertEquals(EditorProject(name = "바닷가"), repository.project.value)
         assertFalse(repository.canUndo.value)
     }
 

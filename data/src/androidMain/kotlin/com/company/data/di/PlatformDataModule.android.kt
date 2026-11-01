@@ -1,5 +1,9 @@
 package com.company.data.di
 
+import com.company.data.editor.AndroidMediaPersister
+import com.company.data.editor.AndroidWorkFileStore
+import com.company.data.editor.MediaPersister
+import com.company.data.editor.WorkFileStore
 import com.company.data.export.AndroidVideoExportRepository
 import com.company.data.font.AndroidFontFileStore
 import com.company.data.font.FontFileStore
@@ -14,4 +18,6 @@ internal actual val platformDataModule: Module = module {
     single<MediaMetadataReader> { AndroidMediaMetadataReader(get()) }
     single<VideoExportRepository> { AndroidVideoExportRepository(get()) }
     single<FontFileStore> { AndroidFontFileStore(get()) }
+    single<WorkFileStore> { AndroidWorkFileStore(get()) }
+    single<MediaPersister> { AndroidMediaPersister(get()) }
 }

@@ -1,5 +1,6 @@
 package com.company.feature.editor.editor
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicTheme
 import com.company.domain.model.editor.CaptionSegment
@@ -53,8 +55,8 @@ import com.company.ui.editor.spec
 import kotlin.math.abs
 import org.jetbrains.compose.resources.stringResource
 
-/** Background of the stage outside the layout cells. */
-internal val StageBackground = Color(0xFF111111)
+/** Background of the stage outside the layout cells, and of the time without a clip (F16). */
+internal val StageBackground = Color.Black
 
 /** Height of the reference stage. The editor stage has this height on most phones. */
 internal val StageReferenceHeight = 470.dp
@@ -81,36 +83,50 @@ internal fun StageCanvas(modifier: Modifier = Modifier, content: @Composable Box
     }
 }
 
-/** Clip that a layout cell shows when the playhead is in the clip at [clipIndex]. The cells show the next clips in turn. */
-internal fun EditorProject.cellClip(clipIndex: Int, cell: Int): Clip = clips[(clipIndex + cell) % clips.size]
+/**
+ * Clip that a layout cell shows when the playhead is in the clip at [clipIndex]: the cells show the clips from it in
+ * turn. A cell after the last clip has no clip (F16).
+ *
+ * @param clipIndex Index of the clip at the playhead, or null when no clip plays now.
+ * @param cell Index of the cell.
+ * @return The clip, or null for a black cell.
+ */
+internal fun EditorProject.cellClip(clipIndex: Int?, cell: Int): Clip? = clipIndex?.let { clips.getOrNull(it + cell) }
 
 /**
- * Draws the layout cells of the project for the clip at [clipIndex].
+ * Draws the layout cells of the project for the clip at [clipIndex]. A cell without a clip is black (F16).
  *
  * @param project Project with the layout and the clips.
- * @param clipIndex Index of the clip at the playhead.
+ * @param clipIndex Index of the clip at the playhead, or null when no clip plays now.
  * @param modifier Modifier for the cells. Fill the stage with it.
  * @param stripeOffset Stripe shift for each cell index.
- * @param cellContent Content of each cell with its clip, or null to draw placeholder stripes.
+ * @param cellContent Content of each cell with its clip or null, or null to draw placeholder stripes.
  */
 @Composable
 internal fun StageLayoutCells(
     project: EditorProject,
-    clipIndex: Int,
+    clipIndex: Int?,
     modifier: Modifier = Modifier,
     stripeOffset: (Int) -> Dp = { 0.dp },
-    cellContent: (@Composable BoxScope.(index: Int, clip: Clip) -> Unit)? = null,
+    cellContent: (@Composable BoxScope.(index: Int, clip: Clip?) -> Unit)? = null,
 ) {
     LayoutCells(
         spec = project.layout.spec,
-        cellHue = { index -> project.cellClip(clipIndex, index).thumbnailHue },
+        cellHue = { index -> project.cellClip(clipIndex, index)?.thumbnailHue ?: 0 },
         modifier = modifier,
         defaultBackground = StageBackground,
         stripeOffset = stripeOffset,
         labelFontSize = 13f,
         labelPadding = 8.dp to 3.dp,
         labelRadius = 6.dp,
-        cellContent = cellContent?.let { content -> { index -> content(index, project.cellClip(clipIndex, index)) } },
+        cellContent = { index ->
+            val clip = project.cellClip(clipIndex, index)
+            when {
+                cellContent != null -> cellContent(index, clip)
+                clip != null -> StripeBox(hue = clip.thumbnailHue.toFloat(), stripeOffset = stripeOffset(index), modifier = Modifier.matchParentSize())
+                else -> Box(modifier = Modifier.matchParentSize().background(StageBackground))
+            }
+        },
     )
 }
 

@@ -9,17 +9,24 @@
     <string name="filter_layout">레이아웃</string>
     <string name="filter_text">글자</string>
     <string name="filter_caption">자막</string>
-    <string name="library_drafts">작업 중</string>
-    <string name="library_completed">완성</string>
     <string name="home_new_video">새 영상\n만들기</string>
     <string name="home_camera">촬영</string>
     <string name="home_recent">최근 작업</string>
-    <string name="home_empty_title">첫 영상을 만들어 볼까요?</string>
-    <string name="home_empty_body">찍어 둔 영상이나 사진 몇 개만 고르면 바로 편집할 수 있어요. 만든 영상은 여기에 모여요.</string>
+    <string name="home_empty_title">아직 만든 영상이 없어요</string>
+    <string name="home_empty_body">새 영상 만들기를 눌러 첫 숏폼을 만들어 보세요</string>
     <string name="home_empty_action">영상·사진 고르기</string>
-    <string name="library_empty_drafts">아직 작업 중인 영상이 없어요</string>
-    <string name="library_empty_completed">아직 완성한 영상이 없어요</string>
-    <!-- 최근 작업·내 영상 카드의 만든 날 -->
+    <string name="library_empty">아직 만든 영상이 없어요</string>
+    <string name="work_exported">내보낸 적 있음</string>
+    <!-- 작업 메뉴(S13) -->
+    <string name="work_menu_export">내보내기</string>
+    <string name="work_menu_delete">삭제하기</string>
+    <string name="work_delete_title">이 작업을 삭제할까요?</string>
+    <string name="work_delete_message">편집 내용은 되돌릴 수 없어요. 갤러리에 저장한 영상은 그대로 남아요.</string>
+    <string name="work_delete_confirm">삭제</string>
+    <string name="work_delete_cancel">취소</string>
+    <string name="toast_work_deleted">삭제했어요</string>
+    <string name="toast_work_delete_failed">삭제하지 못했어요</string>
+    <!-- 최근 작업·내 영상 카드의 마지막으로 고친 날 -->
     <string name="created_today">오늘</string>
     <string name="created_yesterday">어제</string>
     <string name="created_days_ago">%1$d일 전</string>
@@ -45,12 +52,16 @@
     <string name="my_voice_none">없음</string>
     <string name="my_watermark">magic 워터마크</string>
     <string name="my_default_quality">기본 저장 화질</string>
+    <string name="my_work_storage">작업 저장 공간</string>
+    <string name="storage_size_under_1mb">1MB 미만</string>
+    <string name="storage_size_mb">%1$dMB</string>
+    <string name="storage_size_gb">%1$sGB</string>
     <string name="my_group_info">정보</string>
     <string name="my_app_info">앱 정보</string>
     <string name="my_help">도움말 · 문의</string>
     <string name="my_terms">약관 및 개인정보</string>
     <string name="my_logout">로그아웃</string>
     <string name="my_profile_name">민지</string>
-    <string name="my_profile_summary">@minji.daily · 완성한 영상 %1$d개</string>
+    <string name="my_profile_summary">@minji.daily · 내보낸 영상 %1$d개</string>
     <string name="my_profile_modify">프로필 수정</string>
 </resources>

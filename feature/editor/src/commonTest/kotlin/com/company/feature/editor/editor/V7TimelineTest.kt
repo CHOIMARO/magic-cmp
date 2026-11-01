@@ -41,12 +41,14 @@ class V7TimelineTest {
     }
 
     @Test
-    fun audioMove_snapsItsStartToATextStart_andStaysInTheProject() {
+    fun audioMove_snapsItsStartToATextStart_andCanGoPastTheVideoEnd() {
         val target = TimelineDragTarget.AudioMove(AudioTrack.SOUND_EFFECT, "s")
         val edges = project.timelineSnapEdges(target, originStart = 1.0, originEnd = 1.5, delta = 4.95, playhead = 0.0)
         assertEquals(0.05, assertNotNull(snapOffset(edges, threshold = 0.2)), 1e-9)
+        // 영상 끝(8초) 뒤로 옮기면 영상이 늘어난다(F16).
         val moved = project.dragTo(target, originStart = 1.0, originEnd = 1.5, delta = 20.0, layer = null)
-        assertEquals(7.5, moved.soundEffects.single().start)
+        assertEquals(21.0, moved.soundEffects.single().start)
+        assertEquals(21.5, moved.totalDuration)
         assertNull(snapOffset(project.timelineSnapEdges(target, 1.0, 1.5, delta = 1.5, playhead = 0.0), threshold = 0.2))
     }
 

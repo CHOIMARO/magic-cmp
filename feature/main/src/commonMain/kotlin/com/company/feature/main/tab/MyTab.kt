@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.RecordVoiceOver
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Icon
@@ -53,6 +54,7 @@ import com.company.domain.model.editor.MyVoiceStatus
 import com.company.feature.main.SettingKey
 import com.company.feature.main.component.TabContentBottomPadding
 import com.company.feature.main.component.TabTitle
+import com.company.feature.main.component.storageSizeLabel
 import com.company.feature.main.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -79,7 +81,8 @@ private data class SettingRow(
  * "마이" tab: profile, settings, and logout.
  *
  * @param settings Current editor settings.
- * @param completedCount Number of completed videos.
+ * @param exportedCount Number of works that the user exported (D43).
+ * @param storageBytes Bytes that all works use on the device (D51).
  * @param myVoice State of the user's own voice.
  * @param onToggleSetting Called with the tapped setting.
  * @param onOpenAppInfo Action of the "앱 정보" row.
@@ -88,7 +91,8 @@ private data class SettingRow(
 @Composable
 internal fun MyTab(
     settings: EditorSettings,
-    completedCount: Int,
+    exportedCount: Int,
+    storageBytes: Long,
     myVoice: MyVoiceStatus,
     onToggleSetting: (SettingKey) -> Unit,
     onOpenAppInfo: () -> Unit,
@@ -116,6 +120,7 @@ internal fun MyTab(
             ),
             SettingRow(Icons.AutoMirrored.Outlined.BrandingWatermark, stringResource(Res.string.my_watermark), toggle = SettingKey.WATERMARK),
             SettingRow(Icons.Outlined.Hd, stringResource(Res.string.my_default_quality), value = "1080p"),
+            SettingRow(Icons.Outlined.Storage, stringResource(Res.string.my_work_storage), value = storageSizeLabel(storageBytes)),
         ),
         stringResource(Res.string.my_group_info) to listOf(
             SettingRow(Icons.Outlined.Info, stringResource(Res.string.my_app_info), value = "v1.0.0", onClick = onOpenAppInfo),
@@ -132,7 +137,7 @@ internal fun MyTab(
             .padding(top = 12.dp, bottom = TabContentBottomPadding),
     ) {
         TabTitle(text = stringResource(Res.string.tab_my), modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 22.dp))
-        ProfileRow(completedCount = completedCount)
+        ProfileRow(exportedCount = exportedCount)
         groups.forEach { (title, rows) ->
             Column(
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 20.dp),
@@ -165,7 +170,7 @@ internal fun MyTab(
 }
 
 @Composable
-private fun ProfileRow(completedCount: Int) {
+private fun ProfileRow(exportedCount: Int) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -175,7 +180,7 @@ private fun ProfileRow(completedCount: Int) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = stringResource(Res.string.my_profile_name), fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(
-                text = stringResource(Res.string.my_profile_summary, completedCount),
+                text = stringResource(Res.string.my_profile_summary, exportedCount),
                 modifier = Modifier.padding(top = 2.dp),
                 fontSize = 13.sp,
                 color = MagicColors.OnSurface55,

@@ -7,6 +7,7 @@ import com.company.domain.model.editor.captionPositionFor
 import com.company.domain.model.editor.captionsBefore
 import com.company.domain.model.editor.captionsFromScript
 import com.company.domain.model.editor.removeCaption
+import com.company.domain.model.editor.scriptClipCount
 import com.company.domain.model.editor.scriptLines
 import com.company.domain.model.editor.scriptStart
 import com.company.domain.model.editor.speechRangesFrom
@@ -139,12 +140,8 @@ internal class CaptionActions(private val host: EditorHost, private val generate
     // Script
     // =====================================================================
 
-    /** Shows the script field. A project without clips has no part to put the lines into. */
+    /** Shows the script field. Without clips, the lines go one after another (F16). */
     fun openScript() {
-        if (host.state.project.clips.isEmpty()) {
-            host.toast(uiText(Res.string.toast_add_media_first))
-            return
-        }
         host.reduce { copy(captionScript = lastScript) }
     }
 
@@ -156,20 +153,16 @@ internal class CaptionActions(private val host: EditorHost, private val generate
 
     /**
      * Puts the script lines into the clips, from the playhead when the sheet asks for it. A popup asks first when
-     * lines are left over (D08).
+     * lines are left over (D08). Where no clip is left, all lines go in, one after another (F16).
      */
     fun insertScript() {
         val state = host.state
         val lines = scriptLines(state.captionScript ?: return)
-        if (lines.isEmpty() || state.project.clips.isEmpty()) return
+        if (lines.isEmpty()) return
         val head = fromPlayhead
         val start = state.project.scriptStart(if (head) state.time else 0.0)
-        val clipCount = state.project.clips.size - start.clipIndex
-        if (clipCount <= 0) {
-            host.toast(uiText(Res.string.toast_no_clip_after_playhead))
-            return
-        }
-        if (lines.size > clipCount) {
+        val clipCount = state.project.scriptClipCount(start)
+        if (clipCount != null && lines.size > clipCount) {
             host.reduce {
                 copy(
                     dialog = EditorDialog(
@@ -187,7 +180,8 @@ internal class CaptionActions(private val host: EditorHost, private val generate
 
     /**
      * Puts the script lines into the clips and closes the sheet. The first line starts at the playhead when the sheet
-     * asks for it, and each next line goes to the next clip. Lines after the last clip are not used. The captions
+     * asks for it, and each next line goes to the next clip. Lines after the last clip are not used. Where no clip is
+     * left, each line stays on screen for 2 seconds (F16). The new captions have fixed times (D47). The captions
      * before the first line stay, and the playhead goes to the first line.
      *
      * @param checkExisting True to ask first when the new captions replace captions.
@@ -210,13 +204,12 @@ internal class CaptionActions(private val host: EditorHost, private val generate
             }
             return
         }
-        val lines = scriptLines(state.captionScript ?: return).take(state.project.clips.size - start.clipIndex)
-        host.projects.commit {
-            it.copy(captions = it.captionsBefore(start.time) + it.captionsFromScript(lines, start.clipIndex, start.offset))
-        }
+        val lines = scriptLines(state.captionScript ?: return)
+        val added = state.project.captionsFromScript(lines, start)
+        host.projects.commit { it.copy(captions = it.captionsBefore(start.time) + added) }
         lastScript = ""
         host.reduce { copy(sheet = null, captionScript = null, selectedTrackItem = null, time = start.time) }
-        host.toast(uiText(Res.string.toast_captions_inserted, lines.size))
+        host.toast(uiText(Res.string.toast_captions_inserted, added.size))
     }
 
     // =====================================================================

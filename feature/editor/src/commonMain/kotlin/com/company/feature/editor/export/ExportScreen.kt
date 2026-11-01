@@ -109,7 +109,8 @@ private fun ExportThumbnail(state: ExportState) {
             .aspectRatio(9f / 16f)
             .shadow(elevation = 24.dp, shape = shape)
             .clip(shape)
-            .background(MagicColors.Surface),
+            // 클립이 없는 영상은 검은 바탕에 글자만 보인다(F16).
+            .background(Color.Black),
     ) {
         val firstClip = project.clips.firstOrNull()
         if (firstClip != null) {
@@ -121,7 +122,8 @@ private fun ExportThumbnail(state: ExportState) {
                 time = firstClip.inPoint,
             )
         }
-        project.texts.firstOrNull()?.let { overlay ->
+        // 가장 먼저 나오는 글자를 보여 준다.
+        project.texts.minByOrNull { it.start }?.let { overlay ->
             Text(
                 text = overlay.text,
                 modifier = Modifier.fillMaxWidth().padding(top = maxHeight * 0.26f, start = 10.dp, end = 10.dp),
@@ -256,7 +258,7 @@ private fun ColumnScope.DoneContent(onIntent: (ExportIntent) -> Unit) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MagicButton(
                 text = stringResource(Res.string.export_edit_more),
-                onClick = { onIntent(ExportIntent.Back) },
+                onClick = { onIntent(ExportIntent.EditMore) },
                 modifier = Modifier.weight(1f),
                 style = MagicButtonStyle.SECONDARY,
             )

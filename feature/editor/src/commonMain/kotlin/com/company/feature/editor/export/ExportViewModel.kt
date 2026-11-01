@@ -16,7 +16,6 @@ import com.company.domain.repository.EditorProjectRepository
 import com.company.domain.repository.EditorSettingsRepository
 import com.company.domain.repository.MyVideoRepository
 import com.company.domain.repository.VideoExportRepository
-import com.company.domain.usecase.editor.DEFAULT_THUMBNAIL_HUE
 import com.company.feature.editor.resources.Res
 import com.company.feature.editor.resources.export_quality_best
 import com.company.feature.editor.resources.export_quality_light
@@ -127,8 +126,11 @@ sealed class ExportIntent : Intent() {
     /** Cancel : Stops the export and goes back to the setup step. */
     data object Cancel : ExportIntent()
 
-    /** Back : Stops the export and goes back to the editor. */
+    /** Back : Stops the export and goes back to the screen before, the editor or the tab. */
     data object Back : ExportIntent()
+
+    /** EditMore : Opens the work in the editor after the export ("더 편집하기"). */
+    data object EditMore : ExportIntent()
 
     /** GoHome : Goes to the home tab. */
     data object GoHome : ExportIntent()
@@ -139,8 +141,11 @@ sealed class ExportSideEffect : SideEffect() {
     /** ShowToast(message) : Shows a short message. */
     data class ShowToast(val message: UiText) : ExportSideEffect()
 
-    /** Close : Goes back to the editor. */
+    /** Close : Goes back to the screen before, the editor or the tab. */
     data object Close : ExportSideEffect()
+
+    /** EditMore : Opens the editor with the same work. */
+    data object EditMore : ExportSideEffect()
 
     /** GoHome : Navigates to the home tab. */
     data object GoHome : ExportSideEffect()
@@ -189,6 +194,7 @@ class ExportViewModel(
                 exportJob?.cancel()
                 postSideEffect { ExportSideEffect.Close }
             }
+            ExportIntent.EditMore -> postSideEffect { ExportSideEffect.EditMore }
             ExportIntent.GoHome -> postSideEffect { ExportSideEffect.GoHome }
         }
     }
@@ -197,11 +203,14 @@ class ExportViewModel(
     // Export
     // =====================================================================
 
-    /** Starts the export. A project with source files first asks the screen for the overlay images. */
+    /**
+     * Starts the export. A project with source files first asks the screen for the overlay images. A project without
+     * clips makes a black video with the texts and the captions (F16).
+     */
     private fun start() {
         exportJob?.cancel()
         val project = currentState.project
-        if (project.clips.isEmpty()) return
+        if (project.isEmpty) return
         if (project.clips.any { it.sourceUri == null }) {
             simulateExport()
             return
@@ -232,6 +241,7 @@ class ExportViewModel(
         val request = ExportRequest(
             name = project.name,
             clips = project.clips,
+            duration = project.totalDuration,
             width = resolution.width,
             height = resolution.height,
             videoArea = project.layout.spec.cells.first().toFrameArea(),
@@ -273,14 +283,22 @@ class ExportViewModel(
         }
     }
 
-    /** Adds the video to the completed videos and shows the done step. */
+    /**
+     * Marks the work as exported and shows the done step (D43). The export does not make a new work, and the time of
+     * the last change stays.
+     */
     private fun finish() {
-        val project = currentState.project
-        myVideoRepository.addCompletedVideo(
-            name = project.name,
-            duration = project.totalDuration,
-            thumbnailHue = project.clips.firstOrNull()?.thumbnailHue ?: DEFAULT_THUMBNAIL_HUE,
-        )
+        currentState.project.workId?.let { workId ->
+            viewModelScope.launch {
+                try {
+                    myVideoRepository.markExported(workId)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // 영상은 이미 갤러리에 저장했다. 표시만 빠지므로 따로 알리지 않는다.
+                }
+            }
+        }
         reduce { copy(phase = ExportPhase.DONE, progress = 100) }
     }
 

@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.company.core.designsystem.component.MagicDialog
 import com.company.core.designsystem.component.MagicModalBottomSheet
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
@@ -25,6 +26,14 @@ import com.company.domain.model.editor.VideoSummary
 import com.company.feature.main.component.MainBottomBar
 import com.company.feature.main.sheet.AppInfoSheetContent
 import com.company.feature.main.sheet.TemplateSheetContent
+import com.company.feature.main.component.storageSizeLabel
+import com.company.feature.main.sheet.WorkMenuSheetContent
+import com.company.feature.main.resources.Res
+import com.company.feature.main.resources.work_delete_cancel
+import com.company.feature.main.resources.work_delete_confirm
+import com.company.feature.main.resources.work_delete_message
+import com.company.feature.main.resources.work_delete_title
+import org.jetbrains.compose.resources.stringResource
 import com.company.feature.main.tab.HomeTab
 import com.company.feature.main.tab.LibraryTab
 import com.company.feature.main.tab.MyTab
@@ -43,14 +52,18 @@ import kotlin.time.ExperimentalTime
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
+    // 작업 메뉴가 열려 있는 동안 그 카드는 살짝 줄어든 채로 있다.
+    val menuWorkId = (state.sheet as? MainSheet.Work)?.workId
     Box(modifier = Modifier.fillMaxSize().background(MagicColors.Background)) {
         when (state.tab) {
             MainTab.HOME -> HomeTab(
-                drafts = state.drafts,
+                works = state.works,
+                menuWorkId = menuWorkId,
                 onNewVideo = { onIntent(MainIntent.StartNewVideo) },
                 onOpenCamera = { onIntent(MainIntent.OpenCamera) },
-                onShowAllDrafts = { onIntent(MainIntent.ShowAllDrafts) },
-                onOpenProject = { onIntent(MainIntent.OpenProject(it)) },
+                onShowAllWorks = { onIntent(MainIntent.ShowAllWorks) },
+                onOpenWork = { onIntent(MainIntent.OpenWork(it)) },
+                onOpenWorkMenu = { onIntent(MainIntent.OpenWorkMenu(it)) },
             )
             MainTab.TEMPLATES -> TemplateTab(
                 filter = state.templateFilter,
@@ -58,15 +71,15 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
                 onOpenTemplate = { onIntent(MainIntent.OpenTemplate(it)) },
             )
             MainTab.LIBRARY -> LibraryTab(
-                segment = state.librarySegment,
-                drafts = state.drafts,
-                completedVideos = state.completedVideos,
-                onSelectSegment = { onIntent(MainIntent.SelectLibrarySegment(it)) },
-                onOpenProject = { onIntent(MainIntent.OpenProject(it)) },
+                works = state.works,
+                menuWorkId = menuWorkId,
+                onOpenWork = { onIntent(MainIntent.OpenWork(it)) },
+                onOpenWorkMenu = { onIntent(MainIntent.OpenWorkMenu(it)) },
             )
             MainTab.MY -> MyTab(
                 settings = state.settings,
-                completedCount = state.completedVideos.size,
+                exportedCount = state.works.count { it.exported },
+                storageBytes = state.works.sumOf { it.storageBytes },
                 myVoice = state.myVoice,
                 onToggleSetting = { onIntent(MainIntent.ToggleSetting(it)) },
                 onOpenAppInfo = { onIntent(MainIntent.OpenAppInfo) },
@@ -105,8 +118,26 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
                         onUseTemplate = { closeThen(MainIntent.UseSelectedTemplate) },
                     )
                     MainSheet.AppInfo -> AppInfoSheetContent()
+                    is MainSheet.Work -> WorkMenuSheetContent(
+                        name = state.works.find { it.id == sheet.workId }?.name.orEmpty(),
+                        size = storageSizeLabel(state.works.find { it.id == sheet.workId }?.storageBytes ?: 0),
+                        onExport = { closeThen(MainIntent.ExportWork(sheet.workId)) },
+                        onDelete = { closeThen(MainIntent.RequestDeleteWork(sheet.workId)) },
+                    )
                 }
             }
+        }
+        if (state.deleteWorkId != null) {
+            MagicDialog(
+                title = stringResource(Res.string.work_delete_title),
+                message = stringResource(Res.string.work_delete_message),
+                confirmLabel = stringResource(Res.string.work_delete_confirm),
+                onConfirm = { onIntent(MainIntent.ConfirmDeleteWork) },
+                cancelLabel = stringResource(Res.string.work_delete_cancel),
+                onCancel = { onIntent(MainIntent.DismissDeleteWork) },
+                onDismissRequest = { onIntent(MainIntent.DismissDeleteWork) },
+                danger = true,
+            )
         }
     }
 }
@@ -114,35 +145,29 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
 /** Space between the handle and the content, and between the content items, of a main sheet. */
 private val SHEET_SPACING = 14.dp
 
-/** Preview entry that the user made [daysAgo] days before now. */
+/** Preview work that the user changed [daysAgo] days before now. A null [hue] is a work without clips. */
 @OptIn(ExperimentalTime::class)
-private fun previewVideo(name: String, duration: Double, hue: Int, daysAgo: Int) = VideoSummary(
+private fun previewWork(name: String, duration: Double, hue: Int?, daysAgo: Int, exported: Boolean = false) = VideoSummary(
     id = name,
     name = name,
     duration = duration,
     thumbnailHue = hue,
-    createdAt = Clock.System.now().toEpochMilliseconds() - daysAgo * 24L * 60 * 60 * 1000,
+    modifiedAt = Clock.System.now().toEpochMilliseconds() - daysAgo * 24L * 60 * 60 * 1000,
+    exported = exported,
 )
 
-private val PreviewDrafts = listOf(
-    previewVideo("바닷가 주말", 18.0, 35, daysAgo = 0),
-    previewVideo("말차 레시피", 27.0, 150, daysAgo = 1),
-    previewVideo("작업실 투어", 42.0, 200, daysAgo = 6),
-    previewVideo("러닝 크루", 15.0, 20, daysAgo = 13),
-)
-
-private val PreviewCompletedVideos = listOf(
-    previewVideo("벚꽃 산책", 21.0, 330, daysAgo = 3),
-    previewVideo("첫 출근 브이로그", 34.0, 60, daysAgo = 9),
+private val PreviewWorks = listOf(
+    previewWork("바닷가 주말", 18.0, 35, daysAgo = 0),
+    previewWork("말차 레시피", 27.0, 150, daysAgo = 1, exported = true),
+    previewWork("다음 편 예고", 8.0, null, daysAgo = 3),
+    previewWork("작업실 투어", 42.0, 200, daysAgo = 6),
+    previewWork("첫 출근 브이로그", 34.0, 60, daysAgo = 9, exported = true),
 )
 
 @Composable
-private fun MainScreenPreview(tab: MainTab, drafts: List<VideoSummary> = PreviewDrafts) {
+private fun MainScreenPreview(tab: MainTab, works: List<VideoSummary> = PreviewWorks) {
     MagicPreview {
-        MainScreen(
-            state = MainState(tab = tab, drafts = drafts, completedVideos = PreviewCompletedVideos),
-            onIntent = {},
-        )
+        MainScreen(state = MainState(tab = tab, works = works), onIntent = {})
     }
 }
 
@@ -152,7 +177,7 @@ private fun MainHomePreview() = MainScreenPreview(MainTab.HOME)
 
 @Preview(name = "홈 · 최근 작업 없음", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
 @Composable
-private fun MainHomeEmptyPreview() = MainScreenPreview(MainTab.HOME, drafts = emptyList())
+private fun MainHomeEmptyPreview() = MainScreenPreview(MainTab.HOME, works = emptyList())
 
 @Preview(name = "템플릿", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
 @Composable

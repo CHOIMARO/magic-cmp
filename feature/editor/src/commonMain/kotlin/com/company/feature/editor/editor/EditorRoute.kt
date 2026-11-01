@@ -7,6 +7,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.company.core.designsystem.component.LocalMagicToast
 import com.company.ui.text.resolve
@@ -48,6 +50,8 @@ internal fun EditorRoute(
     }
 
     val onIntent: (EditorIntent) -> Unit = remember(viewModel) { { viewModel.postIntent(it) } }
+    // 앱이 백그라운드로 가면 바로 저장한다. iOS도 백그라운드 진입을 ON_STOP으로 알린다(D42).
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { onIntent(EditorIntent.SaveNow) }
     val player = rememberEditorPlayback(state = state, onIntent = onIntent)
     val video: (@Composable (Modifier) -> Unit)? = remember(player) {
         player?.let { { modifier -> it.VideoSurface(modifier) } }

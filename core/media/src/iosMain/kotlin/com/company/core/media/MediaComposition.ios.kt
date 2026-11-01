@@ -100,6 +100,9 @@ private const val FRAME_RATE = 30
 /** Time scale of all CMTime values. */
 private const val TIMESCALE = 600
 
+/** A part of the video after the last clip shorter than this, in seconds, gets no black filler. */
+private const val MIN_GAP_SECONDS = 0.001
+
 /** Time from the end of a clip to its last frame, in seconds. It is one frame of the composition. */
 private const val LAST_FRAME_OFFSET = 1.0 / FRAME_RATE
 
@@ -134,7 +137,11 @@ class MediaComposition(
  *
  * The volume of each clip goes into the audio mix of the composition.
  *
- * @param clips Clips in play order. All clips must have a source file.
+ * After the last clip, the short black video also fills the time up to [duration]. The frame handler draws it black
+ * (F16).
+ *
+ * @param clips Clips in play order. All clips must have a source file. The list can be empty.
+ * @param duration Length of the video in seconds. It is at least the length of the clips.
  * @param frameWidth Width of the output frame in pixels.
  * @param frameHeight Height of the output frame in pixels.
  * @param videoArea Area of the frame that shows the video.
@@ -145,6 +152,7 @@ class MediaComposition(
 @OptIn(ExperimentalForeignApi::class)
 suspend fun buildMediaComposition(
     clips: List<Clip>,
+    duration: Double,
     frameWidth: Int,
     frameHeight: Int,
     videoArea: FrameArea = FrameArea.FULL,
@@ -195,6 +203,16 @@ suspend fun buildMediaComposition(
             }
         }
         start += clip.duration
+    }
+    // 마지막 클립 뒤 빈 구간에도 영상 트랙이 있어야 프레임 처리기가 불린다. 사진처럼 검은 영상으로 채운다.
+    val gap = duration - start
+    if (gap > MIN_GAP_SECONDS) {
+        val at = CMTimeMakeWithSeconds(start, TIMESCALE)
+        val length = CMTimeMakeWithSeconds(gap, TIMESCALE)
+        val filler = fillerVideoTrack()
+        if (filler == null || !videoTrack.insertScaled(filler, filler.timeRange, at, length)) return null
+        audioTrack.insertEmptyTimeRange(CMTimeRangeMake(at, length))
+        sources += FrameSource(start = start, transform = null, photo = null)
     }
     if (!hasAudio) composition.removeTrack(audioTrack)
 
@@ -414,8 +432,9 @@ private fun AVAssetTrack.stillFrameBox(frameWidth: Double, frameHeight: Double):
  * Frame source of one clip on the timeline.
  *
  * @property start Start time on the timeline, in seconds.
- * @property transform Rotation of the video frame in Core Image coordinates. Null for a photo.
- * @property photo Photo image, or null for a video.
+ * @property transform Rotation of the video frame in Core Image coordinates. Null for a photo and for the black part
+ *   after the last clip.
+ * @property photo Photo image, or null for a video. Without [transform] and [photo], the frame is black.
  */
 @OptIn(ExperimentalForeignApi::class)
 private class FrameSource(val start: Double, val transform: CValue<CGAffineTransform>?, val photo: CIImage?)

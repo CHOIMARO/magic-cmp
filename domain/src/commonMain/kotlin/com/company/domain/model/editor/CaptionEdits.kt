@@ -19,6 +19,9 @@ private const val MIN_PLACED_CAPTION_LENGTH = 0.05
 /** A script that starts this near to a clip start, in seconds, starts at the clip start. */
 private const val SCRIPT_OFFSET_MIN = 0.05
 
+/** Time on screen of each script line where no clip is left, in seconds (F16). */
+const val SCRIPT_LINE_SECONDS = 2.0
+
 /** Lowest caption height from the bottom of the screen, in percent. */
 const val CAPTION_POSITION_MIN = 6.0
 
@@ -47,40 +50,47 @@ fun EditorProject.clipBoundaries(): List<Double> {
 /**
  * Captions with their times on the timeline, in the order of [EditorProject.captions].
  *
- * A caption bound to a clip gets the time of the clip. A caption with a clip offset starts that far after the clip
- * start, and the clip end cuts it. A caption of a clip that is not in the project is left out.
+ * A caption bound to a clip (D47) shows where its part of the source video plays now. The clip edges cut it, and a
+ * caption whose part is trimmed away is left out. A caption of a clip that is not in the project is left out. The
+ * stored source times do not change, so a bound caption comes back when the clip gets longer again.
  *
- * The project end cuts all captions, and a caption that starts at the end or later is left out. The stored times do
- * not change, so a caption gets its length back when the clips get longer again.
+ * A caption with a fixed time keeps its time, also after the last clip. It then makes the video longer (F16).
  */
 val EditorProject.placedCaptions: List<CaptionSegment>
     get() {
-        val total = totalDuration
-        if (captions.all { it.clipId == null && it.end <= total }) return captions
+        if (captions.all { it.clipId == null }) return captions
         val starts = clipBoundaries()
         val indexes = clips.withIndex().associate { (index, clip) -> clip.id to index }
         return captions.mapNotNull { caption ->
-            val clipId = caption.clipId
-            val placed = if (clipId == null) {
-                caption
-            } else {
-                val index = indexes[clipId] ?: return@mapNotNull null
-                val clipStart = starts[index]
-                val clipLength = clips[index].duration
-                val offset = caption.clipOffset
-                if (offset == null) {
-                    caption.copy(start = clipStart, length = clipLength)
-                } else {
-                    // 클립이 줄어 시작 거리가 클립보다 길면 클립 시작으로 당긴다.
-                    val from = if (offset >= clipLength) 0.0 else offset
-                    caption.copy(start = clipStart + from, length = minOf(caption.clipLength ?: clipLength, clipLength - from))
-                }
-            }
-            // 클립이 줄어 프로젝트가 짧아지면 프로젝트 끝에서 자른다. 타임라인은 프로젝트 끝까지만 보인다.
-            val length = minOf(placed.length, total - placed.start)
-            if (length < MIN_PLACED_CAPTION_LENGTH) null else placed.copy(length = length)
+            val clipId = caption.clipId ?: return@mapNotNull caption
+            val index = indexes[clipId] ?: return@mapNotNull null
+            val clip = clips[index]
+            val clipStart = starts[index]
+            // 원본 시간을 지금 클립의 시작점과 속도로 타임라인 시간으로 바꾼다. 잘려 나간 부분은 보이지 않는다.
+            val from = clipStart + ((caption.sourceStart ?: clip.inPoint) - clip.inPoint) / clip.speed
+            val to = clipStart + ((caption.sourceEnd ?: clip.outPoint) - clip.inPoint) / clip.speed
+            val start = maxOf(from, clipStart)
+            val end = minOf(to, starts[index + 1])
+            if (end - start < MIN_PLACED_CAPTION_LENGTH) null else caption.copy(start = start, length = end - start)
         }
     }
+
+/**
+ * Binds a caption to [clip] at its time on the timeline (D47). The caption keeps this part of the source video.
+ *
+ * @param clip Clip that plays during the caption.
+ * @param clipStart Start of the clip on the timeline.
+ * @return The bound caption.
+ */
+fun CaptionSegment.boundTo(clip: Clip, clipStart: Double): CaptionSegment = copy(
+    clipId = clip.id,
+    sourceStart = clip.inPoint + (start - clipStart) * clip.speed,
+    sourceEnd = clip.inPoint + (end - clipStart) * clip.speed,
+)
+
+/** The caption at [start] for [length] seconds, with a fixed time. A binding to a clip ends. */
+private fun CaptionSegment.withFixedTime(start: Double, length: Double): CaptionSegment =
+    copy(start = start, length = length, clipId = null, sourceStart = null, sourceEnd = null)
 
 /**
  * Splits a typed script into caption lines. Each line of the script is one caption. Empty lines and the spaces at
@@ -91,32 +101,46 @@ val EditorProject.placedCaptions: List<CaptionSegment>
 fun scriptLines(script: String): List<String> = script.lines().map { it.trim() }.filter { it.isNotEmpty() }
 
 /**
- * Makes captions from script lines. The n-th line goes to the n-th clip from [firstClip] and covers the rest of the
- * clip. Lines after the last clip are not used. Clips after the last line get no caption.
+ * Makes captions with fixed times from script lines (D47).
+ *
+ * From a clip, the n-th line covers the n-th clip from [ScriptStart.clipIndex], and the first line starts at
+ * [ScriptStart.offset]. Lines after the last clip are not used. Clips after the last line get no caption.
+ *
+ * When no clip is left at the start, each line stays on screen for [SCRIPT_LINE_SECONDS] from [ScriptStart.time], one
+ * after another (F16). Lines that end after [MAX_PROJECT_LENGTH] are not used.
  *
  * @param lines Caption lines.
- * @param firstClip Index of the clip of the first line.
- * @param firstOffset Time in the first clip where the first line starts. 0 starts at the clip start.
- * @return Captions bound to the clips.
+ * @param start Place of the first line. See [scriptStart].
+ * @return Captions with fixed times.
  */
-fun EditorProject.captionsFromScript(lines: List<String>, firstClip: Int = 0, firstOffset: Double = 0.0): List<CaptionSegment> =
-    lines.zip(clips.drop(firstClip)).mapIndexed { index, (text, clip) ->
-        if (index == 0 && firstOffset > 0.0) {
-            CaptionSegment(
-                id = newEditorId(), text = text, start = 0.0, length = 0.0,
-                clipId = clip.id, clipOffset = firstOffset, clipLength = clip.duration - firstOffset,
-            )
-        } else {
-            CaptionSegment(id = newEditorId(), text = text, start = 0.0, length = 0.0, clipId = clip.id)
-        }
+fun EditorProject.captionsFromScript(lines: List<String>, start: ScriptStart = ScriptStart(0, 0.0, 0.0)): List<CaptionSegment> {
+    if (start.clipIndex >= clips.size) {
+        return lines.mapIndexed { index, text ->
+            CaptionSegment(id = newEditorId(), text = text, start = start.time + index * SCRIPT_LINE_SECONDS, length = SCRIPT_LINE_SECONDS)
+        }.filter { it.end <= MAX_PROJECT_LENGTH + TIME_EPSILON }
     }
+    val boundaries = clipBoundaries()
+    return lines.zip(clips.indices.drop(start.clipIndex)).mapIndexed { line, (text, index) ->
+        val from = boundaries[index] + if (line == 0) start.offset else 0.0
+        CaptionSegment(id = newEditorId(), text = text, start = from, length = boundaries[index + 1] - from)
+    }
+}
+
+/**
+ * Number of script lines that [captionsFromScript] can use from [start]: the clips that are left, or all lines when
+ * no clip is left.
+ *
+ * @param start Place of the first line.
+ * @return The number of lines, or null when the lines do not depend on the clips.
+ */
+fun EditorProject.scriptClipCount(start: ScriptStart): Int? = (clips.size - start.clipIndex).takeIf { it > 0 }
 
 /**
  * Place where the script lines start when the user makes captions from the playhead.
  *
  * @property clipIndex Index of the clip of the first line. It is the number of clips when no clip is left.
  * @property offset Time in that clip where the first line starts.
- * @property time The same place on the timeline.
+ * @property time The same place on the timeline. When no clip is left, it is the playhead.
  */
 data class ScriptStart(val clipIndex: Int, val offset: Double, val time: Double)
 
@@ -124,12 +148,14 @@ data class ScriptStart(val clipIndex: Int, val offset: Double, val time: Double)
  * Finds where the script lines start for captions from [time] (F04).
  *
  * The first line starts at [time] in the clip at [time]. When [time] is less than [MIN_CAPTION_LENGTH] before the
- * end of that clip, the first line goes to the next clip. A time at 0 starts at the first clip.
+ * end of that clip, the first line goes to the next clip. A time at 0 starts at the first clip. When no clip is left,
+ * the lines start at [time] (F16).
  *
  * @param time Playhead position.
  */
 fun EditorProject.scriptStart(time: Double): ScriptStart {
-    if (clips.isEmpty() || time <= TIME_EPSILON) return ScriptStart(clipIndex = 0, offset = 0.0, time = 0.0)
+    if (time <= TIME_EPSILON) return ScriptStart(clipIndex = 0, offset = 0.0, time = 0.0)
+    if (clips.isEmpty()) return ScriptStart(clipIndex = 0, offset = 0.0, time = time)
     val boundaries = clipBoundaries()
     var clipIndex = clipAt(time)?.index ?: 0
     var offset = time - boundaries[clipIndex]
@@ -138,7 +164,7 @@ fun EditorProject.scriptStart(time: Double): ScriptStart {
         offset = 0.0
     }
     if (offset <= SCRIPT_OFFSET_MIN) offset = 0.0
-    val start = if (clipIndex < clips.size) boundaries[clipIndex] + offset else totalDuration
+    val start = if (clipIndex < clips.size) boundaries[clipIndex] + offset else time
     return ScriptStart(clipIndex = clipIndex, offset = offset, time = start)
 }
 
@@ -158,7 +184,7 @@ fun EditorProject.captionsBefore(time: Double): List<CaptionSegment> {
             position.start >= time - TIME_EPSILON -> null
             position.end <= time + TIME_EPSILON -> caption
             time - position.start < MIN_CAPTION_LENGTH -> null
-            else -> caption.copy(start = position.start, length = time - position.start, clipId = null, clipOffset = null, clipLength = null)
+            else -> caption.withFixedTime(position.start, time - position.start)
         }
     }
 }
@@ -264,11 +290,9 @@ fun EditorProject.splitCaption(captionId: String, time: Double): CaptionSplit {
     }
     val cut = words[splitWord].range.first
     val firstText = caption.text.substring(0, cut).trimEnd()
-    val first = caption.copy(
+    val first = caption.withFixedTime(caption.start, time - caption.start).copy(
         text = firstText,
-        length = time - caption.start,
         decorations = caption.decorations.slice(0, firstText.length),
-        clipId = null, clipOffset = null, clipLength = null,
     )
     val second = CaptionSegment(
         id = newEditorId(),
@@ -283,7 +307,8 @@ fun EditorProject.splitCaption(captionId: String, time: Double): CaptionSplit {
 /**
  * Moves one edge of a caption. The caption gets a fixed time, so the binding to its clip ends.
  *
- * The edge stays between the neighbor captions, inside the project, and [MIN_CAPTION_LENGTH] from the other edge.
+ * The edge stays between the neighbor captions, [MIN_CAPTION_LENGTH] from the other edge, and not later than
+ * [MAX_PROJECT_LENGTH]. An end after the video end makes the video longer (F16).
  *
  * @param captionId ID of the caption.
  * @param start True to move the start, false to move the end.
@@ -295,13 +320,13 @@ fun EditorProject.trimCaption(captionId: String, start: Boolean, time: Double): 
     val others = placed.filter { it.id != captionId }
     val previousEnd = others.filter { it.start < caption.start }.maxOfOrNull { it.end }?.coerceAtMost(caption.start) ?: 0.0
     val nextStart = others.filter { it.start > caption.start }.minOfOrNull { it.start }?.coerceAtLeast(caption.end)
-        ?: maxOf(totalDuration, caption.end)
+        ?: MAX_PROJECT_LENGTH
     val newStart = if (start) time.coerceAtMost(caption.end - MIN_CAPTION_LENGTH).coerceAtLeast(previousEnd) else caption.start
     val newEnd = if (start) caption.end else time.coerceAtMost(nextStart).coerceAtLeast(caption.start + MIN_CAPTION_LENGTH)
     return copy(
         captions = captions.map {
             if (it.id == captionId) {
-                it.copy(start = newStart, length = newEnd - newStart, clipId = null, clipOffset = null, clipLength = null)
+                it.withFixedTime(newStart, newEnd - newStart)
             } else {
                 it
             }

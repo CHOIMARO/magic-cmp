@@ -8,7 +8,6 @@ import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.MY_VOICE_ID
 import com.company.domain.model.editor.MyVoiceStatus
 import com.company.domain.model.editor.compactTextLayers
-import com.company.domain.model.editor.cutTextAtEnd
 import com.company.domain.model.editor.duplicateClip
 import com.company.domain.model.editor.duplicateText
 import com.company.domain.model.editor.finishAudioMove
@@ -21,6 +20,7 @@ import com.company.domain.model.editor.removeText
 import com.company.domain.model.editor.setClipSpeed
 import com.company.domain.model.editor.splitAt
 import com.company.domain.model.editor.transformText
+import com.company.domain.model.editor.workNameOf
 import com.company.domain.repository.DubbingRepository
 import com.company.domain.repository.EditorProjectRepository
 import com.company.domain.repository.EditorSettingsRepository
@@ -28,10 +28,13 @@ import com.company.domain.repository.FontRepository
 import com.company.domain.repository.MediaLibraryRepository
 import com.company.domain.repository.MyVoiceRepository
 import com.company.domain.usecase.editor.GenerateCaptionsUseCase
-import com.company.domain.usecase.editor.UpdateDraftUseCase
+import com.company.domain.usecase.editor.LeaveEditorUseCase
+import com.company.domain.usecase.editor.LeaveResult
+import com.company.domain.usecase.editor.SaveWorkUseCase
 import com.company.feature.editor.resources.Res
 import com.company.feature.editor.resources.toast_deleted_undoable
 import com.company.feature.editor.resources.toast_duplicated
+import com.company.feature.editor.resources.toast_empty_work_removed
 import com.company.feature.editor.resources.toast_favorite_added
 import com.company.feature.editor.resources.toast_favorite_removed
 import com.company.feature.editor.resources.toast_layout_clip_hint
@@ -39,12 +42,15 @@ import com.company.feature.editor.resources.toast_layout_reset
 import com.company.feature.editor.resources.toast_move_line_into_clip
 import com.company.feature.editor.resources.toast_split_at_line
 import com.company.feature.editor.resources.toast_undone
+import com.company.feature.editor.resources.toast_work_save_failed
 import com.company.ui.text.StringResolver
 import com.company.ui.text.UiText
 import com.company.ui.text.uiText
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 /**
@@ -99,6 +105,8 @@ internal interface EditorHost {
  *
  * The sheets of the editor have their own action classes: texts and animations, captions, sound, transitions, and
  * copy and paste.
+ *
+ * The editor saves the project to its work a short time after each change, without a question (F15).
  */
 class EditorViewModel(
     private val projectRepository: EditorProjectRepository,
@@ -108,7 +116,8 @@ class EditorViewModel(
     fontRepository: FontRepository,
     dubbingRepository: DubbingRepository,
     private val myVoiceRepository: MyVoiceRepository,
-    private val updateDraft: UpdateDraftUseCase,
+    private val saveWork: SaveWorkUseCase,
+    private val leaveEditor: LeaveEditorUseCase,
     private val stringResolver: StringResolver,
 ) : BaseViewModel<EditorState, EditorIntent, EditorSideEffect>(
     initialState = EditorState(
@@ -171,12 +180,17 @@ class EditorViewModel(
     /** Timer that hides the controls of the full-screen preview. */
     private var fullScreenControlsJob: Job? = null
 
+    /** Wait after the last change before the auto-save. */
+    private var saveJob: Job? = null
+
     init {
         viewModelScope.launch {
             projectRepository.project.collect { project ->
                 reduce { copy(project = project, time = time.coerceIn(0.0, project.totalDuration)) }
             }
         }
+        // 편집 내용이 바뀌면 잠시 뒤 자동으로 저장한다(F15). 연달아 바뀌면 마지막 변경 뒤에 한 번 저장한다.
+        viewModelScope.launch { projectRepository.project.drop(1).collect { scheduleSave() } }
         viewModelScope.launch { projectRepository.canUndo.collect { reduce { copy(canUndo = it) } } }
         viewModelScope.launch {
             settingsRepository.settings.collect { reduce { copy(watermark = it.watermark, favoriteTextStyles = it.favoriteTextStyles) } }
@@ -268,7 +282,10 @@ class EditorViewModel(
                 dragEdgeScroll += intent.seconds
                 applyDrag()
             }
-            EditorIntent.EndTimelineDrag -> endDrag()
+            EditorIntent.EndTimelineDrag -> {
+                endDrag()
+                scheduleSave()
+            }
             EditorIntent.SplitClip -> splitClip()
             EditorIntent.DuplicateClip -> duplicateClip()
             EditorIntent.RemoveClip -> removeClip()
@@ -286,8 +303,10 @@ class EditorViewModel(
             EditorIntent.StartTextDrag -> {
                 pause()
                 projectRepository.saveCheckpoint()
+                reduce { copy(textSnapGuide = TextSnapGuide()) }
             }
-            is EditorIntent.MoveText -> projectRepository.update { it.moveText(intent.textId, intent.x, intent.y) }
+            is EditorIntent.MoveText -> moveText(intent)
+            EditorIntent.EndTextDrag -> if (currentState.textSnapGuide != null) reduce { copy(textSnapGuide = null) }
             EditorIntent.StartTextTransform -> {
                 pause()
                 projectRepository.saveCheckpoint()
@@ -339,7 +358,10 @@ class EditorViewModel(
             EditorIntent.InsertCaptionScript -> captions.insertScript()
             EditorIntent.StartCaptionMove -> captions.startMove()
             is EditorIntent.MoveCaption -> captions.move(intent.position)
-            EditorIntent.EndCaptionMove -> captions.endMove()
+            EditorIntent.EndCaptionMove -> {
+                captions.endMove()
+                scheduleSave()
+            }
             EditorIntent.ResetCaptionPosition -> captions.resetPosition()
             is EditorIntent.OpenCaptionEditor -> texts.openCaptionEditor(intent.captionId)
             EditorIntent.SplitCaption -> captions.splitSelected()
@@ -386,21 +408,18 @@ class EditorViewModel(
             EditorIntent.DismissDialog -> reduce { copy(dialog = null) }
 
             EditorIntent.Undo -> undo()
-            EditorIntent.Export -> if (currentState.project.clips.isNotEmpty()) {
+            EditorIntent.Export -> if (!currentState.project.isEmpty) {
                 pause()
-                updateDraft()
-                postSideEffect { EditorSideEffect.OpenExport }
+                viewModelScope.launch {
+                    saveNow(duringGesture = true)
+                    postSideEffect { EditorSideEffect.OpenExport }
+                }
             }
-            EditorIntent.Back -> {
-                pause()
-                reduce { copy(leaveDialog = true) }
-            }
-            EditorIntent.ConfirmLeave -> {
-                reduce { copy(leaveDialog = false) }
-                updateDraft()
-                postSideEffect { EditorSideEffect.Close }
-            }
-            EditorIntent.DismissLeave -> reduce { copy(leaveDialog = false) }
+            EditorIntent.Back -> leave()
+            EditorIntent.SaveNow -> viewModelScope.launch { saveNow(duringGesture = true) }
+            EditorIntent.OpenRename -> openRename()
+            is EditorIntent.ConfirmRename -> confirmRename(intent.name)
+            EditorIntent.DismissRename -> reduce { copy(renaming = false) }
         }
     }
 
@@ -426,7 +445,7 @@ class EditorViewModel(
 
     /** Shows the full-screen preview and plays it. The controls show first and hide after a short time. */
     private fun openFullScreen() {
-        if (currentState.project.clips.isEmpty() || currentState.fullScreen != null) return
+        if (currentState.project.isEmpty || currentState.fullScreen != null) return
         pause()
         closeSheet()
         reduce { copy(fullScreen = FullScreenState(), activeDrag = null) }
@@ -494,13 +513,6 @@ class EditorViewModel(
         if (currentState.project.dragOrigin(target) == null) return
         pause()
         projectRepository.saveCheckpoint()
-        // 타임라인은 글자를 프로젝트 끝까지만 보여 준다. 보이는 막대에서 끌기를 시작하도록 먼저 자른다.
-        val textId = when (target) {
-            is TimelineDragTarget.TextEdge -> target.textId
-            is TimelineDragTarget.TextMove -> target.textId
-            else -> null
-        }
-        if (textId != null) projectRepository.update { it.cutTextAtEnd(textId) }
         val project = projectRepository.project.value
         val origin = project.dragOrigin(target) ?: return
         dragOrigin = origin
@@ -685,6 +697,28 @@ class EditorViewModel(
         toast(uiText(if (added) Res.string.toast_favorite_added else Res.string.toast_favorite_removed))
     }
 
+    // =====================================================================
+    // Work name (D54, D55, D57, D59)
+    // =====================================================================
+
+    /** Opens the rename popup when no sheet and no popup show. The preview stops first. */
+    private fun openRename() {
+        val state = currentState
+        if (state.sheet != null || state.dialog != null || state.fullScreen != null || state.renaming) return
+        pause()
+        reduce { copy(renaming = true) }
+    }
+
+    /**
+     * Gives the work a new name. The auto-save saves it, and the work goes to the top of the lists (D44). The undo
+     * history keeps the new name.
+     */
+    private fun confirmRename(input: String) {
+        val name = workNameOf(input) ?: return
+        reduce { copy(renaming = false) }
+        if (name != currentState.project.name) projectRepository.rename(name)
+    }
+
     private fun undo() {
         if (!projectRepository.undo()) return
         pause()
@@ -709,6 +743,19 @@ class EditorViewModel(
         projectRepository.commit { it.removeText(textId) }
         reduce { copy(selectedTextId = null) }
         toast(uiText(Res.string.toast_deleted_undoable))
+    }
+
+    /**
+     * Moves a text during a stage drag. A text center near a center line of the stage snaps to the line, and the stage
+     * shows the line. The first snap to a line gives a short vibration (v10).
+     */
+    private fun moveText(intent: EditorIntent.MoveText) {
+        val guide = stageCenterGuide(intent.x, intent.y, intent.snapX, intent.snapY)
+        if (guide.hasNewLine(currentState.textSnapGuide ?: TextSnapGuide())) postSideEffect { EditorSideEffect.Snapped }
+        if (guide != currentState.textSnapGuide) reduce { copy(textSnapGuide = guide) }
+        val x = if (guide.vertical) STAGE_CENTER_PERCENT else intent.x
+        val y = if (guide.horizontal) STAGE_CENTER_PERCENT else intent.y
+        projectRepository.update { it.moveText(intent.textId, x, y) }
     }
 
     private fun removeTrackItem() {
@@ -772,11 +819,74 @@ class EditorViewModel(
         postSideEffect { EditorSideEffect.ShowToast(message) }
     }
 
+    // =====================================================================
+    // Auto-save (F15)
+    // =====================================================================
+
+    /** Saves the project a short time after the last change. A new change starts the wait again. */
+    private fun scheduleSave() {
+        saveJob?.cancel()
+        saveJob = viewModelScope.launch {
+            delay(AUTO_SAVE_DELAY_MILLIS)
+            // saveNow를 부르면 지금 이 작업을 스스로 취소해서 파일을 쓰지 못한다.
+            save(duringGesture = false)
+        }
+    }
+
+    /**
+     * Saves the project to its work at once, and stops the waiting auto-save.
+     *
+     * @param duringGesture True to save also during a drag. Otherwise a drag saves when the finger goes up.
+     */
+    private suspend fun saveNow(duringGesture: Boolean) {
+        saveJob?.cancel()
+        save(duringGesture)
+    }
+
+    /**
+     * Saves the project to its work. A failure shows a message, and the next change tries again.
+     *
+     * @param duringGesture True to save also during a drag. Otherwise a drag saves when the finger goes up.
+     */
+    private suspend fun save(duringGesture: Boolean) {
+        val state = currentState
+        if (!duringGesture && (state.activeDrag != null || state.captionMoving)) return
+        try {
+            saveWork()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            toast(uiText(Res.string.toast_work_save_failed))
+        }
+    }
+
+    /**
+     * Leaves the editor without a question. The work keeps the last changes. A work without items goes away, and a
+     * message tells it (D45).
+     */
+    private fun leave() {
+        pause()
+        saveJob?.cancel()
+        viewModelScope.launch {
+            try {
+                if (leaveEditor() == LeaveResult.REMOVED_EMPTY) toast(uiText(Res.string.toast_empty_work_removed))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                toast(uiText(Res.string.toast_work_save_failed))
+            }
+            postSideEffect { EditorSideEffect.Close }
+        }
+    }
+
     private companion object {
         /** A playhead this close to the end, in seconds, counts as the end. */
         const val END_MARGIN = 0.05
 
         /** Time without a touch before the controls of the full-screen preview hide. */
         const val FULL_SCREEN_CONTROLS_MILLIS = 1_500L
+
+        /** Wait after the last change before the auto-save, in milliseconds. */
+        const val AUTO_SAVE_DELAY_MILLIS = 800L
     }
 }
