@@ -218,6 +218,23 @@ class LocalMyVideoRepositoryTest {
         assertEquals(listOf("current/a.mp4"), persister.released)
     }
 
+    @Test
+    fun sourceFileOfAnOldWork_isCopiedWhenTheUserPicksItAgain() {
+        // 복사하지 못한 예전 작업은 원본 위치를 가리킨다.
+        persister.copyFails = true
+        startNew(EditorProject(name = "예전 작업", clips = listOf(clip.copy(sourceUri = "picked/a.mp4"))))
+        val oldId = assertNotNull(projects.project.value.workId)
+        persister.copyFails = false
+
+        val restarted = newRepository()
+        runSuspend { StartNewProjectUseCase(projects, restarted)(EditorProject(name = "새 영상", clips = listOf(clip.copy(sourceUri = "picked/a.mp4")))) }
+        val newId = assertNotNull(projects.project.value.workId)
+        // 원본을 이미 복사한 것으로 보지 않고 다시 복사한다. 같은 원본을 쓰는 예전 작업도 복사본을 쓴다.
+        assertEquals(listOf("picked/a.mp4", "picked/a.mp4"), persister.persisted)
+        assertTrue(store.files.getValue("work-$newId.json").contains("saved/a.mp4"))
+        assertTrue(store.files.getValue("work-$oldId.json").contains("saved/a.mp4"))
+    }
+
     // =====================================================================
     // Storage space (D51)
     // =====================================================================
@@ -346,6 +363,11 @@ private class FakeMediaPersister : MediaPersister {
     /** Copies that the last clean-up kept, or null before a clean-up. */
     var kept: Set<String>? = null
 
+    /** When true, each copy fails, and the work keeps the source location. */
+    var copyFails = false
+
+    override fun isCopy(uri: String): Boolean = uri.startsWith("saved/") || uri.startsWith("current/")
+
     override fun sizeOf(uri: String): Long = sizes[uri] ?: 0
 
     override fun freeBytes(): Long = free
@@ -356,7 +378,7 @@ private class FakeMediaPersister : MediaPersister {
 
     override fun persist(uri: String): String {
         persisted += uri
-        return uri.replace("picked/", "saved/")
+        return if (copyFails) uri else uri.replace("picked/", "saved/")
     }
 
     override fun restore(uri: String): String = uri.replace("saved/", "current/")

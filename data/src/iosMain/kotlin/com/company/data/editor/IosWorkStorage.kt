@@ -90,6 +90,8 @@ internal class IosMediaPersister : MediaPersister {
         return NSURL.fileURLWithPath("$folder/$relative").absoluteString ?: uri
     }
 
+    override fun isCopy(uri: String): Boolean = savedRelativePath(uri) != null
+
     override fun release(uri: String) {
         val relative = savedRelativePath(uri) ?: return
         NSFileManager.defaultManager.removeItemAtPath("$folder/$relative", error = null)

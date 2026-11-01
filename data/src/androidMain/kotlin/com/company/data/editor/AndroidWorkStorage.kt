@@ -74,6 +74,8 @@ internal class AndroidMediaPersister(private val context: Context) : MediaPersis
 
     override fun restore(uri: String): String = uri
 
+    override fun isCopy(uri: String): Boolean = copyFile(uri) != null
+
     override fun release(uri: String) {
         copyFile(uri)?.delete()
     }

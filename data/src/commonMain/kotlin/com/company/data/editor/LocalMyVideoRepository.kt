@@ -335,10 +335,14 @@ internal class LocalMyVideoRepository(
         }
     }
 
-    /** The project with the current locations of its copies. */
+    /**
+     * The project with the current locations of its copies. A clip that still points to a source file keeps it, and
+     * the next save of that file makes a copy.
+     */
     private suspend fun restoreMedia(project: EditorProject): EditorProject {
         val restored = withContext(io) { project.mediaUris().associateWith { mediaPersister.restore(it) } }
-        restored.values.forEach { copies[it] = it }
+        // 복사본만 복사된 것으로 본다. 원본을 넣으면 같은 항목을 다시 골라도 복사하지 않는다.
+        restored.values.filter { mediaPersister.isCopy(it) }.forEach { copies[it] = it }
         return project.mapMedia { restored[it] ?: it }
     }
 

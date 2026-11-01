@@ -56,6 +56,14 @@ internal interface MediaPersister {
     fun restore(uri: String): String
 
     /**
+     * Tells if a location is a copy that [persist] made. A work from an older app version can still point to a
+     * source file.
+     *
+     * @param uri Location to check.
+     */
+    fun isCopy(uri: String): Boolean
+
+    /**
      * Removes a copy. Call it when no work uses the copy. Nothing happens for a file that is not a copy.
      *
      * @param uri Location that [persist] gave.
