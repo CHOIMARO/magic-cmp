@@ -16,7 +16,7 @@ import com.company.domain.usecase.editor.ApplyTemplateUseCase
 import com.company.domain.usecase.editor.CheckMediaStorageUseCase
 import com.company.domain.usecase.editor.StartNewProjectUseCase
 import com.company.feature.capture.resources.Res
-import com.company.feature.capture.resources.new_project_name
+import com.company.feature.capture.resources.new_work_name
 import com.company.feature.capture.resources.toast_clips_added
 import com.company.feature.capture.resources.toast_storage_full
 import com.company.ui.editor.DefaultTitleText
@@ -202,7 +202,7 @@ class GalleryViewModel(
                     postSideEffect { GallerySideEffect.ReturnToEditor(uiText(Res.string.toast_clips_added, clips.size)) }
                 }
                 GalleryMode.CREATE -> {
-                    val name = strings.resolve(uiText(Res.string.new_project_name))
+                    val name = strings.resolve(uiText(Res.string.new_work_name))
                     val defaultText = strings.resolve(UiText.Resource(DefaultTitleText))
                     val project = applyTemplate(EditorProject(name = name, clips = clips), state.template, defaultText)
                     startNewProject(project)

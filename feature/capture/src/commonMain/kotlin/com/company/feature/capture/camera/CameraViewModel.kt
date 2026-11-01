@@ -11,7 +11,7 @@ import com.company.domain.model.editor.newEditorId
 import com.company.domain.usecase.editor.StartNewProjectUseCase
 import com.company.feature.capture.resources.Res
 import com.company.feature.capture.resources.camera_clip_name
-import com.company.feature.capture.resources.new_recording_name
+import com.company.feature.capture.resources.new_work_name
 import com.company.ui.text.StringResolver
 import com.company.ui.text.uiText
 import kotlin.time.TimeSource
@@ -158,7 +158,7 @@ class CameraViewModel(
                     thumbnailHue = segment.hue,
                 )
             }
-            startNewProject(EditorProject(name = strings.resolve(uiText(Res.string.new_recording_name)), clips = clips))
+            startNewProject(EditorProject(name = strings.resolve(uiText(Res.string.new_work_name)), clips = clips))
             postSideEffect { CameraSideEffect.OpenEditor }
         }
     }

@@ -89,6 +89,11 @@ internal class LocalMyVideoRepository(
         scope.launch { mutex.withLock { ensureLoaded() } }
     }
 
+    override suspend fun workNames(): List<String> = mutex.withLock {
+        ensureLoaded()
+        _works.value.map { it.name }
+    }
+
     override suspend fun addWork(project: EditorProject): VideoSummary = withCopies { pending ->
         ensureLoaded()
         val id = newEditorId()

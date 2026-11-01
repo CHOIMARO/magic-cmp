@@ -85,6 +85,17 @@ class LocalMyVideoRepositoryTest {
     }
 
     @Test
+    fun newWorks_withTheSameBaseName_getNumbers() {
+        startNew(EditorProject(name = "새 작업", clips = listOf(clip)))
+        startNew(EditorProject(name = "새 작업", clips = listOf(clip)))
+        assertEquals("새 작업 2", projects.project.value.name)
+        // 다시 켜도 저장된 이름을 보고 번호를 고른다.
+        runSuspend { StartNewProjectUseCase(projects, newRepository())(EditorProject(name = "새 작업", clips = listOf(clip))) }
+        assertEquals("새 작업 3", projects.project.value.name)
+        assertEquals(listOf("새 작업 2", "새 작업"), repository.works.value.take(2).map { it.name })
+    }
+
+    @Test
     fun saveWork_onlyAChangeMovesTheWorkToTheTop() {
         val third = repository.works.value[2]
         // 열어 보기만 하면 순서와 시각이 그대로다.

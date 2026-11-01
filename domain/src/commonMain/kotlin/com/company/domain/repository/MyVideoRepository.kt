@@ -18,6 +18,12 @@ interface MyVideoRepository {
     val works: StateFlow<List<VideoSummary>>
 
     /**
+     * Gives the names of all works. Unlike [works], it waits until the list is read from the device after the app
+     * starts, so that a new name does not repeat a saved name (D53).
+     */
+    suspend fun workNames(): List<String>
+
+    /**
      * Adds a new work at the top of [works]. The work gets a new ID and the current time.
      *
      * @param project Project of the work. The work keeps it with [EditorProject.workId] set to the new ID.
