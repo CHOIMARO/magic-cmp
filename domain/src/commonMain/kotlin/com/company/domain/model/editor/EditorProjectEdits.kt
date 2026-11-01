@@ -28,10 +28,10 @@ const val MAX_ANIMATION_MILLIS = 1000
 internal const val TIME_EPSILON = 1e-6
 
 /** Length of a new text, in seconds, when the video is long enough. */
-private const val NEW_TEXT_LENGTH = 3.0
+internal const val NEW_TEXT_LENGTH = 3.0
 
 /** A new text starts at least this long before the video end, in seconds. */
-private const val NEW_TEXT_MIN_ROOM = 1.0
+internal const val NEW_TEXT_MIN_ROOM = 1.0
 
 /**
  * Clip at a time on the timeline.
@@ -485,30 +485,44 @@ fun EditorProject.transformText(textId: String, scale: Double, rotation: Double)
 private fun normalizeDegrees(degrees: Double): Double = ((degrees + 180.0) % 360.0 + 360.0) % 360.0 - 180.0
 
 /**
- * Applies a template.
+ * Applies a template, as the design does.
  *
- * A thumbnail template adds a title text from 0 seconds for up to 3 seconds, at the horizontal center and at 40% of
- * the height (D66). The other texts keep their styles.
+ * - A text template changes the style of all texts. A project without texts gets a title at the top.
+ * - A caption template changes the caption style. A project without captions gets [fallbackCaptions].
+ * - A thumbnail template adds all its lines from 0 seconds, see [addThumbnail].
  *
  * @param template Template to apply.
- * @param defaultText Text of the title that a thumbnail template adds.
+ * @param defaultText Text of the new title when a text template finds no text.
+ * @param fallbackCaptions Captions to use when a caption template finds no captions.
  */
-fun EditorProject.applyTemplate(template: EditorTemplate, defaultText: String): EditorProject = when (template) {
+fun EditorProject.applyTemplate(
+    template: EditorTemplate,
+    defaultText: String,
+    fallbackCaptions: List<CaptionSegment>,
+): EditorProject = when (template) {
     is EditorTemplate.Layout -> copy(layout = template.layout)
-    is EditorTemplate.Thumbnail -> {
-        val length = newTextTime(0.0).second
-        val title = TextOverlay(
-            id = newEditorId(),
-            text = defaultText,
-            start = 0.0,
-            length = length,
-            style = template.style,
-            x = 50.0,
-            y = 40.0,
-            layer = texts.firstFreeLayer(0.0, length),
-        )
-        copy(texts = texts + title)
-    }
+    is EditorTemplate.Text -> copy(
+        texts = if (texts.isNotEmpty()) {
+            texts.map { it.copy(style = template.style) }
+        } else {
+            listOf(
+                TextOverlay(
+                    id = newEditorId(),
+                    text = defaultText,
+                    start = 0.0,
+                    length = newTextTime(0.0).second,
+                    style = template.style,
+                    x = 50.0,
+                    y = 26.0,
+                ),
+            )
+        },
+    )
+    is EditorTemplate.Caption -> copy(
+        captionStyle = template.style,
+        captions = captions.ifEmpty { fallbackCaptions },
+    )
+    is EditorTemplate.Thumbnail -> addThumbnail(template.template, start = 0.0)
 }
 
 private inline fun EditorProject.mapClip(clipId: String, transform: (Clip) -> Clip): EditorProject =

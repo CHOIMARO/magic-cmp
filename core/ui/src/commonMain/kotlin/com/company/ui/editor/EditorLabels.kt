@@ -13,6 +13,7 @@ import com.company.domain.model.editor.TextExit
 import com.company.domain.model.editor.TextFontType
 import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.ThumbnailTemplate
 import com.company.domain.model.editor.TransitionType
 import com.company.ui.resources.*
 import org.jetbrains.compose.resources.StringResource
@@ -60,22 +61,30 @@ val LayoutType.description: String
         }
     )
 
-/** Display name of the text style. */
+/** Display name of the text style. A line of a thumbnail has the name of its thumbnail. */
 val TextStyleType.displayName: String
-    @Composable get() = stringResource(
-        when (this) {
-            TextStyleType.IMPACT -> Res.string.text_style_impact
-            TextStyleType.NEON -> Res.string.text_style_neon
-            TextStyleType.MARKER -> Res.string.text_style_marker
-            TextStyleType.MINIMAL -> Res.string.text_style_minimal
-            TextStyleType.THUMB_FIRE -> Res.string.text_style_thumb_fire
-            TextStyleType.THUMB_BUBBLE -> Res.string.text_style_thumb_bubble
-            TextStyleType.THUMB_HAND -> Res.string.text_style_thumb_hand
-            TextStyleType.THUMB_THIN -> Res.string.text_style_thumb_thin
-            TextStyleType.THUMB_BOLD -> Res.string.text_style_thumb_bold
-            TextStyleType.THUMB_PIXEL -> Res.string.text_style_thumb_pixel
-        }
-    )
+    @Composable get() = when (this) {
+        TextStyleType.IMPACT -> stringResource(Res.string.text_style_impact)
+        TextStyleType.NEON -> stringResource(Res.string.text_style_neon)
+        TextStyleType.MARKER -> stringResource(Res.string.text_style_marker)
+        TextStyleType.MINIMAL -> stringResource(Res.string.text_style_minimal)
+        else -> ThumbnailTemplate.entries.first { template -> template.lines.any { it.style == this } }.displayName
+    }
+
+/** Name of the thumbnail resource. A ViewModel reads it with a StringResolver. */
+val ThumbnailTemplate.nameResource: StringResource
+    get() = when (this) {
+        ThumbnailTemplate.FIRE -> Res.string.thumbnail_fire
+        ThumbnailTemplate.BUBBLE -> Res.string.thumbnail_bubble
+        ThumbnailTemplate.HAND -> Res.string.thumbnail_hand
+        ThumbnailTemplate.THIN -> Res.string.thumbnail_thin
+        ThumbnailTemplate.BOLD -> Res.string.thumbnail_bold
+        ThumbnailTemplate.PIXEL -> Res.string.thumbnail_pixel
+    }
+
+/** Display name of the thumbnail. */
+val ThumbnailTemplate.displayName: String
+    @Composable get() = stringResource(nameResource)
 
 /** Display name of the font. */
 val TextFontType.displayName: String
@@ -214,6 +223,8 @@ val TemplateKind.sheetLabel: String
     @Composable get() = stringResource(
         when (this) {
             TemplateKind.LAYOUT -> Res.string.template_kind_layout
+            TemplateKind.TEXT -> Res.string.template_kind_text
+            TemplateKind.CAPTION -> Res.string.template_kind_caption
             TemplateKind.THUMBNAIL -> Res.string.template_kind_thumbnail
         }
     )
@@ -222,13 +233,17 @@ val TemplateKind.sheetLabel: String
 val EditorTemplate.displayName: String
     @Composable get() = when (this) {
         is EditorTemplate.Layout -> layout.displayName
-        is EditorTemplate.Thumbnail -> style.displayName
+        is EditorTemplate.Text -> style.displayName
+        is EditorTemplate.Caption -> style.displayName
+        is EditorTemplate.Thumbnail -> template.displayName
     }
 
 /** Short note under the template name in the template grid. */
 val EditorTemplate.subLabel: String
     @Composable get() = when (this) {
         is EditorTemplate.Layout -> stringResource(Res.string.template_sub_layout, layout.subLabel)
+        is EditorTemplate.Text -> stringResource(Res.string.template_sub_text)
+        is EditorTemplate.Caption -> stringResource(Res.string.template_sub_caption)
         is EditorTemplate.Thumbnail -> stringResource(Res.string.template_sub_thumbnail)
     }
 
@@ -236,6 +251,8 @@ val EditorTemplate.subLabel: String
 val EditorTemplate.description: String
     @Composable get() = when (this) {
         is EditorTemplate.Layout -> layout.description
+        is EditorTemplate.Text -> stringResource(Res.string.template_desc_text)
+        is EditorTemplate.Caption -> stringResource(Res.string.template_desc_caption)
         is EditorTemplate.Thumbnail -> stringResource(Res.string.template_desc_thumbnail)
     }
 

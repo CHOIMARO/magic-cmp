@@ -146,6 +146,7 @@ internal data class DecorationDto(
     val background: Int? = null,
     val backgroundShape: BackgroundShape = BackgroundShape.ROUNDED,
     val backgroundBorder: Boolean = false,
+    val sizeScale: Float? = null,
 )
 
 @Serializable
@@ -290,13 +291,13 @@ private fun TextDto.toDomain(): TextOverlay {
 private fun DecorationRange.toDto() = DecorationRangeDto(
     start,
     end,
-    with(decoration) { DecorationDto(color, bold, outline, shadow, background, backgroundShape, backgroundBorder) },
+    with(decoration) { DecorationDto(color, bold, outline, shadow, background, backgroundShape, backgroundBorder, sizeScale) },
 )
 
 private fun DecorationRangeDto.toDomain() = DecorationRange(
     start,
     end,
-    with(decoration) { Decoration(color, bold, outline, shadow, background, backgroundShape, backgroundBorder) },
+    with(decoration) { Decoration(color, bold, outline, shadow, background, backgroundShape, backgroundBorder, sizeScale) },
 )
 
 private fun CaptionSegment.toDto() = CaptionDto(id, text, start, length, decorations.map { it.toDto() }, clipId, sourceStart, sourceEnd)

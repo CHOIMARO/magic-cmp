@@ -8,36 +8,24 @@ class TemplateFavoritesTest {
 
     @Test
     fun templatesWithFavoritesFirst_putsTheNewestFavoriteFirst_andKeepsTheOtherOrder() {
-        val favorites = listOf(TextStyleType.THUMB_PIXEL, TextStyleType.NEON)
+        val order = templatesWithFavoritesFirst(listOf(TextStyleType.MINIMAL, TextStyleType.NEON))
 
-        assertEquals(
-            listOf(TextStyleType.NEON, TextStyleType.IMPACT, TextStyleType.MARKER, TextStyleType.MINIMAL),
-            templatesWithFavoritesFirst(favorites, thumbnail = false),
-        )
-        assertEquals(
-            listOf(
-                TextStyleType.THUMB_PIXEL,
-                TextStyleType.THUMB_FIRE,
-                TextStyleType.THUMB_BUBBLE,
-                TextStyleType.THUMB_HAND,
-                TextStyleType.THUMB_THIN,
-                TextStyleType.THUMB_BOLD,
-            ),
-            templatesWithFavoritesFirst(favorites, thumbnail = true),
-        )
+        assertEquals(listOf(TextStyleType.MINIMAL, TextStyleType.NEON, TextStyleType.IMPACT, TextStyleType.MARKER), order)
     }
 
     @Test
     fun templatesWithFavoritesFirst_withoutFavorites_keepsTheNormalOrder() {
-        assertEquals(TextStyleType.entries.filterNot { it.thumbnail }, templatesWithFavoritesFirst(emptyList(), thumbnail = false))
-        assertEquals(TextStyleType.entries.filter { it.thumbnail }, templatesWithFavoritesFirst(emptyList(), thumbnail = true))
+        assertEquals(
+            listOf(TextStyleType.IMPACT, TextStyleType.NEON, TextStyleType.MARKER, TextStyleType.MINIMAL),
+            templatesWithFavoritesFirst(emptyList()),
+        )
     }
 
     @Test
-    fun templatesWithFavoritesFirst_showsEachTemplateOnce() {
-        val order = templatesWithFavoritesFirst(listOf(TextStyleType.THUMB_HAND, TextStyleType.THUMB_HAND), thumbnail = true)
+    fun templatesWithFavoritesFirst_showsEachTemplateOnce_andNoThumbnailLines() {
+        val order = templatesWithFavoritesFirst(listOf(TextStyleType.NEON, TextStyleType.NEON, TextStyleType.THUMB_FIRE_1))
 
-        assertEquals(6, order.size)
-        assertEquals(TextStyleType.THUMB_HAND, order.first())
+        assertEquals(4, order.size)
+        assertEquals(TextStyleType.NEON, order.first())
     }
 }

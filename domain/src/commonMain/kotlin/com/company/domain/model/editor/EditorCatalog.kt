@@ -32,13 +32,14 @@ enum class LayoutType(val clipCount: Int) {
 }
 
 /**
- * Text template: the look of a text overlay. The order is the order of the template lists. A new text has no template.
+ * Text template: the look of a text overlay. A new text has no template.
  *
- * The thumbnail templates (D64) are large title looks for the cover of a video. Each one uses the look of the largest
- * line of a thumbnail in the design. They follow the same rules as the other text templates (9.3, D61).
+ * The first 4 entries are the text templates, in the order of the template lists. The other entries are the lines of
+ * the thumbnail templates. Each line of a [ThumbnailTemplate] is one text with its own look. The lines follow the same
+ * rules as the text templates (9.3, D61).
  *
  * @property font Default font of the template. A font that the user picks replaces it.
- * @property thumbnail True for a thumbnail template.
+ * @property thumbnail True for a line of a thumbnail template.
  */
 enum class TextStyleType(val font: TextFontType, val thumbnail: Boolean = false) {
     /** IMPACT : Yellow heavy letters with a black outline ("예능"). */
@@ -53,23 +54,86 @@ enum class TextStyleType(val font: TextFontType, val thumbnail: Boolean = false)
     /** MINIMAL : Small thin letters with wide spaces ("미니멀"). */
     MINIMAL(TextFontType.PRETENDARD),
 
-    /** THUMB_FIRE : Pink round letters with a white outline and a solid shadow ("불꽃·핑크 입체"). */
-    THUMB_FIRE(TextFontType.JUA, thumbnail = true),
+    // ----- "불꽃·핑크 입체" -----
 
-    /** THUMB_BUBBLE : Yellow round letters with a dark outline, a white glow, and stars ("옐로 버블"). */
-    THUMB_BUBBLE(TextFontType.JUA, thumbnail = true),
+    /** THUMB_FIRE_1 : White letters with a brown outline, an orange glow, and a flame behind them. */
+    THUMB_FIRE_1(TextFontType.KUKDETOPOKKI, thumbnail = true),
 
-    /** THUMB_HAND : Tall yellow handwriting with a black outline ("손글씨 풀스크린"). */
-    THUMB_HAND(TextFontType.DOKDO, thumbnail = true),
+    /** THUMB_FIRE_2 : Large pink letters with a white outline and a solid shadow. */
+    THUMB_FIRE_2(TextFontType.GELLYROLL, thumbnail = true),
 
-    /** THUMB_THIN : Large thin white letters with a soft shadow ("얇은 고딕 미니멀"). */
-    THUMB_THIN(TextFontType.PRETENDARD, thumbnail = true),
+    /** THUMB_FIRE_3 : Large pink letters with a white outline, a solid shadow, and a pink star. */
+    THUMB_FIRE_3(TextFontType.GELLYROLL, thumbnail = true),
 
-    /** THUMB_BOLD : White heavy letters with a dark outline and a yellow last word ("볼드 고딕 하이라이트"). */
-    THUMB_BOLD(TextFontType.BLACK_HAN_SANS, thumbnail = true),
+    /** THUMB_FIRE_4 : Small black letters on a white rounded box. */
+    THUMB_FIRE_4(TextFontType.GAEGU, thumbnail = true),
 
-    /** THUMB_PIXEL : Cream handwriting with a navy outline and sparkles ("픽셀 손글씨"). */
-    THUMB_PIXEL(TextFontType.GAEGU, thumbnail = true),
+    // ----- "옐로 버블" -----
+
+    /** THUMB_BUBBLE_1 : Large yellow letters with a dark outline, a white glow, and two stars. */
+    THUMB_BUBBLE_1(TextFontType.GELLYROLL, thumbnail = true),
+
+    /** THUMB_BUBBLE_2 : Large yellow letters with a dark outline and a white glow. */
+    THUMB_BUBBLE_2(TextFontType.GELLYROLL, thumbnail = true),
+
+    /** THUMB_BUBBLE_3 : Pink letters with a white outline, a dark glow, and a star. */
+    THUMB_BUBBLE_3(TextFontType.GELLYROLL, thumbnail = true),
+
+    // ----- "손글씨 풀스크린" -----
+
+    /** THUMB_HAND_1 : Tall yellow handwriting with a black outline, turned to the left. */
+    THUMB_HAND_1(TextFontType.KKUBULIM, thumbnail = true),
+
+    /** THUMB_HAND_2 : Tall yellow handwriting with a black outline, turned a little to the right. */
+    THUMB_HAND_2(TextFontType.KKUBULIM, thumbnail = true),
+
+    /** THUMB_HAND_3 : Tall yellow handwriting with a black outline, turned to the right. */
+    THUMB_HAND_3(TextFontType.KKUBULIM, thumbnail = true),
+
+    // ----- "얇은 고딕 미니멀" -----
+
+    /** THUMB_THIN_1 : Small green letters on a light green box, with a white burst. */
+    THUMB_THIN_1(TextFontType.PRETENDARD, thumbnail = true),
+
+    /** THUMB_THIN_2 : White letters with a soft shadow. */
+    THUMB_THIN_2(TextFontType.PRETENDARD, thumbnail = true),
+
+    /** THUMB_THIN_3 : Large thin white letters with a soft shadow. */
+    THUMB_THIN_3(TextFontType.PRETENDARD, thumbnail = true),
+
+    /** THUMB_THIN_4 : Small white letters with a soft shadow. */
+    THUMB_THIN_4(TextFontType.PRETENDARD, thumbnail = true),
+
+    /** THUMB_THIN_5 : Small white slanted letters with a soft shadow and a white bar. */
+    THUMB_THIN_5(TextFontType.PRETENDARD, thumbnail = true),
+
+    // ----- "볼드 고딕 하이라이트" -----
+
+    /** THUMB_BOLD_1 : Small black letters on a yellow box. */
+    THUMB_BOLD_1(TextFontType.PRETENDARD, thumbnail = true),
+
+    /** THUMB_BOLD_2 : Large white heavy letters with a dark outline and a soft shadow. */
+    THUMB_BOLD_2(TextFontType.BLACK_HAN_SANS, thumbnail = true),
+
+    /** THUMB_BOLD_3 : Large white heavy letters with a dark outline and a soft shadow. */
+    THUMB_BOLD_3(TextFontType.BLACK_HAN_SANS, thumbnail = true),
+
+    /** THUMB_BOLD_4 : Large yellow heavy letters with a dark outline and a soft shadow. */
+    THUMB_BOLD_4(TextFontType.BLACK_HAN_SANS, thumbnail = true),
+
+    // ----- "픽셀 손글씨" -----
+
+    /** THUMB_PIXEL_1 : Small black letters on a light blue box. */
+    THUMB_PIXEL_1(TextFontType.PRETENDARD, thumbnail = true),
+
+    /** THUMB_PIXEL_2 : Cream pixel letters with a navy outline and two sparkles. */
+    THUMB_PIXEL_2(TextFontType.MONA12, thumbnail = true),
+
+    /** THUMB_PIXEL_3 : Cream pixel letters with a navy outline and two sparkles. */
+    THUMB_PIXEL_3(TextFontType.MONA12, thumbnail = true),
+
+    /** THUMB_PIXEL_4 : Blue pixel letters with a navy outline and two sparkles. */
+    THUMB_PIXEL_4(TextFontType.MONA12, thumbnail = true),
 }
 
 /**
@@ -303,20 +367,26 @@ enum class SoundEffectCategory {
 /** Look of the automatic captions. */
 enum class CaptionStyleType { BASIC, POP, BOX, MINIMAL, SERIF, BIG }
 
-/** Kind of an [EditorTemplate]. */
+/** Kind of an [EditorTemplate]. The order is the order of the categories in the template tab. */
 enum class TemplateKind {
     /** LAYOUT : A layout of the clips ("레이아웃"). */
     LAYOUT,
 
-    /** THUMBNAIL : A large title for the cover ("썸네일"). */
+    /** TEXT : A text template ("글자"). */
+    TEXT,
+
+    /** CAPTION : A caption style ("자막"). */
+    CAPTION,
+
+    /** THUMBNAIL : A cover title of several lines ("썸네일"). */
     THUMBNAIL,
 }
 
 /**
  * Template that the user picks in the template tab (S02).
  *
- * A layout template changes the layout. A thumbnail template adds a title text (D66). The text and the caption
- * templates are not in the template tab. The user picks them in the text sheet and the caption sheet of the editor.
+ * A template changes one part of the project: the layout, the text style, the caption style, or the title lines of
+ * a thumbnail.
  */
 sealed interface EditorTemplate {
     /** Kind of the template. */
@@ -336,17 +406,33 @@ sealed interface EditorTemplate {
     }
 
     /**
+     * Text template.
+     *
+     * @property style Text style to apply. It is not a line of a thumbnail.
+     */
+    data class Text(val style: TextStyleType) : EditorTemplate {
+        override val kind = TemplateKind.TEXT
+        override val key = "${kind.name}:${style.name}"
+    }
+
+    /**
+     * Caption template.
+     *
+     * @property style Caption style to apply.
+     */
+    data class Caption(val style: CaptionStyleType) : EditorTemplate {
+        override val kind = TemplateKind.CAPTION
+        override val key = "${kind.name}:${style.name}"
+    }
+
+    /**
      * Thumbnail template.
      *
-     * @property style Thumbnail look of the new title text. It is a thumbnail template.
+     * @property template Thumbnail with the lines to add.
      */
-    data class Thumbnail(val style: TextStyleType) : EditorTemplate {
-        init {
-            require(style.thumbnail) { "$style is not a thumbnail template" }
-        }
-
+    data class Thumbnail(val template: ThumbnailTemplate) : EditorTemplate {
         override val kind = TemplateKind.THUMBNAIL
-        override val key = "${kind.name}:${style.name}"
+        override val key = "${kind.name}:${template.name}"
     }
 
     companion object {
@@ -362,7 +448,9 @@ sealed interface EditorTemplate {
             val (kind, id) = parts
             return when (kind) {
                 TemplateKind.LAYOUT.name -> LayoutType.entries.find { it.name == id }?.let(::Layout)
-                TemplateKind.THUMBNAIL.name -> TextStyleType.entries.find { it.name == id && it.thumbnail }?.let(::Thumbnail)
+                TemplateKind.TEXT.name -> TextStyleType.entries.find { it.name == id && !it.thumbnail }?.let(::Text)
+                TemplateKind.CAPTION.name -> CaptionStyleType.entries.find { it.name == id }?.let(::Caption)
+                TemplateKind.THUMBNAIL.name -> ThumbnailTemplate.entries.find { it.name == id }?.let(::Thumbnail)
                 else -> null
             }
         }

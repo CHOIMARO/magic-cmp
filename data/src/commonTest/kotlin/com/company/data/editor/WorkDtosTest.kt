@@ -66,7 +66,13 @@ class WorkDtosTest {
             fontFromTemplate = true,
             decorations = listOf(DecorationRange(0, 2, Decoration(background = 0xFFD6A5, backgroundShape = BackgroundShape.SQUARE, backgroundBorder = true))),
         )
-        val project = EditorProject(name = "p", texts = listOf(text, text.copy(id = "u", style = TextStyleType.THUMB_PIXEL)))
+        // 썸네일 줄의 모습과 크기 강조도 그대로 읽는다.
+        val line = text.copy(
+            id = "u",
+            style = TextStyleType.THUMB_BUBBLE_2,
+            decorations = listOf(DecorationRange(0, 1, Decoration(sizeScale = 0.65f))),
+        )
+        val project = EditorProject(name = "p", texts = listOf(text, line))
         val encoded = json.encodeToString(ProjectFileDto(project = project.toDto()))
         assertEquals(project, json.decodeFromString<ProjectFileDto>(encoded).project.toDomain())
     }

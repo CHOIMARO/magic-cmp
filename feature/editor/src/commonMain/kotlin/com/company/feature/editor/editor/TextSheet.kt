@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.exclude
@@ -101,12 +102,15 @@ import com.company.core.designsystem.theme.MagicTheme
 import com.company.core.designsystem.theme.oklch
 import com.company.domain.model.editor.BackgroundShape
 import com.company.domain.model.editor.Decoration
+import com.company.domain.model.editor.EditorTemplate
 import com.company.domain.model.editor.SIZE_STEP_COUNT
 import com.company.domain.model.editor.TextFontType
 import com.company.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.ThumbnailTemplate
 import com.company.domain.model.editor.drawnFont
 import com.company.domain.model.editor.valuesIn
 import com.company.feature.editor.resources.*
+import com.company.ui.editor.TemplatePreview
 import com.company.ui.editor.TextFrame
 import com.company.ui.editor.displayName
 import com.company.ui.editor.fontFamily
@@ -118,6 +122,9 @@ import org.jetbrains.compose.resources.stringResource
 
 /** Size factor of the sample text in a style card. */
 internal const val STYLE_SAMPLE_SCALE = 0.66f
+
+/** Size factor of the lines in a thumbnail tile of the template tab, as in the design. */
+private const val THUMBNAIL_TILE_SCALE = 0.44f
 
 /** Text in the cards of the text sheet while the text field is empty. */
 private val SampleText: String
@@ -374,22 +381,21 @@ private fun TextDraftField(draft: TextDraft, onIntent: (EditorIntent) -> Unit, m
 private val FavoriteColor = oklch(0.78f, 0.17f, 10f)
 
 /**
- * Templates of one group in list order: the favorites first, the newest favorite first, and then the other templates
- * in their normal order (F14).
+ * Text templates in list order: the favorites first, the newest favorite first, and then the other templates in their
+ * normal order (F14). The lines of the thumbnails are not in the list.
  *
  * @param favorites Favorite templates, the newest first.
- * @param thumbnail True for the thumbnail templates, false for the text templates.
  */
-internal fun templatesWithFavoritesFirst(favorites: List<TextStyleType>, thumbnail: Boolean): List<TextStyleType> {
-    val group = TextStyleType.entries.filter { it.thumbnail == thumbnail }
-    val first = favorites.distinct().filter { it in group }
-    return first + group.filterNot { it in first }
+internal fun templatesWithFavoritesFirst(favorites: List<TextStyleType>): List<TextStyleType> {
+    val templates = TextStyleType.entries.filterNot { it.thumbnail }
+    val first = favorites.distinct().filter { it in templates }
+    return first + templates.filterNot { it in first }
 }
 
 /**
- * Template tab: the 4 text templates, and then the thumbnail templates under their own label (D65). Each card plays
- * the animation of its template in a loop. The favorites come first in each group. Under the cards, a hint tells how
- * to add a favorite, and a reset button removes the template.
+ * Template tab, as in the design: the 4 text templates, a hint and a reset button under them, and then the thumbnails.
+ * Each text template card plays the animation of its template in a loop, and the favorites come first. A thumbnail
+ * adds all its lines at once.
  *
  * @param draft Text that the user types.
  * @param text Text in the cards.
@@ -399,19 +405,8 @@ internal fun templatesWithFavoritesFirst(favorites: List<TextStyleType>, thumbna
 @Composable
 private fun TextTemplatePage(draft: TextDraft, text: String, favorites: List<TextStyleType>, onIntent: (EditorIntent) -> Unit) {
     val clock = rememberTextPreviewClock(running = true)
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(false, true).forEach { thumbnail ->
-            Text(
-                text = stringResource(if (thumbnail) Res.string.template_section_thumbnail else Res.string.template_section_text),
-                modifier = Modifier.padding(top = if (thumbnail) 8.dp else 0.dp),
-                fontSize = 12.5.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MagicColors.OnSurface60,
-            )
-            FixedGrid(items = templatesWithFavoritesFirst(favorites, thumbnail), columns = 4, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { style ->
-                TemplateCard(style = style, draft = draft, text = text, clock = clock, favorite = style in favorites, onIntent = onIntent)
-            }
-        }
+    FixedGrid(items = templatesWithFavoritesFirst(favorites), columns = 4, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { style ->
+        TemplateCard(style = style, draft = draft, text = text, clock = clock, favorite = style in favorites, onIntent = onIntent)
     }
     Row(
         modifier = Modifier.fillMaxWidth().heightIn(min = 30.dp).padding(top = 10.dp),
@@ -429,6 +424,47 @@ private fun TextTemplatePage(draft: TextDraft, text: String, favorites: List<Tex
             SmallPillButton(label = stringResource(Res.string.template_reset), onClick = { onIntent(EditorIntent.ChangeDraftStyle(null)) })
         }
     }
+    if (!draft.isCaption) ThumbnailTiles(onIntent = onIntent)
+}
+
+/**
+ * Thumbnails of the template tab: a label and a grid of 3 columns. Each tile shows all lines of a thumbnail. A tap
+ * adds all lines and closes the sheet.
+ *
+ * @param onIntent Called with each user action.
+ */
+@Composable
+private fun ThumbnailTiles(onIntent: (EditorIntent) -> Unit) {
+    Column(modifier = Modifier.padding(top = 14.dp, bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(Res.string.template_section_thumbnail),
+            fontSize = 12.5.sp,
+            fontWeight = FontWeight.Bold,
+            color = MagicColors.OnSurface70,
+        )
+        FixedGrid(items = ThumbnailTemplate.entries, columns = 3, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { template ->
+            Column(
+                modifier = Modifier.pressClickable(pressedScale = 0.96f) { onIntent(EditorIntent.AddThumbnail(template)) },
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                TemplatePreview(
+                    template = EditorTemplate.Thumbnail(template),
+                    scale = THUMBNAIL_TILE_SCALE,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f).clip(RoundedCornerShape(14.dp)),
+                )
+                Text(
+                    text = template.displayName,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MagicColors.OnSurface60,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
 }
 
 /**
@@ -443,7 +479,7 @@ private fun TextTemplatePage(draft: TextDraft, text: String, favorites: List<Tex
 @Composable
 private fun TemplateStrip(draft: TextDraft, text: String, favorites: List<TextStyleType>, onIntent: (EditorIntent) -> Unit) {
     val clock = rememberTextPreviewClock(running = true)
-    val styles = templatesWithFavoritesFirst(favorites, thumbnail = false) + templatesWithFavoritesFirst(favorites, thumbnail = true)
+    val styles = templatesWithFavoritesFirst(favorites)
     StripRow(state = rememberStripState(selectedIndex = styles.indexOf(draft.style))) {
         items(styles) { style ->
             TemplateCard(

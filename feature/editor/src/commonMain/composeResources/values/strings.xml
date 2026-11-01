@@ -80,8 +80,7 @@
     <string name="decoration_box_rounded">둥근 네모</string>
     <string name="decoration_box_square">네모</string>
     <string name="decoration_box_border">테두리</string>
-    <string name="template_section_text">글자</string>
-    <string name="template_section_thumbnail">썸네일</string>
+    <string name="template_section_thumbnail">썸네일 · 고르면 모든 줄과 꾸미기가 영상 처음 3초에 들어가요</string>
     <string name="decoration_mixed">%1$s 섞임</string>
     <string name="speed_factor">%1$s배</string>
     <string name="speed_clip_length">이 클립 길이: %1$s초</string>
@@ -274,6 +273,7 @@
     <string name="toast_split_at_line">흰 선 위치에서 나눴어요</string>
     <string name="toast_duplicated">복제했어요</string>
     <string name="toast_deleted_undoable">삭제했어요 · 되돌리기 가능</string>
+    <string name="toast_thumbnail_added">'%1$s' 썸네일을 넣었어요 · 되돌리기 가능</string>
     <string name="toast_undone">되돌렸어요</string>
     <string name="toast_layout_reset">레이아웃을 처음으로 돌렸어요</string>
     <string name="toast_favorite_added">즐겨찾기에 넣었어요 · 맨 앞에 보여요</string>

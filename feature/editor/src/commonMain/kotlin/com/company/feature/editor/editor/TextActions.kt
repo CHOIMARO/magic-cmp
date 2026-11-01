@@ -7,6 +7,8 @@ import com.company.domain.model.editor.TextExit
 import com.company.domain.model.editor.TextFontType
 import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.ThumbnailTemplate
+import com.company.domain.model.editor.addThumbnail
 import com.company.domain.model.editor.addText
 import com.company.domain.model.editor.afterTextChange
 import com.company.domain.model.editor.decorate
@@ -33,6 +35,8 @@ import com.company.feature.editor.resources.toast_animation_reset
 import com.company.feature.editor.resources.toast_deleted_undoable
 import com.company.feature.editor.resources.toast_enter_caption
 import com.company.feature.editor.resources.toast_font_failed
+import com.company.feature.editor.resources.toast_thumbnail_added
+import com.company.ui.editor.nameResource
 import com.company.ui.text.uiText
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
@@ -151,6 +155,23 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
     fun changeStyle(style: TextStyleType?) {
         host.reduce { copy(textDraft = textDraft?.let { it.withContent(it.content.withTemplate(style)) }) }
         host.state.textDraft?.content?.drawnFont?.let { downloadFonts(setOf(it), quiet = false) }
+    }
+
+    /**
+     * Adds all lines of a thumbnail with their texts, places, and accents, as the design does. The lines start at 0
+     * seconds, or at the start of the saved text of the sheet, which they replace. Then the sheet closes. It is one
+     * undo step.
+     *
+     * @param template Thumbnail to add.
+     */
+    fun addThumbnail(template: ThumbnailTemplate) {
+        val draft = host.state.textDraft ?: return
+        if (draft.isCaption) return
+        val current = draft.id?.let { id -> host.state.project.texts.find { it.id == id } }
+        host.projects.commit { it.addThumbnail(template, start = current?.start ?: 0.0, replaceTextId = current?.id) }
+        host.reduce { copy(sheet = null, textDraft = null, colorPicker = null, selectedTextId = null) }
+        downloadFonts(template.lines.mapTo(mutableSetOf()) { it.style.font }, quiet = false)
+        host.toast(uiText(Res.string.toast_thumbnail_added, uiText(template.nameResource)))
     }
 
     /**

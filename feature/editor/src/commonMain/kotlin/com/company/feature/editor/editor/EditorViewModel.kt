@@ -325,6 +325,7 @@ class EditorViewModel(
             is EditorIntent.ChangeDraftText -> texts.changeText(intent.text, intent.selectionStart, intent.selectionEnd)
             is EditorIntent.SelectTextTab -> texts.selectTab(intent.tab)
             is EditorIntent.ChangeDraftStyle -> texts.changeStyle(intent.style)
+            is EditorIntent.AddThumbnail -> texts.addThumbnail(intent.template)
             is EditorIntent.ToggleFavoriteTextStyle -> toggleFavoriteTextStyle(intent.style)
             is EditorIntent.ChangeDraftFont -> texts.changeFont(intent.font)
             // 크기 단계를 바꿔도 템플릿은 남는다 (D63).

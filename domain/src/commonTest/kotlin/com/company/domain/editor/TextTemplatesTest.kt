@@ -62,20 +62,35 @@ class TextTemplatesTest {
     @Test
     fun pickingATemplate_removesTheDecorations_andTheFontThatATemplateLeft() {
         val left = plain.withTemplate(TextStyleType.IMPACT).decorate(0, 1) { it.copy(outline = true) }
-        val thumbnail = left.withTemplate(TextStyleType.THUMB_HAND)
+        val neon = left.withTemplate(TextStyleType.NEON)
 
-        assertEquals(TextStyleType.THUMB_HAND, thumbnail.style)
-        assertTrue(thumbnail.decorations.isEmpty())
-        assertNull(thumbnail.font)
-        assertFalse(thumbnail.fontFromTemplate)
-        assertEquals(TextFontType.DOKDO, thumbnail.drawnFont)
+        assertEquals(TextStyleType.NEON, neon.style)
+        assertTrue(neon.decorations.isEmpty())
+        assertNull(neon.font)
+        assertFalse(neon.fontFromTemplate)
+        assertEquals(TextFontType.PRETENDARD, neon.drawnFont)
+    }
+
+    @Test
+    fun decoratingAThumbnailLine_removesItsLookAndAccents_andKeepsItsFont() {
+        val line = TextContent(
+            text = "월 260",
+            style = TextStyleType.THUMB_BUBBLE_1,
+            decorations = listOf(DecorationRange(0, 2, Decoration(sizeScale = 0.68f))),
+        )
+        val decorated = line.decorate(2, 5) { it.copy(bold = true) }
+
+        assertNull(decorated.style)
+        assertEquals(listOf(DecorationRange(2, 5, Decoration(bold = true))), decorated.decorations)
+        assertEquals(TextFontType.GELLYROLL, decorated.font)
+        assertTrue(decorated.fontFromTemplate)
     }
 
     @Test
     fun pickingATemplate_keepsAPickedFont_andTheSizeStep() {
         val picked = plain.withFont(TextFontType.GOWUN_BATANG).copy(sizeStep = 2)
             .decorate(0, 1) { it.copy(shadow = true) }
-            .withTemplate(TextStyleType.THUMB_FIRE)
+            .withTemplate(TextStyleType.IMPACT)
 
         assertEquals(TextFontType.GOWUN_BATANG, picked.drawnFont)
         assertEquals(2, picked.sizeStep)

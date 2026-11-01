@@ -30,6 +30,7 @@ import com.company.domain.model.editor.TextFontType
 import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.ThumbnailTemplate
 import com.company.domain.model.editor.TransitionSlot
 import com.company.domain.model.editor.TransitionType
 import com.company.domain.model.editor.placedCaptions
@@ -635,6 +636,12 @@ sealed class EditorIntent : Intent() {
      * removes the decorations (9.3, D61).
      */
     data class ChangeDraftStyle(val style: TextStyleType?) : EditorIntent()
+
+    /**
+     * AddThumbnail(template) : Adds all lines of a thumbnail from the text sheet, then closes the sheet. The lines
+     * replace the text of the sheet when it is a saved text.
+     */
+    data class AddThumbnail(val template: ThumbnailTemplate) : EditorIntent()
 
     /**
      * ToggleFavoriteTextStyle(style) : Adds the text template to the favorites at the front, or removes it (F14). It is

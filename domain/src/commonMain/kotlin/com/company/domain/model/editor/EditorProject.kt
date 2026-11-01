@@ -198,6 +198,8 @@ data class CaptionSegment(
  * @property backgroundShape Shape of the background box. Only a character with a [background] uses it.
  * @property backgroundBorder True to draw a line around the background box, in the text color (D62). Only a character
  *   with a [background] uses it.
+ * @property sizeScale Size factor of the letters, or null for the size of the text. Only the accents of a thumbnail
+ *   line set it. The decoration tab cannot change it.
  */
 data class Decoration(
     val color: Int? = null,
@@ -207,10 +209,11 @@ data class Decoration(
     val background: Int? = null,
     val backgroundShape: BackgroundShape = BackgroundShape.ROUNDED,
     val backgroundBorder: Boolean = false,
+    val sizeScale: Float? = null,
 ) {
     /** True when the decoration changes nothing. */
     val isEmpty: Boolean
-        get() = color == null && !bold && !outline && !shadow && background == null
+        get() = color == null && !bold && !outline && !shadow && background == null && sizeScale == null
 }
 
 /** Shape of the background box of a decoration. */

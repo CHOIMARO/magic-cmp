@@ -22,6 +22,12 @@ internal const val DP_PER_SPEC_PX = STAGE_WIDTH_DP / 1080f
 /** Safety margin of the character count per line. */
 private const val CHARS_PER_LINE_MARGIN = 0.9f
 
+/** Line height of a text, as a part of the font size. */
+const val DEFAULT_LINE_HEIGHT_EM = 1.25f
+
+/** Default widest text box, as a part of the stage width. */
+private const val DEFAULT_BOX_WIDTH_RATIO = 0.84f
+
 /** Smallest font scale when a text is too long. */
 private const val MIN_FONT_SCALE = 0.7f
 
@@ -292,6 +298,23 @@ internal fun TextLook.charactersPerLine(): Int {
     val boxWidth = boxWidthRatio * STAGE_WIDTH_DP - paddingHorizontal * 2
     val letterWidth = fontSize * font.glyphWidthRatio * widthFactor + letterSpacingEm * fontSize
     return maxOf(1, floor(boxWidth / letterWidth * CHARS_PER_LINE_MARGIN).toInt())
+}
+
+/**
+ * Widest text box that keeps [text] on one line, as a part of the stage width, as the thumbnail lines of the design
+ * do. It is never smaller than the default box.
+ *
+ * @param text Text of the line.
+ * @param fontSize Font size in dp at scale 1.
+ * @param font Font of the line.
+ * @param letterSpacingEm Letter spacing in em.
+ * @param paddingHorizontal Horizontal padding of the box in dp.
+ */
+internal fun oneLineBoxRatio(text: String, fontSize: Float, font: TextFontType, letterSpacingEm: Float, paddingHorizontal: Float): Float {
+    // 글자 수에 하나를 더해 줄당 글자 수 계산의 반올림 오차로 줄이 나뉘지 않게 한다.
+    val count = text.count { !it.isWhitespace() } + 1
+    val width = count / CHARS_PER_LINE_MARGIN * fontSize * (font.glyphWidthRatio + letterSpacingEm) + paddingHorizontal * 2
+    return maxOf(DEFAULT_BOX_WIDTH_RATIO, width / STAGE_WIDTH_DP)
 }
 
 /** Average letter width of the font, as a part of the font size. The values come from the spec. */
