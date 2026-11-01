@@ -19,10 +19,6 @@ import com.company.ui.resources.*
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Default text of a new title overlay. A ViewModel reads it with a StringResolver. */
-val DefaultTitleText: StringResource
-    get() = Res.string.default_title_text
-
 /** Display name of the layout. */
 val LayoutType.displayName: String
     @Composable get() = stringResource(
@@ -223,8 +219,6 @@ val TemplateKind.sheetLabel: String
     @Composable get() = stringResource(
         when (this) {
             TemplateKind.LAYOUT -> Res.string.template_kind_layout
-            TemplateKind.TEXT -> Res.string.template_kind_text
-            TemplateKind.CAPTION -> Res.string.template_kind_caption
             TemplateKind.THUMBNAIL -> Res.string.template_kind_thumbnail
         }
     )
@@ -233,8 +227,6 @@ val TemplateKind.sheetLabel: String
 val EditorTemplate.displayName: String
     @Composable get() = when (this) {
         is EditorTemplate.Layout -> layout.displayName
-        is EditorTemplate.Text -> style.displayName
-        is EditorTemplate.Caption -> style.displayName
         is EditorTemplate.Thumbnail -> template.displayName
     }
 
@@ -242,8 +234,6 @@ val EditorTemplate.displayName: String
 val EditorTemplate.subLabel: String
     @Composable get() = when (this) {
         is EditorTemplate.Layout -> stringResource(Res.string.template_sub_layout, layout.subLabel)
-        is EditorTemplate.Text -> stringResource(Res.string.template_sub_text)
-        is EditorTemplate.Caption -> stringResource(Res.string.template_sub_caption)
         is EditorTemplate.Thumbnail -> stringResource(Res.string.template_sub_thumbnail)
     }
 
@@ -251,8 +241,6 @@ val EditorTemplate.subLabel: String
 val EditorTemplate.description: String
     @Composable get() = when (this) {
         is EditorTemplate.Layout -> layout.description
-        is EditorTemplate.Text -> stringResource(Res.string.template_desc_text)
-        is EditorTemplate.Caption -> stringResource(Res.string.template_desc_caption)
         is EditorTemplate.Thumbnail -> stringResource(Res.string.template_desc_thumbnail)
     }
 

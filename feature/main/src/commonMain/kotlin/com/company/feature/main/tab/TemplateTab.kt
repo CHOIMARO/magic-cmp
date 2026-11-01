@@ -27,8 +27,6 @@ import com.company.feature.main.component.TemplateCard
 import com.company.feature.main.resources.Res
 import com.company.feature.main.resources.filter_all
 import com.company.feature.main.resources.filter_layout
-import com.company.feature.main.resources.filter_caption
-import com.company.feature.main.resources.filter_text
 import com.company.feature.main.resources.filter_thumbnail
 import com.company.feature.main.resources.tab_templates
 import org.jetbrains.compose.resources.stringResource
@@ -39,8 +37,6 @@ private val TemplatePadding = 16.dp
 private val FilterChips = listOf(
     null to Res.string.filter_all,
     TemplateKind.LAYOUT to Res.string.filter_layout,
-    TemplateKind.TEXT to Res.string.filter_text,
-    TemplateKind.CAPTION to Res.string.filter_caption,
     TemplateKind.THUMBNAIL to Res.string.filter_thumbnail,
 )
 

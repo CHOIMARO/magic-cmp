@@ -19,7 +19,6 @@ import com.company.feature.capture.resources.Res
 import com.company.feature.capture.resources.new_work_name
 import com.company.feature.capture.resources.toast_clips_added
 import com.company.feature.capture.resources.toast_storage_full
-import com.company.ui.editor.DefaultTitleText
 import com.company.ui.editor.GalleryMode
 import com.company.ui.text.StringResolver
 import com.company.ui.text.UiText
@@ -203,8 +202,7 @@ class GalleryViewModel(
                 }
                 GalleryMode.CREATE -> {
                     val name = strings.resolve(uiText(Res.string.new_work_name))
-                    val defaultText = strings.resolve(UiText.Resource(DefaultTitleText))
-                    val project = applyTemplate(EditorProject(name = name, clips = clips), state.template, defaultText)
+                    val project = applyTemplate(EditorProject(name = name, clips = clips), state.template)
                     startNewProject(project)
                     postSideEffect { GallerySideEffect.OpenEditor }
                 }

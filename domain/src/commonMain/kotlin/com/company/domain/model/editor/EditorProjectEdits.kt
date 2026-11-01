@@ -485,43 +485,13 @@ fun EditorProject.transformText(textId: String, scale: Double, rotation: Double)
 private fun normalizeDegrees(degrees: Double): Double = ((degrees + 180.0) % 360.0 + 360.0) % 360.0 - 180.0
 
 /**
- * Applies a template, as the design does.
- *
- * - A text template changes the style of all texts. A project without texts gets a title at the top.
- * - A caption template changes the caption style. A project without captions gets [fallbackCaptions].
- * - A thumbnail template adds all its lines from 0 seconds, see [addThumbnail].
+ * Applies a template of the template tab, as the design does. A layout template changes the layout. A thumbnail
+ * template adds all its lines from 0 seconds, see [addThumbnail].
  *
  * @param template Template to apply.
- * @param defaultText Text of the new title when a text template finds no text.
- * @param fallbackCaptions Captions to use when a caption template finds no captions.
  */
-fun EditorProject.applyTemplate(
-    template: EditorTemplate,
-    defaultText: String,
-    fallbackCaptions: List<CaptionSegment>,
-): EditorProject = when (template) {
+fun EditorProject.applyTemplate(template: EditorTemplate): EditorProject = when (template) {
     is EditorTemplate.Layout -> copy(layout = template.layout)
-    is EditorTemplate.Text -> copy(
-        texts = if (texts.isNotEmpty()) {
-            texts.map { it.copy(style = template.style) }
-        } else {
-            listOf(
-                TextOverlay(
-                    id = newEditorId(),
-                    text = defaultText,
-                    start = 0.0,
-                    length = newTextTime(0.0).second,
-                    style = template.style,
-                    x = 50.0,
-                    y = 26.0,
-                ),
-            )
-        },
-    )
-    is EditorTemplate.Caption -> copy(
-        captionStyle = template.style,
-        captions = captions.ifEmpty { fallbackCaptions },
-    )
     is EditorTemplate.Thumbnail -> addThumbnail(template.template, start = 0.0)
 }
 

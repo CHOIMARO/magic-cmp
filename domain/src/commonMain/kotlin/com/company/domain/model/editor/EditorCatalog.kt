@@ -372,12 +372,6 @@ enum class TemplateKind {
     /** LAYOUT : A layout of the clips ("레이아웃"). */
     LAYOUT,
 
-    /** TEXT : A text template ("글자"). */
-    TEXT,
-
-    /** CAPTION : A caption style ("자막"). */
-    CAPTION,
-
     /** THUMBNAIL : A cover title of several lines ("썸네일"). */
     THUMBNAIL,
 }
@@ -385,8 +379,8 @@ enum class TemplateKind {
 /**
  * Template that the user picks in the template tab (S02).
  *
- * A template changes one part of the project: the layout, the text style, the caption style, or the title lines of
- * a thumbnail.
+ * A layout template changes the layout. A thumbnail template adds its title lines. The text and the caption templates
+ * are not in the template tab: the user picks them in the text sheet and the caption sheet of the editor.
  */
 sealed interface EditorTemplate {
     /** Kind of the template. */
@@ -403,26 +397,6 @@ sealed interface EditorTemplate {
     data class Layout(val layout: LayoutType) : EditorTemplate {
         override val kind = TemplateKind.LAYOUT
         override val key = "${kind.name}:${layout.name}"
-    }
-
-    /**
-     * Text template.
-     *
-     * @property style Text style to apply. It is not a line of a thumbnail.
-     */
-    data class Text(val style: TextStyleType) : EditorTemplate {
-        override val kind = TemplateKind.TEXT
-        override val key = "${kind.name}:${style.name}"
-    }
-
-    /**
-     * Caption template.
-     *
-     * @property style Caption style to apply.
-     */
-    data class Caption(val style: CaptionStyleType) : EditorTemplate {
-        override val kind = TemplateKind.CAPTION
-        override val key = "${kind.name}:${style.name}"
     }
 
     /**
@@ -448,8 +422,6 @@ sealed interface EditorTemplate {
             val (kind, id) = parts
             return when (kind) {
                 TemplateKind.LAYOUT.name -> LayoutType.entries.find { it.name == id }?.let(::Layout)
-                TemplateKind.TEXT.name -> TextStyleType.entries.find { it.name == id && !it.thumbnail }?.let(::Text)
-                TemplateKind.CAPTION.name -> CaptionStyleType.entries.find { it.name == id }?.let(::Caption)
                 TemplateKind.THUMBNAIL.name -> ThumbnailTemplate.entries.find { it.name == id }?.let(::Thumbnail)
                 else -> null
             }

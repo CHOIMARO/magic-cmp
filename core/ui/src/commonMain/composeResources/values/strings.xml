@@ -3,9 +3,7 @@
     <string name="search_prompt">Search videos and images</string>
     <string name="no_results_found">검색 결과가 없습니다.</string>
 
-    <!-- 새 글자의 기본 문구와 미리보기 샘플 -->
-    <string name="default_title_text">오늘의 기록</string>
-    <string name="caption_sample">자막이 이렇게 나와요</string>
+    <!-- 레이아웃 미리보기 라벨 -->
     <string name="layout_label_before">전</string>
     <string name="layout_label_after">후</string>
 
@@ -124,14 +122,8 @@
 
     <!-- 템플릿 시트·그리드 -->
     <string name="template_kind_layout">레이아웃 템플릿</string>
-    <string name="template_kind_text">글자 템플릿</string>
-    <string name="template_kind_caption">자막 템플릿</string>
     <string name="template_kind_thumbnail">썸네일 템플릿</string>
     <string name="template_sub_layout">레이아웃 · %1$s</string>
-    <string name="template_sub_text">글자</string>
-    <string name="template_sub_caption">자막</string>
     <string name="template_sub_thumbnail">썸네일</string>
-    <string name="template_desc_text">제목이나 강조 문구에 쓰기 좋아요. 넣은 뒤 화면에서 끌어서 옮길 수 있어요.</string>
-    <string name="template_desc_caption">자동 자막이 이 스타일로 나와요. 말하는 영상에 잘 어울려요.</string>
     <string name="template_desc_thumbnail">영상 처음 3초에 제목을 얹어 썸네일로 써요. 줄마다 따로 눌러서 문구를 고치고 옮길 수 있어요.</string>
 </resources>
