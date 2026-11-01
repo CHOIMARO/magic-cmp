@@ -37,6 +37,11 @@ class InMemoryEditorProjectRepository : EditorProjectRepository {
         _project.update(transform)
     }
 
+    override fun rename(name: String) {
+        for (index in history.indices) history[index] = history[index].copy(name = name)
+        _project.update { it.copy(name = name) }
+    }
+
     override fun undo(): Boolean {
         val previous = history.removeLastOrNull() ?: return false
         _project.value = previous

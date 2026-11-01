@@ -20,6 +20,7 @@ import com.company.domain.model.editor.removeText
 import com.company.domain.model.editor.setClipSpeed
 import com.company.domain.model.editor.splitAt
 import com.company.domain.model.editor.transformText
+import com.company.domain.model.editor.workNameOf
 import com.company.domain.repository.DubbingRepository
 import com.company.domain.repository.EditorProjectRepository
 import com.company.domain.repository.EditorSettingsRepository
@@ -416,6 +417,9 @@ class EditorViewModel(
             }
             EditorIntent.Back -> leave()
             EditorIntent.SaveNow -> viewModelScope.launch { saveNow(duringGesture = true) }
+            EditorIntent.OpenRename -> openRename()
+            is EditorIntent.ConfirmRename -> confirmRename(intent.name)
+            EditorIntent.DismissRename -> reduce { copy(renaming = false) }
         }
     }
 
@@ -691,6 +695,28 @@ class EditorViewModel(
             settings.copy(favoriteTextStyles = if (added) listOf(style) + others else others)
         }
         toast(uiText(if (added) Res.string.toast_favorite_added else Res.string.toast_favorite_removed))
+    }
+
+    // =====================================================================
+    // Work name (D54, D55, D57, D59)
+    // =====================================================================
+
+    /** Opens the rename popup when no sheet and no popup show. The preview stops first. */
+    private fun openRename() {
+        val state = currentState
+        if (state.sheet != null || state.dialog != null || state.fullScreen != null || state.renaming) return
+        pause()
+        reduce { copy(renaming = true) }
+    }
+
+    /**
+     * Gives the work a new name. The auto-save saves it, and the work goes to the top of the lists (D44). The undo
+     * history keeps the new name.
+     */
+    private fun confirmRename(input: String) {
+        val name = workNameOf(input) ?: return
+        reduce { copy(renaming = false) }
+        if (name != currentState.project.name) projectRepository.rename(name)
     }
 
     private fun undo() {

@@ -23,6 +23,19 @@ fun nextWorkName(base: String, names: Collection<String>): String {
     return if (number == 1) base else "$base $number"
 }
 
+/** Most characters in a work name that the user types (D57). */
+const val MAX_WORK_NAME_LENGTH = 30
+
+/**
+ * Work name from the input of the rename popup (D57). A line break becomes a space, the spaces at the ends go away,
+ * and the name keeps at most [MAX_WORK_NAME_LENGTH] characters.
+ *
+ * @param input Text that the user typed.
+ * @return The name, or null when nothing is left.
+ */
+fun workNameOf(input: String): String? =
+    input.replace('\n', ' ').replace('\r', ' ').trim().take(MAX_WORK_NAME_LENGTH).trimEnd().ifEmpty { null }
+
 /** Number of an automatic work name: digits 0 to 9 without a leading zero, from 2 to [Int.MAX_VALUE]. Otherwise null. */
 private fun String.workNumber(): Int? {
     if (isEmpty() || startsWith('0') || any { it !in '0'..'9' }) return null

@@ -14,6 +14,8 @@
     <string name="pause">일시정지</string>
     <string name="fullscreen_open">전체 화면으로 보기</string>
     <string name="fullscreen_close">전체 화면 닫기</string>
+    <string name="rename_title">이름 바꾸기</string>
+    <string name="rename_input">작업 이름</string>
     <string name="all">전체</string>
     <string name="none">없음</string>
     <string name="save">저장</string>

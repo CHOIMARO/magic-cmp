@@ -1,8 +1,11 @@
 package com.company.domain.editor
 
+import com.company.domain.model.editor.MAX_WORK_NAME_LENGTH
 import com.company.domain.model.editor.nextWorkName
+import com.company.domain.model.editor.workNameOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /** Automatic names of new works (D53). */
 class WorkNamesTest {
@@ -28,6 +31,16 @@ class WorkNamesTest {
         // 예전 이름, 다른 글자가 붙은 이름, 0으로 시작하는 번호, 1번은 자동 이름이 아니다.
         val names = listOf("새 작업", "새 영상", "새 촬영 2", "새 작업 2개", "새 작업 02", "새 작업 1", "새 작업  2", "새 작업 ٣")
         assertEquals("새 작업 2", nextWorkName(base, names))
+    }
+
+    @Test
+    fun workNameOf_trimsTheInput_andRefusesAnEmptyName() {
+        assertEquals("바닷가 주말", workNameOf("  바닷가 주말  "))
+        // 붙여 넣은 줄바꿈은 띄어쓰기가 된다.
+        assertEquals("바닷가 주말", workNameOf("바닷가\n주말"))
+        assertNull(workNameOf("   "))
+        assertNull(workNameOf("\n"))
+        assertEquals(MAX_WORK_NAME_LENGTH, workNameOf("가".repeat(40))?.length)
     }
 
     @Test

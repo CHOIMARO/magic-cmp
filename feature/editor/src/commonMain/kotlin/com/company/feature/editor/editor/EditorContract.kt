@@ -368,6 +368,7 @@ data class TextSnapGuide(val vertical: Boolean = false, val horizontal: Boolean 
  *   when the user picks an animation.
  * @property clipboard Copied text or caption, or null.
  * @property dialog Open popup, or null.
+ * @property renaming True while the rename popup of the work shows (D54).
  * @property watermark True to show the "magic" watermark on the stage.
  * @property fullScreen Full-screen preview, or null when the editor shows.
  * @property favoriteTextStyles Text templates that the user marked as favorites, the newest first. The template lists
@@ -408,6 +409,7 @@ data class EditorState(
     val animationReplay: Int = 0,
     val clipboard: ElementClipboard? = null,
     val dialog: EditorDialog? = null,
+    val renaming: Boolean = false,
     val watermark: Boolean = false,
     val fullScreen: FullScreenState? = null,
     val favoriteTextStyles: List<TextStyleType> = emptyList(),
@@ -817,6 +819,21 @@ sealed class EditorIntent : Intent() {
 
     /** SaveNow : Saves the work at once. The screen sends it when the app goes to the background (D42). */
     data object SaveNow : EditorIntent()
+
+    /**
+     * OpenRename : Opens the rename popup of the work (D54). It opens only when no sheet and no popup show, and it
+     * stops the preview (D59).
+     */
+    data object OpenRename : EditorIntent()
+
+    /**
+     * ConfirmRename(name) : Gives the work the name that the user typed (D57). An empty name does nothing, and the
+     * same name changes nothing. The undo history keeps the new name (D55).
+     */
+    data class ConfirmRename(val name: String) : EditorIntent()
+
+    /** DismissRename : Closes the rename popup without a change. */
+    data object DismissRename : EditorIntent()
 }
 
 /** One-time events of the editor screen. */
