@@ -313,6 +313,21 @@ data class FullScreenState(
 )
 
 /**
+ * Center lines of the stage that the dragged text is on (v10). The stage shows each line while the text is on it.
+ *
+ * @property vertical True while the text center is on the vertical center line (x = 50 %).
+ * @property horizontal True while the text center is on the horizontal center line (y = 50 %).
+ */
+data class TextSnapGuide(val vertical: Boolean = false, val horizontal: Boolean = false) {
+    /**
+     * Tells if the text is on a line that it was not on before. A new line gives a short vibration.
+     *
+     * @param before Lines before the move.
+     */
+    fun hasNewLine(before: TextSnapGuide): Boolean = (vertical && !before.vertical) || (horizontal && !before.horizontal)
+}
+
+/**
  * State of the editor screen.
  *
  * @property project Project that the user edits.
@@ -337,6 +352,7 @@ data class FullScreenState(
  * @property captionFromPlayhead True when the caption sheet makes captions from the playhead. False makes them from
  *   the start of the video (0:00).
  * @property captionMoving True while the user drags a caption up or down on the stage. All captions move together.
+ * @property textSnapGuide Center lines that the dragged text is on, or null when no text drag runs.
  * @property musicTracks Music tracks that the user can pick.
  * @property musicDraft Music that the user tries in the music sheet, or null.
  * @property voices Voices for dubbings. The user's own voice is not in the list.
@@ -377,6 +393,7 @@ data class EditorState(
     val captionScript: String? = null,
     val captionFromPlayhead: Boolean = false,
     val captionMoving: Boolean = false,
+    val textSnapGuide: TextSnapGuide? = null,
     val musicTracks: List<MusicTrack> = emptyList(),
     val musicDraft: MusicDraft? = null,
     val voices: List<DubbingVoice> = emptyList(),
@@ -539,8 +556,14 @@ sealed class EditorIntent : Intent() {
     /** StartTextDrag : Keeps an undo step before the first text move. */
     data object StartTextDrag : EditorIntent()
 
-    /** MoveText(textId, x, y) : Moves a text overlay to a percent position. */
-    data class MoveText(val textId: String, val x: Double, val y: Double) : EditorIntent()
+    /**
+     * MoveText(textId, x, y, snapX, snapY) : Moves a text overlay to a percent position. A text center nearer than
+     * snapX or snapY percent to a center line of the stage snaps to that line.
+     */
+    data class MoveText(val textId: String, val x: Double, val y: Double, val snapX: Double, val snapY: Double) : EditorIntent()
+
+    /** EndTextDrag : Ends a text drag and hides the center lines. */
+    data object EndTextDrag : EditorIntent()
 
     /** StartTextTransform : Pauses the preview and keeps an undo step before the first change of a size and angle gesture. */
     data object StartTextTransform : EditorIntent()

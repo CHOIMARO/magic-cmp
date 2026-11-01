@@ -223,6 +223,12 @@ internal fun EditorStage(
             loopSlot?.let { SheetTransitionLoop(project = project, slot = it, modifier = Modifier.fillMaxSize()) }
         }
 
+        // 글자를 끄는 동안 붙은 가운데 축을 글자 아래에 선으로 보여 준다(v10).
+        state.textSnapGuide?.takeIf { !fullScreen && (it.vertical || it.horizontal) }?.let { guide ->
+            StageCenterGuide(guide = guide, modifier = Modifier.matchParentSize())
+        }
+        val snapDistance = with(screenDensity) { TextSnapDistance.toPx() }
+
         // 선택한 글자가 무대에 보이면, 무대 어디에서든 두 손가락으로 그 글자의 크기와 각도를 바꾼다.
         val transformTarget by rememberUpdatedState(
             project.texts.find { it.id == state.selectedTextId && it.isVisibleAt(state.time) }.takeUnless { fullScreen },
@@ -251,6 +257,7 @@ internal fun EditorStage(
                         selected = overlay.id == state.selectedTextId && !state.playing && draft == null && !fullScreen,
                         stageWidth = stageWidth,
                         stageHeight = stageHeight,
+                        snapDistance = snapDistance,
                         onIntent = onIntent,
                         interactive = overlay.id != DRAFT_TEXT_ID && !fullScreen,
                     )
@@ -345,6 +352,37 @@ private fun TrimEdgeFrame(uri: String, time: Double, modifier: Modifier) {
     )
 }
 
+/** Width of a center line of the stage. */
+private val CenterGuideWidth = 1.dp
+
+/** Width of the soft dark edge under a center line. It keeps the line visible on a light video. */
+private val CenterGuideEdgeWidth = 3.dp
+
+/** Color of the soft dark edge under a center line. */
+private val CenterGuideEdgeColor = Color.Black.copy(alpha = 0.25f)
+
+/**
+ * Center lines of the stage that the dragged text is on (v10). Each line goes across the full stage.
+ *
+ * @param guide Lines to show.
+ * @param modifier Modifier for the lines. Fill the stage with it.
+ */
+@Composable
+private fun StageCenterGuide(guide: TextSnapGuide, modifier: Modifier) {
+    Box(
+        modifier = modifier.drawBehind {
+            val width = size.width
+            val height = size.height
+            val lines = buildList {
+                if (guide.vertical) add(Offset(width / 2, 0f) to Offset(width / 2, height))
+                if (guide.horizontal) add(Offset(0f, height / 2) to Offset(width, height / 2))
+            }
+            lines.forEach { (start, end) -> drawLine(CenterGuideEdgeColor, start, end, strokeWidth = CenterGuideEdgeWidth.toPx()) }
+            lines.forEach { (start, end) -> drawLine(MagicColors.AccentSparkle, start, end, strokeWidth = CenterGuideWidth.toPx()) }
+        },
+    )
+}
+
 /** Space between the selected text and its frame. */
 private val SelectionFramePadding = 6.dp
 
@@ -369,6 +407,7 @@ private const val ROTATION_SNAP_DEGREES = 5f
  * @param selected True to show the selection frame, the delete button, and the handle.
  * @param stageWidth Width of the stage in pixels.
  * @param stageHeight Height of the stage in pixels.
+ * @param snapDistance Distance from a center line of the stage that snaps the dragged text to the line, in pixels.
  * @param onIntent Called with each user action.
  * @param interactive False for the text of a new draft. It does not take touches.
  */
@@ -379,6 +418,7 @@ private fun DraggableOverlay(
     selected: Boolean,
     stageWidth: Float,
     stageHeight: Float,
+    snapDistance: Float,
     onIntent: (EditorIntent) -> Unit,
     interactive: Boolean = true,
 ) {
@@ -410,12 +450,22 @@ private fun DraggableOverlay(
                             y = latest.y
                             onIntent(EditorIntent.StartTextDrag)
                         },
+                        onDragEnd = { onIntent(EditorIntent.EndTextDrag) },
+                        onDragCancel = { onIntent(EditorIntent.EndTextDrag) },
                         onDrag = { change, amount ->
                             change.consume()
                             val moved = amount.toStageDistance(latest)
                             x += moved.x / stageWidth * 100
                             y += moved.y / stageHeight * 100
-                            onIntent(EditorIntent.MoveText(overlay.id, x.coerceIn(12.0, 88.0), y.coerceIn(6.0, 94.0)))
+                            onIntent(
+                                EditorIntent.MoveText(
+                                    textId = overlay.id,
+                                    x = x.coerceIn(12.0, 88.0),
+                                    y = y.coerceIn(6.0, 94.0),
+                                    snapX = snapDistance / stageWidth * 100.0,
+                                    snapY = snapDistance / stageHeight * 100.0,
+                                ),
+                            )
                         },
                     )
                 }

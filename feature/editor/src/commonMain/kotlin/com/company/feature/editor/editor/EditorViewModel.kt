@@ -302,8 +302,10 @@ class EditorViewModel(
             EditorIntent.StartTextDrag -> {
                 pause()
                 projectRepository.saveCheckpoint()
+                reduce { copy(textSnapGuide = TextSnapGuide()) }
             }
-            is EditorIntent.MoveText -> projectRepository.update { it.moveText(intent.textId, intent.x, intent.y) }
+            is EditorIntent.MoveText -> moveText(intent)
+            EditorIntent.EndTextDrag -> if (currentState.textSnapGuide != null) reduce { copy(textSnapGuide = null) }
             EditorIntent.StartTextTransform -> {
                 pause()
                 projectRepository.saveCheckpoint()
@@ -715,6 +717,19 @@ class EditorViewModel(
         projectRepository.commit { it.removeText(textId) }
         reduce { copy(selectedTextId = null) }
         toast(uiText(Res.string.toast_deleted_undoable))
+    }
+
+    /**
+     * Moves a text during a stage drag. A text center near a center line of the stage snaps to the line, and the stage
+     * shows the line. The first snap to a line gives a short vibration (v10).
+     */
+    private fun moveText(intent: EditorIntent.MoveText) {
+        val guide = stageCenterGuide(intent.x, intent.y, intent.snapX, intent.snapY)
+        if (guide.hasNewLine(currentState.textSnapGuide ?: TextSnapGuide())) postSideEffect { EditorSideEffect.Snapped }
+        if (guide != currentState.textSnapGuide) reduce { copy(textSnapGuide = guide) }
+        val x = if (guide.vertical) STAGE_CENTER_PERCENT else intent.x
+        val y = if (guide.horizontal) STAGE_CENTER_PERCENT else intent.y
+        projectRepository.update { it.moveText(intent.textId, x, y) }
     }
 
     private fun removeTrackItem() {
