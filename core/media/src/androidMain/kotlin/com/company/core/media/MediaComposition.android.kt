@@ -51,6 +51,9 @@ private const val MIN_GAP_US = 1_000L
  *
  * After the last clip, a gap makes the video [duration] long. The gap is black and silent (F16).
  *
+ * The composition is SDR. An HDR video, for example an HLG video from the phone camera, is tone-mapped to SDR. Thus
+ * an HDR video and an Ultra HDR photo can be in one video, and the text overlays keep their colors.
+ *
  * @param clips Clips in play order. All clips must have a source file. The list can be empty.
  * @param duration Length of the video in seconds. It is at least the length of the clips.
  * @param frameWidth Width of the output frame in pixels.
@@ -104,6 +107,9 @@ fun buildMediaComposition(
         .build()
     return Composition.Builder(sequence)
         .setEffects(Effects(emptyList(), compositionEffects))
+        // HDR 그대로 합성하면 Ultra HDR 사진의 게인맵을 GPU에 올리다가 일부 기기(Adreno)에서 앱이 멈춘다.
+        // SDR로 합성하면 게인맵을 쓰지 않는다. OpenGL 톤 매핑은 API 29 이상에서 되고, 기기마다 결과가 고르다.
+        .setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
         .build()
 }
 
