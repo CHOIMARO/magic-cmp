@@ -9,6 +9,7 @@ import com.company.domain.model.editor.MY_VOICE_ID
 import com.company.domain.model.editor.MyVoiceStatus
 import com.company.domain.model.editor.compactTextLayers
 import com.company.domain.model.editor.duplicateClip
+import com.company.domain.model.editor.drawnFont
 import com.company.domain.model.editor.duplicateText
 import com.company.domain.model.editor.finishAudioMove
 import com.company.domain.model.editor.itemsOf
@@ -51,6 +52,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -189,6 +191,11 @@ class EditorViewModel(
                 reduce { copy(project = project, time = time.coerceIn(0.0, project.totalDuration)) }
             }
         }
+        // 썸네일 템플릿으로 시작한 글자처럼 기기에 없는 글꼴을 쓰는 글자가 있으면, 편집기를 열 때 한 번 내려받는다.
+        viewModelScope.launch {
+            val opened = projectRepository.project.first()
+            texts.downloadFonts(opened.texts.mapTo(mutableSetOf()) { it.drawnFont }, quiet = true)
+        }
         // 편집 내용이 바뀌면 잠시 뒤 자동으로 저장한다(F15). 연달아 바뀌면 마지막 변경 뒤에 한 번 저장한다.
         viewModelScope.launch { projectRepository.project.drop(1).collect { scheduleSave() } }
         viewModelScope.launch { projectRepository.canUndo.collect { reduce { copy(canUndo = it) } } }
@@ -316,13 +323,16 @@ class EditorViewModel(
 
             is EditorIntent.OpenTextEditor -> texts.openTextEditor(intent.textId)
             is EditorIntent.ChangeDraftText -> texts.changeText(intent.text, intent.selectionStart, intent.selectionEnd)
-            is EditorIntent.SelectTextTab -> reduce { copy(textDraft = textDraft?.copy(tab = intent.tab)) }
-            is EditorIntent.ChangeDraftStyle -> reduce { copy(textDraft = textDraft?.copy(style = intent.style)) }
+            is EditorIntent.SelectTextTab -> texts.selectTab(intent.tab)
+            is EditorIntent.ChangeDraftStyle -> texts.changeStyle(intent.style)
             is EditorIntent.ToggleFavoriteTextStyle -> toggleFavoriteTextStyle(intent.style)
             is EditorIntent.ChangeDraftFont -> texts.changeFont(intent.font)
+            // 크기 단계를 바꿔도 템플릿은 남는다 (D63).
             is EditorIntent.ChangeDraftSize -> reduce { copy(textDraft = textDraft?.copy(sizeStep = intent.step)) }
             is EditorIntent.DecorateDraft -> texts.decorate(intent.change)
-            is EditorIntent.PickCustomColor -> texts.pickCustomColor(intent.rgb)
+            is EditorIntent.OpenColorPicker -> texts.openColorPicker(intent.target)
+            is EditorIntent.ChangePickerColor -> texts.changePickerColor(intent.rgb)
+            EditorIntent.CloseColorPicker -> texts.closeColorPicker()
             EditorIntent.ResetDraftDecorations -> reduce { copy(textDraft = textDraft?.copy(decorations = emptyList())) }
             EditorIntent.SaveText -> texts.save()
             EditorIntent.DeleteText -> texts.delete()
@@ -795,6 +805,7 @@ class EditorViewModel(
             copy(
                 sheet = null,
                 textDraft = null,
+                colorPicker = null,
                 captionProgress = null,
                 captionScript = null,
                 musicDraft = null,

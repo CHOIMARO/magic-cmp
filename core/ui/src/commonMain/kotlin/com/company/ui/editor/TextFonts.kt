@@ -61,7 +61,7 @@ fun TextFontType.fontFamily(): FontFamily = when (this) {
     TextFontType.KUKDETOPOKKI -> FontFamily(Font(Res.font.kukdetopokki_bold))
     TextFontType.ESAMANRU -> FontFamily(Font(Res.font.esamanru_bold))
     TextFontType.OK_GUNG -> FontFamily(Font(Res.font.ok_gung))
-    TextFontType.GAEGU, TextFontType.DONGLE, TextFontType.GUGI, TextFontType.SONG_MYUNG -> downloadedFontFamily(this)
+    TextFontType.GAEGU, TextFontType.DONGLE, TextFontType.GUGI, TextFontType.SONG_MYUNG, TextFontType.DOKDO -> downloadedFontFamily(this)
 }
 
 /** True when the font can draw text now: it is in the app, or its files are on the device. */

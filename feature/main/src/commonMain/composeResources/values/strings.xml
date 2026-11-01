@@ -7,8 +7,7 @@
     <string name="show_all">%1$s 전체 보기</string>
     <string name="filter_all">전체</string>
     <string name="filter_layout">레이아웃</string>
-    <string name="filter_text">글자</string>
-    <string name="filter_caption">자막</string>
+    <string name="filter_thumbnail">썸네일</string>
     <string name="home_new_video">새 영상\n만들기</string>
     <string name="home_camera">촬영</string>
     <string name="home_recent">최근 작업</string>

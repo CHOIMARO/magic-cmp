@@ -1,5 +1,6 @@
 package com.company.data.editor
 
+import com.company.domain.model.editor.BackgroundShape
 import com.company.domain.model.editor.CaptionSegment
 import com.company.domain.model.editor.CaptionStyleType
 import com.company.domain.model.editor.Clip
@@ -104,17 +105,24 @@ internal data class ClipDto(
     val volume: Int = MAX_VOLUME,
 )
 
+/**
+ * One text overlay.
+ *
+ * @property style Name of the text template, or null for no template. A name that the app does not know any more
+ *   reads as no template. See [LegacyTemplateFonts].
+ */
 @Serializable
 internal data class TextDto(
     val id: String,
     val text: String,
     val start: Double,
     val length: Double,
-    val style: TextStyleType,
+    val style: String? = null,
     val x: Double,
     val y: Double,
     val layer: Int = 0,
     val font: TextFontType? = null,
+    val fontFromTemplate: Boolean = false,
     val scale: Double = 1.0,
     val rotation: Double = 0.0,
     val sizeStep: Int = DEFAULT_SIZE_STEP,
@@ -136,6 +144,8 @@ internal data class DecorationDto(
     val outline: Boolean = false,
     val shadow: Boolean = false,
     val background: Int? = null,
+    val backgroundShape: BackgroundShape = BackgroundShape.ROUNDED,
+    val backgroundBorder: Boolean = false,
 )
 
 @Serializable
@@ -235,21 +245,59 @@ private fun Clip.toDto() = ClipDto(id, name, sourceDuration, inPoint, outPoint, 
 
 private fun ClipDto.toDomain() = Clip(id, name, sourceDuration, inPoint, outPoint, speed, thumbnailHue, sourceUri, type, volume)
 
+/**
+ * Fonts of the thumbnail templates that v11 removed. A text with one of these templates reads as a text without a
+ * template, and it keeps the font of the template, as when a decoration removes a template (D61).
+ */
+private val LegacyTemplateFonts: Map<String, TextFontType> = mapOf(
+    "SHOUT" to TextFontType.STRONG_ARMY,
+    "FLAME" to TextFontType.OK_GUNG,
+    "SPARK" to TextFontType.KUKDETOPOKKI,
+    "DASH" to TextFontType.ESAMANRU,
+)
+
 private fun TextOverlay.toDto() = TextDto(
-    id, text, start, length, style, x, y, layer, font, scale, rotation, sizeStep, decorations.map { it.toDto() },
+    id, text, start, length, style?.name, x, y, layer, font, fontFromTemplate, scale, rotation, sizeStep, decorations.map { it.toDto() },
     entrance, entranceMillis, exit, exitMillis, loop,
 )
 
-private fun TextDto.toDomain() = TextOverlay(
-    id, text, start, length, style, x, y, layer, font, scale, rotation, sizeStep, decorations.map { it.toDomain() },
-    entrance, entranceMillis, exit, exitMillis, loop,
+private fun TextDto.toDomain(): TextOverlay {
+    val template = TextStyleType.entries.find { it.name == style }
+    val legacyFont = if (template == null) LegacyTemplateFonts[style] else null
+    return TextOverlay(
+        id = id,
+        text = text,
+        start = start,
+        length = length,
+        style = template,
+        x = x,
+        y = y,
+        layer = layer,
+        font = font ?: legacyFont,
+        fontFromTemplate = fontFromTemplate || (font == null && legacyFont != null),
+        scale = scale,
+        rotation = rotation,
+        sizeStep = sizeStep,
+        decorations = decorations.map { it.toDomain() },
+        entrance = entrance,
+        entranceMillis = entranceMillis,
+        exit = exit,
+        exitMillis = exitMillis,
+        loop = loop,
+    )
+}
+
+private fun DecorationRange.toDto() = DecorationRangeDto(
+    start,
+    end,
+    with(decoration) { DecorationDto(color, bold, outline, shadow, background, backgroundShape, backgroundBorder) },
 )
 
-private fun DecorationRange.toDto() =
-    DecorationRangeDto(start, end, DecorationDto(decoration.color, decoration.bold, decoration.outline, decoration.shadow, decoration.background))
-
-private fun DecorationRangeDto.toDomain() =
-    DecorationRange(start, end, Decoration(decoration.color, decoration.bold, decoration.outline, decoration.shadow, decoration.background))
+private fun DecorationRangeDto.toDomain() = DecorationRange(
+    start,
+    end,
+    with(decoration) { Decoration(color, bold, outline, shadow, background, backgroundShape, backgroundBorder) },
+)
 
 private fun CaptionSegment.toDto() = CaptionDto(id, text, start, length, decorations.map { it.toDto() }, clipId, sourceStart, sourceEnd)
 

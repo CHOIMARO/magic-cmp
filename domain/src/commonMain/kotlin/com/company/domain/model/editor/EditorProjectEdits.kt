@@ -169,15 +169,17 @@ fun EditorProject.addClips(newClips: List<Clip>): EditorProject = copy(clips = c
  * Look of a text overlay that the text sheet changes.
  *
  * @property text Text to show.
- * @property style Look of the text.
+ * @property style Text template, or null for no template.
  * @property font Font of the text, or null for the font of [style].
+ * @property fontFromTemplate True when [font] is the font of a template that a decoration removed (D61).
  * @property sizeStep Size step from 1 to 5.
  * @property decorations Decorations of character ranges in [text].
  */
 data class TextContent(
     val text: String,
-    val style: TextStyleType,
+    val style: TextStyleType? = null,
     val font: TextFontType? = null,
+    val fontFromTemplate: Boolean = false,
     val sizeStep: Int = DEFAULT_SIZE_STEP,
     val decorations: List<DecorationRange> = emptyList(),
 )
@@ -206,6 +208,7 @@ fun EditorProject.addText(content: TextContent, time: Double): Pair<EditorProjec
         y = 40.0,
         layer = texts.firstFreeLayer(start, start + length),
         font = content.font,
+        fontFromTemplate = content.fontFromTemplate,
         sizeStep = content.sizeStep.coerceIn(1, SIZE_STEP_COUNT),
         decorations = content.decorations,
     )
@@ -234,11 +237,11 @@ fun EditorProject.newTextTime(time: Double): Pair<Double, Double> {
  * Adds a text overlay at [time].
  *
  * @param text Text to show.
- * @param style Look of the text.
+ * @param style Text template, or null for no template.
  * @param time Current time on the timeline.
  * @param font Font of the text, or null for the font of [style].
  */
-fun EditorProject.addText(text: String, style: TextStyleType, time: Double, font: TextFontType? = null): EditorProject =
+fun EditorProject.addText(text: String, style: TextStyleType?, time: Double, font: TextFontType? = null): EditorProject =
     addText(TextContent(text = text, style = style, font = font), time).first
 
 /**
@@ -252,6 +255,7 @@ fun EditorProject.updateText(textId: String, content: TextContent): EditorProjec
         text = content.text,
         style = content.style,
         font = content.font,
+        fontFromTemplate = content.fontFromTemplate,
         sizeStep = content.sizeStep.coerceIn(1, SIZE_STEP_COUNT),
         decorations = content.decorations,
     )
@@ -262,11 +266,11 @@ fun EditorProject.updateText(textId: String, content: TextContent): EditorProjec
  *
  * @param textId ID of the overlay.
  * @param text New text.
- * @param style New look.
+ * @param style New text template, or null for no template.
  * @param font New font, or null for the font of [style].
  */
-fun EditorProject.updateText(textId: String, text: String, style: TextStyleType, font: TextFontType? = null): EditorProject =
-    mapText(textId) { it.copy(text = text, style = style, font = font) }
+fun EditorProject.updateText(textId: String, text: String, style: TextStyleType?, font: TextFontType? = null): EditorProject =
+    mapText(textId) { it.copy(text = text, style = style, font = font, fontFromTemplate = false) }
 
 /**
  * Changes the entrance, the exit, or the loop animation of a text overlay.
@@ -483,37 +487,28 @@ private fun normalizeDegrees(degrees: Double): Double = ((degrees + 180.0) % 360
 /**
  * Applies a template.
  *
+ * A thumbnail template adds a title text from 0 seconds for up to 3 seconds, at the horizontal center and at 40% of
+ * the height (D66). The other texts keep their styles.
+ *
  * @param template Template to apply.
- * @param defaultText Text of the new overlay when a text template finds no text.
- * @param fallbackCaptions Captions to use when a caption template finds no captions.
+ * @param defaultText Text of the title that a thumbnail template adds.
  */
-fun EditorProject.applyTemplate(
-    template: EditorTemplate,
-    defaultText: String,
-    fallbackCaptions: List<CaptionSegment>,
-): EditorProject = when (template) {
+fun EditorProject.applyTemplate(template: EditorTemplate, defaultText: String): EditorProject = when (template) {
     is EditorTemplate.Layout -> copy(layout = template.layout)
-    is EditorTemplate.Text -> copy(
-        texts = if (texts.isNotEmpty()) {
-            texts.map { it.copy(style = template.style) }
-        } else {
-            listOf(
-                TextOverlay(
-                    id = newEditorId(),
-                    text = defaultText,
-                    start = 0.0,
-                    length = newTextTime(0.0).second,
-                    style = template.style,
-                    x = 50.0,
-                    y = 26.0,
-                )
-            )
-        }
-    )
-    is EditorTemplate.Caption -> copy(
-        captionStyle = template.style,
-        captions = captions.ifEmpty { fallbackCaptions },
-    )
+    is EditorTemplate.Thumbnail -> {
+        val length = newTextTime(0.0).second
+        val title = TextOverlay(
+            id = newEditorId(),
+            text = defaultText,
+            start = 0.0,
+            length = length,
+            style = template.style,
+            x = 50.0,
+            y = 40.0,
+            layer = texts.firstFreeLayer(0.0, length),
+        )
+        copy(texts = texts + title)
+    }
 }
 
 private inline fun EditorProject.mapClip(clipId: String, transform: (Clip) -> Clip): EditorProject =

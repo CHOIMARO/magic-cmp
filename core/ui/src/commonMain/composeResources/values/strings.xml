@@ -5,7 +5,6 @@
 
     <!-- 새 글자의 기본 문구와 미리보기 샘플 -->
     <string name="default_title_text">오늘의 기록</string>
-    <string name="caption_sample">자막이 이렇게 나와요</string>
     <string name="layout_label_before">전</string>
     <string name="layout_label_after">후</string>
 
@@ -34,10 +33,14 @@
     <string name="text_style_neon">네온</string>
     <string name="text_style_marker">형광펜</string>
     <string name="text_style_minimal">미니멀</string>
-    <string name="text_style_shout">버럭</string>
-    <string name="text_style_flame">불꽃</string>
-    <string name="text_style_spark">반짝</string>
-    <string name="text_style_dash">질주</string>
+
+    <!-- 썸네일 템플릿 -->
+    <string name="text_style_thumb_fire">불꽃·핑크 입체</string>
+    <string name="text_style_thumb_bubble">옐로 버블</string>
+    <string name="text_style_thumb_hand">손글씨 풀스크린</string>
+    <string name="text_style_thumb_thin">얇은 고딕 미니멀</string>
+    <string name="text_style_thumb_bold">볼드 고딕 하이라이트</string>
+    <string name="text_style_thumb_pixel">픽셀 손글씨</string>
 
     <!-- 글꼴 -->
     <string name="font_pretendard">프리텐다드</string>
@@ -60,6 +63,7 @@
     <string name="font_dongle">동글</string>
     <string name="font_gugi">구기</string>
     <string name="font_song_myung">송명</string>
+    <string name="font_dokdo">독도</string>
 
     <!-- 글자 등장·퇴장 애니메이션 -->
     <string name="entrance_none">없음</string>
@@ -119,11 +123,8 @@
 
     <!-- 템플릿 시트·그리드 -->
     <string name="template_kind_layout">레이아웃 템플릿</string>
-    <string name="template_kind_text">글자 템플릿</string>
-    <string name="template_kind_caption">자막 템플릿</string>
+    <string name="template_kind_thumbnail">썸네일 템플릿</string>
     <string name="template_sub_layout">레이아웃 · %1$s</string>
-    <string name="template_sub_text">글자</string>
-    <string name="template_sub_caption">자막</string>
-    <string name="template_desc_text">제목이나 강조 문구에 쓰기 좋아요. 넣은 뒤 화면에서 끌어서 옮길 수 있어요.</string>
-    <string name="template_desc_caption">자동 자막이 이 스타일로 나와요. 말하는 영상에 잘 어울려요.</string>
+    <string name="template_sub_thumbnail">썸네일</string>
+    <string name="template_desc_thumbnail">첫 장면에 크게 넣는 제목 스타일이에요. 올릴 때 표지로 고르기 좋아요.</string>
 </resources>

@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
@@ -41,6 +42,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontSynthesis
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Density
@@ -48,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.theme.MagicColors
+import com.company.domain.model.editor.BackgroundShape
 import com.company.domain.model.editor.CaptionStyleType
 import com.company.domain.model.editor.DEFAULT_SIZE_STEP
 import com.company.domain.model.editor.Decoration
@@ -104,6 +107,41 @@ data class LookFill(val stops: List<Pair<Float, Color>>, val edge: LookEdge? = n
 @Immutable
 data class LookGlow(val color: Color, val blurEm: Float)
 
+/** Shape of a [LookSticker]. */
+enum class StickerShape {
+    /** STAR : A star with five points, a fill, and an outline. */
+    STAR,
+
+    /** SPARK : A thin star with four points and a fill. */
+    SPARK,
+}
+
+/**
+ * Small shape next to the letters of a thumbnail look. It moves and grows with the text box.
+ *
+ * The sizes are parts of the font size, so the sticker grows with the size step.
+ *
+ * @property shape Shape of the sticker.
+ * @property anchorX Horizontal anchor, as a part of the text box width. 0 is the left edge, and 1 is the right edge.
+ * @property offsetXEm Horizontal distance from the anchor.
+ * @property offsetYEm Vertical distance from the middle of the text box. A positive value is lower.
+ * @property sizeEm Width and height of the sticker.
+ * @property fill Fill color.
+ * @property stroke Outline color, or null for no outline.
+ * @property strokeRatio Width of the outline, as a part of the sticker size.
+ */
+@Immutable
+data class LookSticker(
+    val shape: StickerShape,
+    val anchorX: Float,
+    val offsetXEm: Float,
+    val offsetYEm: Float,
+    val sizeEm: Float,
+    val fill: Color,
+    val stroke: Color? = null,
+    val strokeRatio: Float = 0f,
+)
+
 /**
  * Visual style of overlay text or caption text.
  *
@@ -141,6 +179,9 @@ data class LookGlow(val color: Color, val blurEm: Float)
  * @property fill Gradient of the letters, or null for [color].
  * @property firstWordFill Gradient of the first word, or null for [fill].
  * @property skewX Slant of the letters. A negative value moves the tops of the letters to the right.
+ * @property scaleY Vertical stretch of the text box. 1 keeps the letters as they are.
+ * @property stickers Small shapes next to the letters. They draw behind the letters.
+ * @property lastWordColor Color of the last word of a text with two or more words, or null for [color].
  */
 @Immutable
 data class TextLook(
@@ -175,6 +216,9 @@ data class TextLook(
     val fill: LookFill? = null,
     val firstWordFill: LookFill? = null,
     val skewX: Float = 0f,
+    val scaleY: Float = 1f,
+    val stickers: List<LookSticker> = emptyList(),
+    val lastWordColor: Color? = null,
 ) {
     /** Copy with the sizes multiplied by [scale]. Previews use it. */
     internal fun scaled(scale: Float): TextLook = if (scale == 1f) this else copy(
@@ -195,26 +239,29 @@ private val MarkerYellow = Color(0xFFFDDC5B)
 private val PopYellow = Color(0xFFFBD35F)
 private val ImpactYellow = Color(0xFFFFE14D)
 
-// Thumbnail looks. The colors, the outline widths, and the 3D shadows come from pixels of a reference thumbnail.
-private val ShoutRed = Color(0xFFF83C23)
-private val FlameFill = LookFill(
-    stops = listOf(0f to Color(0xFFF31A3A), 0.5f to Color(0xFFF74A3D), 1f to Color(0xFFF98A4A)),
-    edge = LookEdge(Color(0xD9FFB49A), widthEm = 0.024f, bottomOnly = true),
+/** Font size of a text without a template: 80 px on the 1080 canvas (D60). */
+private const val PLAIN_FONT_SIZE = 80 * DP_PER_SPEC_PX
+
+// Thumbnail looks (D64). Each one is the largest line of a thumbnail in the design. The design gives the sizes in
+// pixels of the 1080 canvas: the font size, the outline width (half of it shows outside the letters), and the shadows.
+
+/** Stars of the yellow bubble look. They sit outside the left and the right edges of the text. */
+private val BubbleStars = listOf(
+    LookSticker(StickerShape.STAR, anchorX = 0f, offsetXEm = -0.42f, offsetYEm = 0.06f, sizeEm = 0.44f, fill = Color(0xFFFFE45C), stroke = Color(0xFF2E2A3A), strokeRatio = 0.05f),
+    LookSticker(StickerShape.STAR, anchorX = 1f, offsetXEm = 0.3f, offsetYEm = -0.17f, sizeEm = 0.29f, fill = Color(0xFFFFE45C), stroke = Color(0xFF2E2A3A), strokeRatio = 0.05f),
 )
-private val SparkWhite = LookFill(
-    stops = listOf(0f to Color(0xFFFDFBF8), 1f to Color(0xFFFCF6F2)),
-    edge = LookEdge(Color(0x80F6D0CC), widthEm = 0.018f),
+
+/** Sparkles of the pixel handwriting look. They sit on the top and the right part of the text. */
+private val PixelSparks = listOf(
+    LookSticker(StickerShape.SPARK, anchorX = 0.67f, offsetXEm = 0f, offsetYEm = -0.47f, sizeEm = 0.27f, fill = Color(0xFFFFF3A0)),
+    LookSticker(StickerShape.SPARK, anchorX = 0.97f, offsetXEm = 0f, offsetYEm = 0.14f, sizeEm = 0.23f, fill = Color(0xFFFFF3A0)),
 )
-private val SparkYellow = LookFill(
-    stops = listOf(0f to Color(0xFFFFF368), 0.8f to Color(0xFFFEF168), 1f to Color(0xFFFEE671)),
-    edge = LookEdge(Color(0x99F2B65A), widthEm = 0.018f),
-)
-private val DashPeach = LookFill(
-    stops = listOf(0f to Color(0xFFFFFFFF), 0.3f to Color(0xFFFDFAF6), 0.55f to Color(0xFFFEE6C0), 1f to Color(0xFFFDDAB3)),
-)
-private val DashYellow = LookFill(
-    stops = listOf(0f to Color(0xFFFBDF42), 0.3f to Color(0xFFFCDD3B), 0.55f to Color(0xFFFCCB2F), 1f to Color(0xFFFBC02C)),
-)
+
+/** Animation of a thumbnail look: no entrance, so the title shows from the first frame. */
+private val ThumbnailAnimation = TextAnimation(TextEntrance.NONE, entranceMillis = 0, exitMillis = TITLE_EXIT_MILLIS)
+
+/** Animation of a text without a template: no entrance, and a fade exit (D60). */
+private val PlainAnimation = TextAnimation(TextEntrance.NONE, entranceMillis = 0, exitMillis = TITLE_EXIT_MILLIS)
 
 /** Most steps of a 3D shadow. One step is about one pixel. */
 private const val MAX_EXTRUDE_STEPS = 24
@@ -239,16 +286,17 @@ internal fun List<DecorationRange>.widthFactor(): Float =
     1f + (if (any { it.decoration.bold }) BOLD_EXTRA_WIDTH else 0f) + (if (any { it.decoration.outline }) OUTLINE_EXTRA_WIDTH else 0f)
 
 /**
- * Look of a text overlay.
+ * Look of a text overlay with a template, or without a template when the receiver is null.
  *
- * The entrance, the exit, and the line rules come from the "Magic Text Templates" spec.
+ * The entrance, the exit, and the line rules come from the "Magic Text Templates" spec. A text without a template is
+ * white Pretendard at 80 px on the 1080 canvas, with no shadow, no entrance, and a fade exit of 200 ms (D60).
  *
  * @param scale Size factor. 1 is the editor stage. Previews use smaller values.
- * @param font Font that replaces the font of the style, or null to keep the font of the style.
- * @param sizeStep Size step from 1 to 5. It multiplies the font size of the style.
+ * @param font Font that replaces the font of the template, or null to keep the font of the template.
+ * @param sizeStep Size step from 1 to 5. It multiplies the font size of the template.
  * @param decorations Decorations of the text. Bold and outline decorations change the line breaks.
  */
-fun TextStyleType.look(
+fun TextStyleType?.look(
     scale: Float = 1f,
     font: TextFontType? = null,
     sizeStep: Int = DEFAULT_SIZE_STEP,
@@ -257,10 +305,14 @@ fun TextStyleType.look(
     val base = TextLook(
         fontSize = 24f,
         fontWeight = FontWeight.ExtraBold,
+        font = this?.font ?: TextFontType.PRETENDARD,
         shadows = listOf(DefaultTextShadow),
         animation = TextAnimation(TextEntrance.POP, entranceMillis = 350, exitMillis = TITLE_EXIT_MILLIS),
     )
+    // 썸네일은 큰 제목이라 그림자와 등장 애니메이션 없이 시작한다. 크기와 두께는 1080 캨버스 px를 무대 dp로 바꾼 값이다.
+    val thumbnail = base.copy(fontWeight = FontWeight.Normal, shadows = emptyList(), animation = ThumbnailAnimation)
     val look = when (this) {
+        null -> base.copy(fontSize = PLAIN_FONT_SIZE, shadows = emptyList(), animation = PlainAnimation)
         TextStyleType.NEON -> base.copy(
             color = NeonText,
             shadows = listOf(LookShadow(NeonGlowNear, 0f, 6f), LookShadow(NeonGlowFar, 0f, 16f)),
@@ -272,7 +324,7 @@ fun TextStyleType.look(
             animation = TextAnimation(TextEntrance.MARKER_SWEEP, entranceMillis = 550, exitMillis = TITLE_EXIT_MILLIS),
         )
         TextStyleType.IMPACT -> base.copy(
-            font = TextFontType.BLACK_HAN_SANS, fontSize = 30f, color = ImpactYellow,
+            fontSize = 30f, color = ImpactYellow,
             outline = true, outlineWidth = 3.7f, shadows = listOf(LookShadow(Color.Black, offsetY = 2.5f, blur = 0f)),
             rotation = -4f,
             animation = TextAnimation(TextEntrance.STAMP, entranceMillis = 380, exitMillis = TITLE_EXIT_MILLIS),
@@ -283,29 +335,41 @@ fun TextStyleType.look(
             textAlign = TextAlign.Start, boxWidthRatio = 0.7f,
             animation = TextAnimation(TextEntrance.FADE_UP, entranceMillis = 700, exitMillis = TITLE_EXIT_MILLIS),
         )
-        TextStyleType.SHOUT -> base.copy(
-            font = TextFontType.STRONG_ARMY, fontSize = 30f, color = ShoutRed, shadows = emptyList(),
-            outline = true, outlineEm = 0.021f, outlineColor = Color(0xFF3D0D0D),
-            extrude = Offset(0.035f, 0.035f), extrudeColor = Color(0xFF170E18),
+        // '서울' 줄: 168px, 흰 테두리 16px, 딱딱한 그림자 10·12px.
+        TextStyleType.THUMB_FIRE -> thumbnail.copy(
+            fontSize = 168 * DP_PER_SPEC_PX, color = Color(0xFFF5A8C8),
+            outline = true, outlineEm = 8f / 168, outlineColor = Color.White,
+            extrude = Offset(10f / 168, 12f / 168), extrudeColor = Color(0xFF5B4250),
         )
-        TextStyleType.FLAME -> base.copy(
-            font = TextFontType.OK_GUNG, fontSize = 28f, color = Color(0xFFF74A3D), fill = FlameFill, shadows = emptyList(),
-            outline = true, outlineEm = 0.021f, outlineColor = Color(0xFF3D0C08),
-            extrude = Offset(0.034f, 0.026f), extrudeColor = Color(0xFF230E0E),
-            glow = LookGlow(Color(0x59D8304A), blurEm = 0.05f),
+        // '월 260' 줄: 220px, 어두운 테두리 12px, 흰 빛, 별 두 개.
+        TextStyleType.THUMB_BUBBLE -> thumbnail.copy(
+            fontSize = 220 * DP_PER_SPEC_PX, color = Color(0xFFFFF27A),
+            outline = true, outlineEm = 6f / 220, outlineColor = Color(0xFF2E2A3A),
+            glow = LookGlow(Color.White, blurEm = 0.03f), boxWidthRatio = 1.075f, stickers = BubbleStars,
         )
-        TextStyleType.SPARK -> base.copy(
-            font = TextFontType.KUKDETOPOKKI, fontSize = 27f, color = Color(0xFFFEF268), fill = SparkYellow, firstWordFill = SparkWhite,
-            shadows = emptyList(), outline = true, outlineEm = 0.035f, outlineColor = Color(0xFF3D1707),
-            extrude = Offset(0.026f, 0.026f), extrudeColor = Color(0xFF29110B),
-            glow = LookGlow(Color(0x99F07E5E), blurEm = 0.1f),
+        // '배운 것' 줄: 310px, 검은 테두리 16px, 자간 4px, 3도 회전, 세로 1.5배.
+        TextStyleType.THUMB_HAND -> thumbnail.copy(
+            fontSize = 310 * DP_PER_SPEC_PX, color = Color(0xFFFFF24D),
+            outline = true, outlineEm = 8f / 310, outlineColor = Color(0xFF111111),
+            letterSpacingEm = 4f / 310, rotation = 3f, scaleY = 1.5f, boxWidthRatio = 1.011f,
         )
-        TextStyleType.DASH -> base.copy(
-            font = TextFontType.ESAMANRU, fontSize = 27f, color = Color(0xFFFCCB2F), fill = DashYellow,
-            firstWordFill = DashPeach, shadows = emptyList(), outline = true, outlineEm = 0.036f,
-            outlineColor = Color(0xFF343F8E), extrude = Offset(-0.005f, 0.069f), extrudeColor = Color(0xFF223FA6),
-            // 기울인 글자의 윗부분이 글자 상자 밖으로 나가지 않게 좌우를 조금 띄운다.
-            skewX = -0.15f, paddingHorizontal = 3f,
+        // '(청약 4번 당첨된 방법)' 줄: 108px, 굵기 300, 자간 -5px, 아래 1·흐림 8 그림자.
+        TextStyleType.THUMB_THIN -> thumbnail.copy(
+            fontSize = 108 * DP_PER_SPEC_PX, fontWeight = FontWeight.Light, letterSpacingEm = -5f / 108,
+            shadows = listOf(LookShadow(Color.Black.copy(alpha = 0.25f), offsetY = 1 * DP_PER_SPEC_PX, blur = 8 * DP_PER_SPEC_PX)),
+            boxWidthRatio = 1.305f,
+        )
+        // '일주일에 3번' 줄: 118px, 어두운 테두리 8px, 아래 4·흐림 12 그림자, 끝 단어 노랑.
+        TextStyleType.THUMB_BOLD -> thumbnail.copy(
+            fontSize = 118 * DP_PER_SPEC_PX,
+            outline = true, outlineEm = 4f / 118, outlineColor = Color(0xFF262626),
+            shadows = listOf(LookShadow(Color.Black.copy(alpha = 0.35f), offsetY = 4 * DP_PER_SPEC_PX, blur = 12 * DP_PER_SPEC_PX)),
+            lastWordColor = Color(0xFFFFF09C),
+        )
+        // '멋있다고 느끼는' 줄: 96px, 굵기 700, 남색 테두리 7px, 반짝이 두 개.
+        TextStyleType.THUMB_PIXEL -> thumbnail.copy(
+            fontSize = 96 * DP_PER_SPEC_PX, fontWeight = FontWeight.Bold, color = Color(0xFFFFF6C4),
+            outline = true, outlineEm = 3.5f / 96, outlineColor = Color(0xFF1F2A48), stickers = PixelSparks,
         )
     }
     val stepFactor = SizeStepFactors[sizeStep.coerceIn(1, SizeStepFactors.size) - 1]
@@ -380,8 +444,20 @@ private const val DECORATION_BACKGROUND_PADDING_V = 2.45f
 /** Horizontal padding of a decoration background, in dp at font scale 1. */
 private const val DECORATION_BACKGROUND_PADDING_H = 6.85f
 
-/** Corner radius of a decoration background, in dp at font scale 1. */
+/** Corner radius of a rounded decoration background, in dp at font scale 1. It is 14 px on the 1080 canvas. */
 private const val DECORATION_BACKGROUND_RADIUS = 3.4f
+
+/** Width of the box border of a decoration background: 6 px on the 1080 canvas (D62). */
+private const val DECORATION_BORDER_WIDTH = 6 * DP_PER_SPEC_PX
+
+/** Free space between the background boxes of two lines, in dp. */
+private const val DECORATION_LINE_GAP = 2.4f
+
+/** Line height of the text, as a part of the font size. */
+private const val LINE_HEIGHT_EM = 1.25f
+
+/** Height of a background box without its padding, as a part of the font size. */
+private const val DECORATION_BOX_HEIGHT_EM = 1.1f
 
 /**
  * Text color on a decoration background. It is white or black, whichever has the higher contrast ratio (WCAG).
@@ -498,6 +574,10 @@ private fun LookText(
     val drawn = remember(text, decorations, look) { drawnText(text, decorations, look) }
     val fit = drawn.fontScale
     val fontSizePx = with(density) { (look.fontSize * fit).sp.toPx() }
+    // 배경 박스가 있으면 줄 사이를 벌려 줄마다 박스가 따로 깔리게 한다. 글자는 줄 가운데에 둔다.
+    val boxes = drawn.lines.any { line -> line.any { it.decoration?.background != null } }
+    val borders = boxes && drawn.lines.any { line -> line.any { it.decoration?.background != null && it.decoration.backgroundBorder } }
+    val lineGap = DECORATION_BACKGROUND_PADDING_V * fit + (if (borders) DECORATION_BORDER_WIDTH else 0f) + DECORATION_LINE_GAP / 2
     val style = TextStyle(
         color = look.color,
         fontSize = (look.fontSize * fit).sp,
@@ -506,9 +586,14 @@ private fun LookText(
         // 파일에 없는 굵기를 흉내 내지 않는다. 굵기가 하나뿐인 글꼴은 그 굵기로 그린다.
         fontSynthesis = FontSynthesis.None,
         letterSpacing = look.letterSpacingEm.em,
-        lineHeight = 1.25.em,
+        lineHeight = if (boxes) (LINE_HEIGHT_EM + lineGap * 2 / (look.fontSize * fit)).em else LINE_HEIGHT_EM.em,
+        lineHeightStyle = if (boxes) LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None) else null,
         textAlign = look.textAlign,
     )
+    // 마지막 단어 강조는 단어가 두 개 이상일 때만 준다.
+    val lastWord = drawn.lines.maxOfOrNull { line -> line.maxOfOrNull { it.word } ?: -1 } ?: -1
+    val lastWordColor = look.lastWordColor?.takeIf { lastWord >= 1 }
+    val colorOfWord: (Int) -> Color? = { index -> wordColor(index) ?: lastWordColor?.takeIf { index == lastWord } }
     val outlineStrokePx = if (look.outlineEm > 0f) look.outlineEm * fontSizePx * 2 else with(density) { (look.outlineWidth * fit).dp.toPx() }
     // 불꽃 반복은 스타일의 그림자를 위로 번지는 주황빛 그림자로 바꾼다.
     val shadows = if (frame.loop == TextLoop.FIRE) fireShadows(frame.loopTime, look.fontSize * fit) else look.shadows
@@ -533,10 +618,10 @@ private fun LookText(
                         TextLayer.STYLE_OUTLINE -> if (onBackground) SpanStyle(color = Color.Transparent) else null
                         TextLayer.DECORATION_OUTLINE -> SpanStyle(color = if (decoration?.outline == true) Color.Black else Color.Transparent)
                         TextLayer.FALSE_BOLD -> SpanStyle(
-                            color = if (decoration?.bold == true && boldWeight == null) mainColor(char, decoration, look, wordColor) else Color.Transparent,
+                            color = if (decoration?.bold == true && boldWeight == null) mainColor(char, decoration, look, colorOfWord) else Color.Transparent,
                         )
                         TextLayer.MAIN -> SpanStyle(
-                            color = mainColor(char, decoration, look, wordColor),
+                            color = mainColor(char, decoration, look, colorOfWord),
                             fontWeight = if (decoration?.bold == true && boldWeight != null) boldWeight else null,
                             shadow = if (onBackground) Shadow.None else null,
                         )
@@ -573,7 +658,7 @@ private fun LookText(
                 val shake = if (frame.loop == TextLoop.SHAKE) shakeAt(frame.loopTime, fontSizePx) else ShakeOffset.None
                 alpha = frame.alpha
                 scaleX = frame.scale
-                scaleY = frame.scale
+                scaleY = frame.scale * look.scaleY
                 translationX = shake.x
                 translationY = frame.offsetY.dp.toPx() + shake.y
                 rotationZ = look.rotation + shake.rotation
@@ -588,6 +673,7 @@ private fun LookText(
                 }
                 // 기울임은 그리기 단계에서 준다. iOS(Skia)의 글자 배치는 TextGeometricTransform을 그리지 않는다.
                 withTransform({ if (look.skewX != 0f) transform(skewMatrix(look.skewX, size.height / 2)) }) {
+                    drawStickers(look.stickers, fontSizePx)
                     if (frame.textReveal >= 1f) {
                         drawLookBackground(background, cornerRadius.toPx(), frame.backgroundReveal)
                         this@drawWithContent.drawPieces(pieces)
@@ -612,7 +698,7 @@ private fun LookText(
             Box(
                 modifier = Modifier.matchParentSize().drawBehind {
                     val layout = mainLayout ?: return@drawBehind
-                    drawDecorationBackgrounds(drawn, layout, fit)
+                    drawDecorationBackgrounds(drawn, layout, fit, fontSizePx)
                 },
             )
         }
@@ -933,37 +1019,105 @@ private fun mainColor(char: DrawnChar, decoration: Decoration?, look: TextLook, 
 }
 
 /**
- * Draws the backgrounds of the background decorations. Neighbor letters with the same background share one box,
- * and each line has its own boxes.
+ * Background box of a decoration: the parts that decide if two neighbor letters share one box.
+ *
+ * @property color Background color as 0xRRGGBB.
+ * @property shape Shape of the box.
+ * @property border True to draw the box border.
  */
-private fun DrawScope.drawDecorationBackgrounds(drawn: DrawnText, layout: TextLayoutResult, fit: Float) {
+private data class DecorationBox(val color: Int, val shape: BackgroundShape, val border: Boolean)
+
+/** Background box of the decoration, or null when it has no background. */
+private val Decoration?.box: DecorationBox?
+    get() = this?.background?.let { DecorationBox(it, backgroundShape, backgroundBorder) }
+
+/**
+ * Draws the backgrounds of the background decorations. Neighbor letters with the same background, shape, and border
+ * share one box, and each line has its own boxes. A box border is a line on the inner edge of the box, in the
+ * automatic text color (D62).
+ *
+ * @param drawn Text after the line breaks.
+ * @param layout Layout of the letters.
+ * @param fit Size factor of the text from the overflow rule.
+ * @param fontSizePx Font size in pixels.
+ */
+private fun DrawScope.drawDecorationBackgrounds(drawn: DrawnText, layout: TextLayoutResult, fit: Float, fontSizePx: Float) {
     val paddingV = (DECORATION_BACKGROUND_PADDING_V * fit).dp.toPx()
     val paddingH = (DECORATION_BACKGROUND_PADDING_H * fit).dp.toPx()
-    val radius = CornerRadius((DECORATION_BACKGROUND_RADIUS * fit).dp.toPx())
+    val rounded = CornerRadius((DECORATION_BACKGROUND_RADIUS * fit).dp.toPx())
+    val borderWidth = DECORATION_BORDER_WIDTH.dp.toPx()
+    val halfHeight = fontSizePx * DECORATION_BOX_HEIGHT_EM / 2
     var offset = 0
     drawn.lines.forEachIndexed { lineIndex, line ->
         if (lineIndex > 0) offset++
         val lineNumber = layout.getLineForOffset(offset.coerceAtMost(maxOf(0, layout.layoutInput.text.length - 1)))
-        val top = layout.getLineTop(lineNumber)
-        val bottom = layout.getLineBottom(lineNumber)
+        val middle = (layout.getLineTop(lineNumber) + layout.getLineBottom(lineNumber)) / 2
         var runStart = -1
         line.forEachIndexed { index, char ->
-            val background = char.decoration?.background
-            val next = line.getOrNull(index + 1)?.decoration?.background
-            if (background != null && runStart < 0) runStart = index
-            if (background != null && next != background) {
-                val left = layout.getBoundingBox(offset + runStart).left
-                val right = layout.getBoundingBox(offset + index).right
-                drawRoundRect(
-                    color = rgbColor(background),
-                    topLeft = Offset(left - paddingH, top - paddingV + (bottom - top) * 0.06f),
-                    size = Size(right - left + paddingH * 2, (bottom - top) * 0.88f + paddingV * 2),
-                    cornerRadius = radius,
+            val box = char.decoration.box
+            if (box != null && runStart < 0) runStart = index
+            if (box != null && line.getOrNull(index + 1)?.decoration.box != box) {
+                // 테두리는 여백 바깥에 더해서, 테두리를 켜도 글자와 테두리 사이 여백이 줄지 않는다.
+                val edge = if (box.border) borderWidth else 0f
+                val rect = Rect(
+                    left = layout.getBoundingBox(offset + runStart).left - paddingH - edge,
+                    top = middle - halfHeight - paddingV - edge,
+                    right = layout.getBoundingBox(offset + index).right + paddingH + edge,
+                    bottom = middle + halfHeight + paddingV + edge,
                 )
+                val radius = if (box.shape == BackgroundShape.SQUARE) CornerRadius.Zero else rounded
+                drawRoundRect(color = rgbColor(box.color), topLeft = rect.topLeft, size = rect.size, cornerRadius = radius)
+                if (box.border) {
+                    val inset = borderWidth / 2
+                    drawRoundRect(
+                        color = autoTextColor(box.color),
+                        topLeft = Offset(rect.left + inset, rect.top + inset),
+                        size = Size(rect.width - borderWidth, rect.height - borderWidth),
+                        cornerRadius = CornerRadius((radius.x - inset).coerceAtLeast(0f)),
+                        style = Stroke(width = borderWidth),
+                    )
+                }
                 runStart = -1
             }
         }
         offset += line.size
+    }
+}
+
+/** Points of the five-point star in a 100 × 100 box, from the design. */
+private val StarPoints = floatArrayOf(50f, 6f, 61f, 38f, 96f, 38f, 68f, 59f, 79f, 93f, 50f, 72f, 21f, 93f, 32f, 59f, 4f, 38f, 39f, 38f)
+
+/** Points of the four-point sparkle in a 20 × 20 box, from the design. */
+private val SparkPoints = floatArrayOf(10f, 0f, 12f, 8f, 20f, 10f, 12f, 12f, 10f, 20f, 8f, 12f, 0f, 10f, 8f, 8f)
+
+/**
+ * Draws the stickers of a look in the text box.
+ *
+ * @param stickers Stickers to draw.
+ * @param fontSizePx Font size in pixels. The sticker sizes and places are parts of it.
+ */
+private fun DrawScope.drawStickers(stickers: List<LookSticker>, fontSizePx: Float) {
+    stickers.forEach { sticker ->
+        val stickerSize = sticker.sizeEm * fontSizePx
+        val center = Offset(
+            x = size.width * sticker.anchorX + sticker.offsetXEm * fontSizePx,
+            y = size.height / 2 + sticker.offsetYEm * fontSizePx,
+        )
+        val (points, box) = when (sticker.shape) {
+            StickerShape.STAR -> StarPoints to 100f
+            StickerShape.SPARK -> SparkPoints to 20f
+        }
+        val unit = stickerSize / box
+        val path = Path().apply {
+            for (i in points.indices step 2) {
+                val x = center.x + (points[i] - box / 2) * unit
+                val y = center.y + (points[i + 1] - box / 2) * unit
+                if (i == 0) moveTo(x, y) else lineTo(x, y)
+            }
+            close()
+        }
+        drawPath(path, sticker.fill)
+        sticker.stroke?.let { drawPath(path, it, style = Stroke(width = stickerSize * sticker.strokeRatio, join = StrokeJoin.Round)) }
     }
 }
 
@@ -1046,7 +1200,7 @@ internal val TextFontType.boldWeight: FontWeight?
         TextFontType.NANUM_PEN, TextFontType.BLACK_HAN_SANS, TextFontType.DO_HYEON, TextFontType.JUA,
         TextFontType.GUGI, TextFontType.SONG_MYUNG, TextFontType.KKUBULIM, TextFontType.MYOEUN_HEULLIM,
         TextFontType.GELLYROLL, TextFontType.MONA12, TextFontType.OK_DANDAN, TextFontType.STRONG_ARMY,
-        TextFontType.KUKDETOPOKKI, TextFontType.ESAMANRU, TextFontType.OK_GUNG -> null
+        TextFontType.KUKDETOPOKKI, TextFontType.ESAMANRU, TextFontType.OK_GUNG, TextFontType.DOKDO -> null
     }
 
 /**
@@ -1073,6 +1227,8 @@ internal val TextFontType.letterBoundsEm: Pair<Float, Float>
         TextFontType.DONGLE -> 0.52f to 0.39f
         TextFontType.GUGI -> 0.83f to 0.08f
         TextFontType.SONG_MYUNG -> 0.80f to 0.07f
+        // 독도는 재지 않았다. 그라데이션을 쓰는 템플릿이 없어서 비슷한 손글씨 글꼴 값을 쓴다.
+        TextFontType.DOKDO -> 0.76f to 0.16f
     }
 
 /** Splits a text into words at spaces. */

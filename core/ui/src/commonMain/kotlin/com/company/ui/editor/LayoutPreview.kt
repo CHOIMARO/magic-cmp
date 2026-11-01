@@ -9,12 +9,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -29,7 +27,6 @@ import com.company.core.designsystem.component.StripeBox
 import com.company.domain.model.editor.EditorTemplate
 import com.company.domain.model.editor.LayoutType
 import com.company.ui.resources.Res
-import com.company.ui.resources.caption_sample
 import com.company.ui.resources.default_title_text
 import com.company.ui.resources.layout_label_after
 import com.company.ui.resources.layout_label_before
@@ -171,21 +168,17 @@ fun LayoutCells(
 /** Hues of the sample cells in a layout preview. */
 private val LayoutPreviewHues = listOf(35, 200, 150)
 
-/** Hue of the sample cell in a text preview. */
+/** Hue of the sample cell in a thumbnail preview. */
 private const val TEXT_PREVIEW_HUE = 250
 
-/** Hue of the sample cell in a caption preview. */
-private const val CAPTION_PREVIEW_HUE = 160
-
 /**
- * Small 9:16 preview of a template, as in the home and template tabs.
+ * Small 9:16 preview of a template, as in the template tab.
  *
  * @param template Template to preview.
  * @param scale Size factor for text and labels.
  * @param modifier Modifier for the preview. Give it a size or an aspect ratio.
- * @param showSample True to show the sample title or caption.
+ * @param showSample True to show the sample title of a thumbnail template.
  * @param labelPadding Horizontal and vertical padding of the layout labels.
- * @param captionRadius Corner radius of the sample caption.
  */
 @Composable
 fun TemplatePreview(
@@ -194,13 +187,11 @@ fun TemplatePreview(
     modifier: Modifier = Modifier,
     showSample: Boolean = true,
     labelPadding: Pair<Dp, Dp> = 4.dp to 1.dp,
-    captionRadius: Float = 4f,
 ) {
     val layout = (template as? EditorTemplate.Layout)?.layout ?: LayoutType.FULL
     val hues = when (template) {
         is EditorTemplate.Layout -> LayoutPreviewHues
-        is EditorTemplate.Text -> listOf(TEXT_PREVIEW_HUE)
-        is EditorTemplate.Caption -> listOf(CAPTION_PREVIEW_HUE)
+        is EditorTemplate.Thumbnail -> listOf(TEXT_PREVIEW_HUE)
     }
     Box(modifier = modifier) {
         LayoutCells(
@@ -211,29 +202,13 @@ fun TemplatePreview(
             labelPadding = labelPadding,
         )
         if (!showSample) return@Box
-        when (template) {
-            is EditorTemplate.Text -> OverlayText(
+        // 썸네일은 편집기에 들어갈 때 넣는 제목과 같은 자리(가로 가운데·세로 40%)에 보여 준다 (D66).
+        if (template is EditorTemplate.Thumbnail) {
+            OverlayText(
                 text = stringResource(Res.string.default_title_text),
                 look = template.style.look(scale),
                 modifier = Modifier.centeredAt(xPercent = 50f, yPercent = 40f),
             )
-            is EditorTemplate.Caption -> {
-                val look = template.style.look(scale)
-                val sampleWords = stringResource(Res.string.caption_sample).splitWords()
-                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                    // 정지 화면이라 마지막 단어를 지금 말하는 단어로 보여 준다. 단어씩 나타나는 자막도 모든 단어가 보인다.
-                    CaptionText(
-                        words = sampleWords,
-                        currentWord = sampleWords.lastIndex,
-                        look = look.copy(cornerRadius = captionRadius),
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = maxHeight * (look.bottomPercent / 100f))
-                            .wrapContentSize(unbounded = true),
-                    )
-                }
-            }
-            is EditorTemplate.Layout -> Unit
         }
     }
 }

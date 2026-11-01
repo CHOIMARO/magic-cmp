@@ -62,7 +62,8 @@ class TextRulesTest {
 
     @Test
     fun previewLoop_holdsOneSecondAndPausesShortly() {
-        TextStyleType.entries.forEach { style ->
+        // 썸네일은 등장이 없어서 처음부터 보인다. 등장이 있는 글자 템플릿만 본다.
+        TextStyleType.entries.filterNot { it.thumbnail }.forEach { style ->
             val animation = style.look().animation
             val entranceEnd = animation.entranceMillis.toLong()
             val exitEnd = entranceEnd + 1000L + animation.exitMillis
@@ -75,8 +76,8 @@ class TextRulesTest {
             assertTrue(animation.previewFrameAt(exitEnd + 100L).hidden, style.name)
             assertEquals(animation.previewFrameAt(100L), animation.previewFrameAt(exitEnd + 300L + 100L), style.name)
         }
-        // 퇴장 중에는 반쯤 보인다. 버럭은 팝 350ms로 등장한다.
-        val fading = TextStyleType.SHOUT.look().animation.previewFrameAt(350L + 1000L + 100L).alpha
+        // 퇴장 중에는 반쯤 보인다. 예능은 도장 찍기 380ms로 등장한다.
+        val fading = TextStyleType.IMPACT.look().animation.previewFrameAt(380L + 1000L + 100L).alpha
         assertTrue(fading > 0f && fading < 1f)
     }
 
@@ -113,7 +114,7 @@ class TextRulesTest {
 
     @Test
     fun pop_startsSmallAndInvisibleAndEndsStatic() {
-        val animation = TextStyleType.SHOUT.look().animation
+        val animation = TextAnimation(TextEntrance.POP, entranceMillis = 350, exitMillis = 200)
         val start = animation.frameAt(elapsed = 0.0, remaining = 3.0)
         assertEquals(0f, start.alpha)
         assertEquals(0.6f, start.scale, 1e-4f)

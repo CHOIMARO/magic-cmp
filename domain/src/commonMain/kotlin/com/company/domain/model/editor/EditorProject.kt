@@ -115,11 +115,14 @@ data class Clip(
  * @property text Text to show.
  * @property start Start time on the timeline.
  * @property length Time on screen.
- * @property style Look of the text.
+ * @property style Text template, or null for no template. A text without a template is white Pretendard with no
+ *   animation (D60). A template and decorations do not go together (9.3).
  * @property x Horizontal center in percent of the screen width.
  * @property y Vertical center in percent of the screen height.
  * @property layer Row of the text track on the timeline. 0 is the first row. Texts in one row do not overlap in time.
  * @property font Font of the text, or null for the font of [style].
+ * @property fontFromTemplate True when [font] is the font of a template that a decoration removed (D61). The user did
+ *   not pick it, so a template that the user picks next uses its own font.
  * @property scale Size factor of the whole text box. 1 is the size of [style]. The line breaks do not change.
  * @property rotation Angle of the whole text box in degrees, from -180 to below 180. A positive value turns it
  *   clockwise. The rotation of [style] adds to it.
@@ -136,11 +139,12 @@ data class TextOverlay(
     val text: String,
     override val start: Double,
     override val length: Double,
-    val style: TextStyleType,
+    val style: TextStyleType?,
     val x: Double,
     val y: Double,
     override val layer: Int = 0,
     val font: TextFontType? = null,
+    val fontFromTemplate: Boolean = false,
     val scale: Double = 1.0,
     val rotation: Double = 0.0,
     val sizeStep: Int = DEFAULT_SIZE_STEP,
@@ -191,6 +195,9 @@ data class CaptionSegment(
  * @property outline True to draw a black outline.
  * @property shadow True to draw a soft shadow.
  * @property background Background color as 0xRRGGBB, or null. The text color then becomes white or black automatically.
+ * @property backgroundShape Shape of the background box. Only a character with a [background] uses it.
+ * @property backgroundBorder True to draw a line around the background box, in the text color (D62). Only a character
+ *   with a [background] uses it.
  */
 data class Decoration(
     val color: Int? = null,
@@ -198,10 +205,21 @@ data class Decoration(
     val outline: Boolean = false,
     val shadow: Boolean = false,
     val background: Int? = null,
+    val backgroundShape: BackgroundShape = BackgroundShape.ROUNDED,
+    val backgroundBorder: Boolean = false,
 ) {
     /** True when the decoration changes nothing. */
     val isEmpty: Boolean
         get() = color == null && !bold && !outline && !shadow && background == null
+}
+
+/** Shape of the background box of a decoration. */
+enum class BackgroundShape {
+    /** ROUNDED : Rounded corners with a radius of 14 on the 1080 canvas ("둥근 네모"). It is the default. */
+    ROUNDED,
+
+    /** SQUARE : Sharp corners ("네모"). */
+    SQUARE,
 }
 
 /**

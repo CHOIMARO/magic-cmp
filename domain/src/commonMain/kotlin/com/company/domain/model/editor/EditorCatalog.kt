@@ -32,11 +32,45 @@ enum class LayoutType(val clipCount: Int) {
 }
 
 /**
- * Look of a text overlay. The order is the order of the template lists. A new text uses [IMPACT].
+ * Text template: the look of a text overlay. The order is the order of the template lists. A new text has no template.
  *
- * SHOUT, FLAME, SPARK, and DASH are the thumbnail looks: heavy letters with an outline and a solid 3D shadow.
+ * The thumbnail templates (D64) are large title looks for the cover of a video. Each one uses the look of the largest
+ * line of a thumbnail in the design. They follow the same rules as the other text templates (9.3, D61).
+ *
+ * @property font Default font of the template. A font that the user picks replaces it.
+ * @property thumbnail True for a thumbnail template.
  */
-enum class TextStyleType { IMPACT, NEON, MARKER, MINIMAL, SHOUT, FLAME, SPARK, DASH }
+enum class TextStyleType(val font: TextFontType, val thumbnail: Boolean = false) {
+    /** IMPACT : Yellow heavy letters with a black outline ("예능"). */
+    IMPACT(TextFontType.BLACK_HAN_SANS),
+
+    /** NEON : Pink letters with a glow ("네온"). */
+    NEON(TextFontType.PRETENDARD),
+
+    /** MARKER : Black letters on a yellow band ("형광펜"). */
+    MARKER(TextFontType.PRETENDARD),
+
+    /** MINIMAL : Small thin letters with wide spaces ("미니멀"). */
+    MINIMAL(TextFontType.PRETENDARD),
+
+    /** THUMB_FIRE : Pink round letters with a white outline and a solid shadow ("불꽃·핑크 입체"). */
+    THUMB_FIRE(TextFontType.JUA, thumbnail = true),
+
+    /** THUMB_BUBBLE : Yellow round letters with a dark outline, a white glow, and stars ("옐로 버블"). */
+    THUMB_BUBBLE(TextFontType.JUA, thumbnail = true),
+
+    /** THUMB_HAND : Tall yellow handwriting with a black outline ("손글씨 풀스크린"). */
+    THUMB_HAND(TextFontType.DOKDO, thumbnail = true),
+
+    /** THUMB_THIN : Large thin white letters with a soft shadow ("얇은 고딕 미니멀"). */
+    THUMB_THIN(TextFontType.PRETENDARD, thumbnail = true),
+
+    /** THUMB_BOLD : White heavy letters with a dark outline and a yellow last word ("볼드 고딕 하이라이트"). */
+    THUMB_BOLD(TextFontType.BLACK_HAN_SANS, thumbnail = true),
+
+    /** THUMB_PIXEL : Cream handwriting with a navy outline and sparkles ("픽셀 손글씨"). */
+    THUMB_PIXEL(TextFontType.GAEGU, thumbnail = true),
+}
 
 /**
  * Font of a text overlay. The downloadable fonts use the SIL Open Font License 1.1. The license notices of the fonts
@@ -106,6 +140,9 @@ enum class TextFontType(val downloadable: Boolean = false, val isNew: Boolean = 
 
     /** Song Myung (송명), a serif font. */
     SONG_MYUNG(downloadable = true),
+
+    /** Dokdo (독도), a rough handwriting font. A thumbnail template uses it. */
+    DOKDO(downloadable = true, isNew = true),
 }
 
 /** How a text comes on screen. */
@@ -267,12 +304,19 @@ enum class SoundEffectCategory {
 enum class CaptionStyleType { BASIC, POP, BOX, MINIMAL, SERIF, BIG }
 
 /** Kind of an [EditorTemplate]. */
-enum class TemplateKind { LAYOUT, TEXT, CAPTION }
+enum class TemplateKind {
+    /** LAYOUT : A layout of the clips ("레이아웃"). */
+    LAYOUT,
+
+    /** THUMBNAIL : A large title for the cover ("썸네일"). */
+    THUMBNAIL,
+}
 
 /**
- * Template that the user picks in the template tab.
+ * Template that the user picks in the template tab (S02).
  *
- * A template changes one part of the project: the layout, the text style, or the caption style.
+ * A layout template changes the layout. A thumbnail template adds a title text (D66). The text and the caption
+ * templates are not in the template tab. The user picks them in the text sheet and the caption sheet of the editor.
  */
 sealed interface EditorTemplate {
     /** Kind of the template. */
@@ -292,22 +336,16 @@ sealed interface EditorTemplate {
     }
 
     /**
-     * Text template.
+     * Thumbnail template.
      *
-     * @property style Text style to apply.
+     * @property style Thumbnail look of the new title text. It is a thumbnail template.
      */
-    data class Text(val style: TextStyleType) : EditorTemplate {
-        override val kind = TemplateKind.TEXT
-        override val key = "${kind.name}:${style.name}"
-    }
+    data class Thumbnail(val style: TextStyleType) : EditorTemplate {
+        init {
+            require(style.thumbnail) { "$style is not a thumbnail template" }
+        }
 
-    /**
-     * Caption template.
-     *
-     * @property style Caption style to apply.
-     */
-    data class Caption(val style: CaptionStyleType) : EditorTemplate {
-        override val kind = TemplateKind.CAPTION
+        override val kind = TemplateKind.THUMBNAIL
         override val key = "${kind.name}:${style.name}"
     }
 
@@ -324,8 +362,7 @@ sealed interface EditorTemplate {
             val (kind, id) = parts
             return when (kind) {
                 TemplateKind.LAYOUT.name -> LayoutType.entries.find { it.name == id }?.let(::Layout)
-                TemplateKind.TEXT.name -> TextStyleType.entries.find { it.name == id }?.let(::Text)
-                TemplateKind.CAPTION.name -> CaptionStyleType.entries.find { it.name == id }?.let(::Caption)
+                TemplateKind.THUMBNAIL.name -> TextStyleType.entries.find { it.name == id && it.thumbnail }?.let(::Thumbnail)
                 else -> null
             }
         }

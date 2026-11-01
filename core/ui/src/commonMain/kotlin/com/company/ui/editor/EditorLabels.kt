@@ -68,10 +68,12 @@ val TextStyleType.displayName: String
             TextStyleType.NEON -> Res.string.text_style_neon
             TextStyleType.MARKER -> Res.string.text_style_marker
             TextStyleType.MINIMAL -> Res.string.text_style_minimal
-            TextStyleType.SHOUT -> Res.string.text_style_shout
-            TextStyleType.FLAME -> Res.string.text_style_flame
-            TextStyleType.SPARK -> Res.string.text_style_spark
-            TextStyleType.DASH -> Res.string.text_style_dash
+            TextStyleType.THUMB_FIRE -> Res.string.text_style_thumb_fire
+            TextStyleType.THUMB_BUBBLE -> Res.string.text_style_thumb_bubble
+            TextStyleType.THUMB_HAND -> Res.string.text_style_thumb_hand
+            TextStyleType.THUMB_THIN -> Res.string.text_style_thumb_thin
+            TextStyleType.THUMB_BOLD -> Res.string.text_style_thumb_bold
+            TextStyleType.THUMB_PIXEL -> Res.string.text_style_thumb_pixel
         }
     )
 
@@ -99,6 +101,7 @@ val TextFontType.displayName: String
             TextFontType.DONGLE -> Res.string.font_dongle
             TextFontType.GUGI -> Res.string.font_gugi
             TextFontType.SONG_MYUNG -> Res.string.font_song_myung
+            TextFontType.DOKDO -> Res.string.font_dokdo
         }
     )
 
@@ -211,8 +214,7 @@ val TemplateKind.sheetLabel: String
     @Composable get() = stringResource(
         when (this) {
             TemplateKind.LAYOUT -> Res.string.template_kind_layout
-            TemplateKind.TEXT -> Res.string.template_kind_text
-            TemplateKind.CAPTION -> Res.string.template_kind_caption
+            TemplateKind.THUMBNAIL -> Res.string.template_kind_thumbnail
         }
     )
 
@@ -220,24 +222,21 @@ val TemplateKind.sheetLabel: String
 val EditorTemplate.displayName: String
     @Composable get() = when (this) {
         is EditorTemplate.Layout -> layout.displayName
-        is EditorTemplate.Text -> style.displayName
-        is EditorTemplate.Caption -> style.displayName
+        is EditorTemplate.Thumbnail -> style.displayName
     }
 
 /** Short note under the template name in the template grid. */
 val EditorTemplate.subLabel: String
     @Composable get() = when (this) {
         is EditorTemplate.Layout -> stringResource(Res.string.template_sub_layout, layout.subLabel)
-        is EditorTemplate.Text -> stringResource(Res.string.template_sub_text)
-        is EditorTemplate.Caption -> stringResource(Res.string.template_sub_caption)
+        is EditorTemplate.Thumbnail -> stringResource(Res.string.template_sub_thumbnail)
     }
 
 /** Description of the template in the template sheet. */
 val EditorTemplate.description: String
     @Composable get() = when (this) {
         is EditorTemplate.Layout -> layout.description
-        is EditorTemplate.Text -> stringResource(Res.string.template_desc_text)
-        is EditorTemplate.Caption -> stringResource(Res.string.template_desc_caption)
+        is EditorTemplate.Thumbnail -> stringResource(Res.string.template_desc_thumbnail)
     }
 
 /**

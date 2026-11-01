@@ -23,6 +23,7 @@ import com.company.domain.model.editor.PushDirection
 import com.company.domain.model.editor.SoundEffect
 import com.company.domain.model.editor.SoundEffectCategory
 import com.company.domain.model.editor.SoundEffectClip
+import com.company.domain.model.editor.TextContent
 import com.company.domain.model.editor.TextEntrance
 import com.company.domain.model.editor.TextExit
 import com.company.domain.model.editor.TextFontType
@@ -120,16 +121,16 @@ sealed interface TrackSelection {
 // Sheet drafts
 // =====================================================================
 
-/** Tab of the text sheet. */
+/** Tab of the text sheet. The order is the order of the tabs: font, decoration, and template (9.3). */
 enum class TextSheetTab {
-    /** TEMPLATE : Text styles. */
-    TEMPLATE,
-
-    /** FONT : Fonts. */
+    /** FONT : Fonts. The sheet opens on this tab. */
     FONT,
 
     /** DECORATION : Size, color, bold, outline, shadow, and background. */
     DECORATION,
+
+    /** TEMPLATE : Text templates and thumbnail templates. */
+    TEMPLATE,
 }
 
 /**
@@ -137,8 +138,9 @@ enum class TextSheetTab {
  *
  * @property id ID of the overlay to change, or null for a new overlay.
  * @property text Current input.
- * @property style Selected style.
+ * @property style Selected template, or null for no template. A caption draft has no template.
  * @property font Selected font, or null for the font of [style].
+ * @property fontFromTemplate True when [font] is the font of a template that a decoration removed (D61).
  * @property sizeStep Size step from 1 to 5.
  * @property decorations Decorations of character ranges in [text].
  * @property selectionStart Start of the selected characters in the text field.
@@ -149,15 +151,33 @@ enum class TextSheetTab {
 data class TextDraft(
     val id: String?,
     val text: String,
-    val style: TextStyleType,
+    val style: TextStyleType? = null,
     val font: TextFontType? = null,
+    val fontFromTemplate: Boolean = false,
     val sizeStep: Int = DEFAULT_SIZE_STEP,
     val decorations: List<DecorationRange> = emptyList(),
     val selectionStart: Int = text.length,
     val selectionEnd: Int = text.length,
     val captionId: String? = null,
-    val tab: TextSheetTab = if (captionId != null) TextSheetTab.DECORATION else TextSheetTab.TEMPLATE,
+    val tab: TextSheetTab = if (captionId != null) TextSheetTab.DECORATION else TextSheetTab.FONT,
 ) {
+    /** Text and look of the draft, for the template and decoration rules of the domain. */
+    val content: TextContent
+        get() = TextContent(text, style, font, fontFromTemplate, sizeStep, decorations)
+
+    /**
+     * Copy with the look of [content]. The text, the selection, and the tab stay.
+     *
+     * @param content New look.
+     */
+    fun withContent(content: TextContent): TextDraft = copy(
+        style = content.style,
+        font = content.font,
+        fontFromTemplate = content.fontFromTemplate,
+        sizeStep = content.sizeStep,
+        decorations = content.decorations,
+    )
+
     /** True when the draft changes a caption. */
     val isCaption: Boolean
         get() = captionId != null
@@ -187,7 +207,31 @@ sealed interface DecorationChange {
 
     /** Background(rgb) : Sets the background color as 0xRRGGBB, or removes it when null. */
     data class Background(val rgb: Int?) : DecorationChange
+
+    /** BackgroundShape(shape) : Sets the shape of the background box. Characters without a background do not change. */
+    data class BackgroundShape(val shape: com.company.domain.model.editor.BackgroundShape) : DecorationChange
+
+    /** BackgroundBorder(on) : Turns the box border on or off. Characters without a background do not change. */
+    data class BackgroundBorder(val on: Boolean) : DecorationChange
 }
+
+/** Color that the color picker changes. */
+enum class ColorTarget {
+    /** TEXT : The text color. */
+    TEXT,
+
+    /** BACKGROUND : The background color. */
+    BACKGROUND,
+}
+
+/**
+ * Open color picker of the text sheet (9.3 '색 직접 고르기').
+ *
+ * @property target Color that the picker changes.
+ * @property rgb Current color as 0xRRGGBB.
+ * @property changed True after the user changed the color. The color then goes into the recent colors on close.
+ */
+data class ColorPicker(val target: ColorTarget, val rgb: Int, val changed: Boolean = false)
 
 /**
  * Music that the user tries in the music sheet before the change.
@@ -347,6 +391,7 @@ data class TextSnapGuide(val vertical: Boolean = false, val horizontal: Boolean 
  * @property textDraft Input of the text sheet, or null.
  * @property fontDownloading Font that downloads now, or null.
  * @property recentColors Colors that the user picked with the color picker, newest first.
+ * @property colorPicker Open color picker of the text sheet, or null.
  * @property captionProgress Progress of the caption generation from 0 to 100, or null when it does not run.
  * @property captionScript Script of the caption sheet, or null when the sheet does not show the script field.
  * @property captionFromPlayhead True when the caption sheet makes captions from the playhead. False makes them from
@@ -390,6 +435,7 @@ data class EditorState(
     val textDraft: TextDraft? = null,
     val fontDownloading: TextFontType? = null,
     val recentColors: List<Int> = emptyList(),
+    val colorPicker: ColorPicker? = null,
     val captionProgress: Int? = null,
     val captionScript: String? = null,
     val captionFromPlayhead: Boolean = false,
@@ -584,8 +630,11 @@ sealed class EditorIntent : Intent() {
     /** SelectTextTab(tab) : Opens a tab of the text sheet. */
     data class SelectTextTab(val tab: TextSheetTab) : EditorIntent()
 
-    /** ChangeDraftStyle(style) : Changes the style in the text sheet. */
-    data class ChangeDraftStyle(val style: TextStyleType) : EditorIntent()
+    /**
+     * ChangeDraftStyle(style) : Applies a template in the text sheet, or removes the template when null. A template
+     * removes the decorations (9.3, D61).
+     */
+    data class ChangeDraftStyle(val style: TextStyleType?) : EditorIntent()
 
     /**
      * ToggleFavoriteTextStyle(style) : Adds the text template to the favorites at the front, or removes it (F14). It is
@@ -602,8 +651,14 @@ sealed class EditorIntent : Intent() {
     /** DecorateDraft(change) : Changes one decoration of the selected characters, or of all characters. */
     data class DecorateDraft(val change: DecorationChange) : EditorIntent()
 
-    /** PickCustomColor(rgb) : Sets a color from the color picker and keeps it in the recent colors. */
-    data class PickCustomColor(val rgb: Int) : EditorIntent()
+    /** OpenColorPicker(target) : Opens the color picker for the text color or the background color. */
+    data class OpenColorPicker(val target: ColorTarget) : EditorIntent()
+
+    /** ChangePickerColor(rgb) : Changes the color of the open color picker. The text shows the color at once. */
+    data class ChangePickerColor(val rgb: Int) : EditorIntent()
+
+    /** CloseColorPicker : Closes the color picker. A changed color goes first in the recent colors. */
+    data object CloseColorPicker : EditorIntent()
 
     /** ResetDraftDecorations : Removes all decorations of the draft. */
     data object ResetDraftDecorations : EditorIntent()

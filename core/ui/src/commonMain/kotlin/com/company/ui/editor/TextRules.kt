@@ -17,7 +17,7 @@ import kotlin.math.pow
 private const val STAGE_WIDTH_DP = 264.375f
 
 /** Converts spec canvas pixels to stage dp. */
-private const val DP_PER_SPEC_PX = STAGE_WIDTH_DP / 1080f
+internal const val DP_PER_SPEC_PX = STAGE_WIDTH_DP / 1080f
 
 /** Safety margin of the character count per line. */
 private const val CHARS_PER_LINE_MARGIN = 0.9f
@@ -302,6 +302,7 @@ internal val TextFontType.glyphWidthRatio: Float
         TextFontType.BLACK_HAN_SANS -> 0.98f
         TextFontType.DO_HYEON, TextFontType.OK_DANDAN -> 0.85f
         TextFontType.GAEGU, TextFontType.MYOEUN_HEULLIM -> 0.8f
+        TextFontType.DOKDO -> 0.78f
         // 아래 글꼴은 한글 글자 폭을 재서, 기존 스펙 값과 같은 비율(약 1.1배)로 맞췄다.
         TextFontType.KKUBULIM -> 0.95f
         TextFontType.GELLYROLL -> 0.9f

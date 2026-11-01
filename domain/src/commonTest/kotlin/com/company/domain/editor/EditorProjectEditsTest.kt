@@ -1,7 +1,6 @@
 package com.company.domain.editor
 
 import com.company.domain.model.editor.CaptionSegment
-import com.company.domain.model.editor.CaptionStyleType
 import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.Dubbing
 import com.company.domain.model.editor.DubbingSpeed
@@ -89,8 +88,8 @@ class EditorProjectEditsTest {
         assertEquals(0.0, added.texts.single().start)
         assertEquals(3.0, added.texts.single().length)
         assertEquals(3.0, added.totalDuration)
-        // 템플릿의 기본 글자도 같은 규칙을 따른다.
-        val template = EditorProject(name = "p").applyTemplate(EditorTemplate.Text(TextStyleType.NEON), "title", emptyList())
+        // 썸네일 템플릿의 제목도 같은 규칙을 따른다.
+        val template = EditorProject(name = "p").applyTemplate(EditorTemplate.Thumbnail(TextStyleType.THUMB_FIRE), "title")
         assertEquals(3.0, template.texts.single().length)
     }
 
@@ -304,31 +303,38 @@ class EditorProjectEditsTest {
     }
 
     @Test
-    fun applyTemplate_textAddsDefaultTitleWhenNoText() {
-        val result = project.applyTemplate(EditorTemplate.Text(TextStyleType.NEON), "title", emptyList())
-        assertEquals("title", result.texts.single().text)
-        assertEquals(TextStyleType.NEON, result.texts.single().style)
+    fun applyTemplate_thumbnailAddsTheTitleAtTheCenter_from0To3Seconds() {
+        val result = project.applyTemplate(EditorTemplate.Thumbnail(TextStyleType.THUMB_HAND), "오늘의 기록")
+        val title = result.texts.single()
+        assertEquals("오늘의 기록", title.text)
+        assertEquals(TextStyleType.THUMB_HAND, title.style)
+        assertEquals(0.0, title.start)
+        assertEquals(3.0, title.length)
+        assertEquals(50.0, title.x)
+        assertEquals(40.0, title.y)
     }
 
     @Test
-    fun applyTemplate_captionKeepsExistingCaptions() {
-        val existing = listOf(CaptionSegment("c", "old", 0.0, 1.0))
-        val fallback = listOf(CaptionSegment("n", "new", 0.0, 1.0))
-        val result = project.copy(captions = existing)
-            .applyTemplate(EditorTemplate.Caption(CaptionStyleType.BIG), "title", fallback)
-        assertEquals(CaptionStyleType.BIG, result.captionStyle)
-        assertEquals(existing, result.captions)
+    fun applyTemplate_thumbnailKeepsTheStylesOfOtherTexts() {
+        val withText = project.addText("hi", TextStyleType.NEON, time = 0.0)
+        val result = withText.applyTemplate(EditorTemplate.Thumbnail(TextStyleType.THUMB_BOLD), "title")
+        assertEquals(listOf(TextStyleType.NEON, TextStyleType.THUMB_BOLD), result.texts.map { it.style })
+        // 같은 시간의 글자와 겹치지 않게 다음 줄에 넣는다.
+        assertEquals(listOf(0, 1), result.texts.map { it.layer })
     }
 
     @Test
     fun templateKey_roundTrips() {
         val templates = listOf(
             EditorTemplate.Layout(LayoutType.POLAROID),
-            EditorTemplate.Text(TextStyleType.MARKER),
-            EditorTemplate.Caption(CaptionStyleType.MINIMAL),
+            EditorTemplate.Thumbnail(TextStyleType.THUMB_PIXEL),
         )
         templates.forEach { assertEquals(it, EditorTemplate.fromKey(it.key)) }
         assertNull(EditorTemplate.fromKey("LAYOUT:UNKNOWN"))
+        // 글자 템플릿과 자막 템플릿은 템플릿 탭에 없다.
+        assertNull(EditorTemplate.fromKey("THUMBNAIL:NEON"))
+        assertNull(EditorTemplate.fromKey("TEXT:NEON"))
+        assertNull(EditorTemplate.fromKey("CAPTION:BIG"))
         assertNull(EditorTemplate.fromKey(null))
         assertTrue(templates.map { it.key }.toSet().size == templates.size)
     }

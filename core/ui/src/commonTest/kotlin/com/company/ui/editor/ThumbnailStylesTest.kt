@@ -1,5 +1,7 @@
 package com.company.ui.editor
 
+import androidx.compose.ui.graphics.Color
+import com.company.domain.model.editor.TextEntrance
 import com.company.domain.model.editor.TextFontType
 import com.company.domain.model.editor.TextStyleType
 import kotlin.test.Test
@@ -10,69 +12,88 @@ import kotlin.test.assertTrue
 
 class ThumbnailStylesTest {
 
-    private val thumbnailStyles = listOf(TextStyleType.SHOUT, TextStyleType.FLAME, TextStyleType.SPARK, TextStyleType.DASH)
+    private val thumbnailStyles = TextStyleType.entries.filter { it.thumbnail }
 
     @Test
-    fun thumbnailStyles_haveAnOutlineInEm_andASolid3dShadow() {
+    fun thereAreSixThumbnails_afterTheFourTextTemplates() {
+        assertEquals(6, thumbnailStyles.size)
+        assertEquals(listOf(TextStyleType.IMPACT, TextStyleType.NEON, TextStyleType.MARKER, TextStyleType.MINIMAL), TextStyleType.entries.filterNot { it.thumbnail })
+    }
+
+    @Test
+    fun thumbnails_showFromTheFirstFrame_andFadeOut() {
         thumbnailStyles.forEach { style ->
-            val look = style.look()
-            assertTrue(look.outline, style.name)
-            assertTrue(look.outlineEm > 0f, style.name)
-            val extrude = assertNotNull(look.extrude, style.name)
-            // 입체 그림자는 아래쪽으로 나온다.
-            assertTrue(extrude.y > 0f, style.name)
-            assertTrue(look.shadows.isEmpty(), style.name)
+            val animation = style.look().animation
+            assertEquals(TextEntrance.NONE, animation.entrance, style.name)
+            assertEquals(200, animation.exitMillis, style.name)
+            assertEquals(1f, animation.frameAt(elapsed = 0.0, remaining = 3.0).alpha, style.name)
         }
     }
 
     @Test
-    fun gradientStops_startAtZero_endAtOne_andGoUp() {
-        thumbnailStyles.flatMap { listOfNotNull(it.look().fill, it.look().firstWordFill) }.forEach { fill ->
-            val positions = fill.stops.map { it.first }
-            assertEquals(0f, positions.first())
-            assertEquals(1f, positions.last())
-            assertEquals(positions.sorted(), positions)
-        }
+    fun thumbnails_useTheFontsOfTheDesign() {
+        assertEquals(TextFontType.JUA, TextStyleType.THUMB_FIRE.look().font)
+        assertEquals(TextFontType.JUA, TextStyleType.THUMB_BUBBLE.look().font)
+        assertEquals(TextFontType.DOKDO, TextStyleType.THUMB_HAND.look().font)
+        assertEquals(TextFontType.PRETENDARD, TextStyleType.THUMB_THIN.look().font)
+        assertEquals(TextFontType.BLACK_HAN_SANS, TextStyleType.THUMB_BOLD.look().font)
+        assertEquals(TextFontType.GAEGU, TextStyleType.THUMB_PIXEL.look().font)
+        TextStyleType.entries.forEach { assertEquals(it.font, it.look().font, it.name) }
     }
 
     @Test
-    fun twoColorStyles_paintTheFirstWordDifferently() {
-        assertNull(TextStyleType.SHOUT.look().fill)
-        assertNull(TextStyleType.FLAME.look().firstWordFill)
-        assertNotNull(TextStyleType.SPARK.look().firstWordFill)
-        assertNotNull(TextStyleType.DASH.look().firstWordFill)
-    }
-
-    @Test
-    fun dash_leansToTheRight_andOthersStandStraight() {
-        assertTrue(TextStyleType.DASH.look().skewX < 0f)
-        (TextStyleType.entries - TextStyleType.DASH).forEach { assertEquals(0f, it.look().skewX, it.name) }
+    fun thumbnailSizes_comeFromThe1080Canvas() {
+        // 1080 캔버스의 168px은 무대 폭 264.375dp에서 41.125dp다.
+        assertEquals(41.125f, TextStyleType.THUMB_FIRE.look().fontSize, 1e-3f)
+        assertEquals(75.885f, TextStyleType.THUMB_HAND.look().fontSize, 1e-2f)
     }
 
     @Test
     fun scaleAndSizeStep_keepTheEffectsInProportionToTheFont() {
-        // 테두리와 그림자는 글자 크기의 비율이다. 크기를 바꿔도 값이 그대로여야 글자와 함께 커진다.
-        val normal = TextStyleType.FLAME.look()
-        val small = TextStyleType.FLAME.look(scale = 0.5f, sizeStep = 1)
+        // 테두리와 입체 그림자는 글자 크기의 비율이다. 크기를 바꿔도 값이 그대로여야 글자와 함께 커진다.
+        val normal = TextStyleType.THUMB_FIRE.look()
+        val small = TextStyleType.THUMB_FIRE.look(scale = 0.5f, sizeStep = 1)
         assertEquals(normal.outlineEm, small.outlineEm)
         assertEquals(normal.extrude, small.extrude)
         assertTrue(small.fontSize < normal.fontSize)
+        assertEquals(TextStyleType.THUMB_BUBBLE.look().stickers, TextStyleType.THUMB_BUBBLE.look(scale = 0.5f, sizeStep = 5).stickers)
     }
 
     @Test
-    fun thumbnailStyles_useTheFontsOfTheReference() {
-        assertEquals(TextFontType.STRONG_ARMY, TextStyleType.SHOUT.look().font)
-        assertEquals(TextFontType.OK_GUNG, TextStyleType.FLAME.look().font)
-        assertEquals(TextFontType.KUKDETOPOKKI, TextStyleType.SPARK.look().font)
-        assertEquals(TextFontType.ESAMANRU, TextStyleType.DASH.look().font)
+    fun onlyBubbleAndPixel_haveStickers() {
+        assertEquals(setOf(TextStyleType.THUMB_BUBBLE, TextStyleType.THUMB_PIXEL), thumbnailStyles.filter { it.look().stickers.isNotEmpty() }.toSet())
+        assertTrue(TextStyleType.THUMB_BUBBLE.look().stickers.all { it.shape == StickerShape.STAR })
+        assertTrue(TextStyleType.THUMB_PIXEL.look().stickers.all { it.shape == StickerShape.SPARK })
+    }
+
+    @Test
+    fun hand_isTallAndTurned_andBold_hasAYellowLastWord() {
+        val hand = TextStyleType.THUMB_HAND.look()
+        assertEquals(1.5f, hand.scaleY)
+        assertEquals(3f, hand.rotation)
+        assertEquals(Color(0xFFFFF09C), TextStyleType.THUMB_BOLD.look().lastWordColor)
+        (TextStyleType.entries - TextStyleType.THUMB_BOLD).forEach { assertNull(it.look().lastWordColor, it.name) }
     }
 
     @Test
     fun pickedFont_keepsTheEffects() {
-        val look = TextStyleType.SPARK.look(font = TextFontType.PRETENDARD)
+        val look = TextStyleType.THUMB_BUBBLE.look(font = TextFontType.PRETENDARD)
         assertEquals(TextFontType.PRETENDARD, look.font)
-        assertNotNull(look.fill)
         assertNotNull(look.glow)
+        assertTrue(look.outline)
+    }
+
+    @Test
+    fun noTemplate_isWhitePretendardAt80px_withoutAnEntrance() {
+        val plain = (null as TextStyleType?).look()
+        assertEquals(TextFontType.PRETENDARD, plain.font)
+        assertEquals(Color.White, plain.color)
+        assertEquals(80 * 264.375f / 1080, plain.fontSize, 1e-3f)
+        assertTrue(plain.shadows.isEmpty())
+        assertEquals(TextEntrance.NONE, plain.animation.entrance)
+        assertEquals(200, plain.animation.exitMillis)
+        // 크기 단계는 템플릿이 없어도 같은 배율을 쓴다.
+        assertEquals(plain.fontSize * 1.5f, (null as TextStyleType?).look(sizeStep = 5).fontSize, 1e-3f)
     }
 
     @Test
