@@ -43,8 +43,10 @@ private val WorkJson = Json { ignoreUnknownKeys = true }
 /**
  * Keeps the works and their projects on the device (F15). The work with the most recent change is first.
  *
- * The work list is one JSON file, and each project is one JSON file. The source photos and videos stay where they
- * are; [MediaPersister] keeps the access to them. The list loads in the background when the app starts.
+ * The work list is one JSON file, and each project is one JSON file. The picked photos and videos are copied into the
+ * app storage in the background, and the saved project then uses the copies (D50). Until a copy is ready, the project
+ * uses the picked file. The list loads in the background when the app starts. Then the files that no work uses go
+ * away (D51).
  *
  * The memory has the latest state. When a file write fails, the next save of the work writes the files again.
  *
@@ -52,7 +54,7 @@ private val WorkJson = Json { ignoreUnknownKeys = true }
  * its first change saves it as a normal work.
  *
  * @param store Files of the works.
- * @param mediaPersister Keeps the access to the source files.
+ * @param mediaPersister Copies the source files.
  * @param captionRepository Makes the captions of the sample project.
  * @param io Context of the file work. Tests use a context that does not change the thread.
  */
@@ -63,6 +65,7 @@ internal class LocalMyVideoRepository(
     private val io: CoroutineContext = Dispatchers.IO,
 ) : MyVideoRepository {
     private val mutex = Mutex()
+    private val scope = CoroutineScope(SupervisorJob() + io)
     private val _works = MutableStateFlow<List<VideoSummary>>(emptyList())
     override val works: StateFlow<List<VideoSummary>> = _works.asStateFlow()
 
@@ -75,18 +78,21 @@ internal class LocalMyVideoRepository(
     /** Last saved project of each work that the app read or wrote. */
     private val projects = mutableMapOf<String, EditorProject>()
 
-    /** Source locations that already have a lasting access, with the location to save. */
-    private val persistedUris = mutableMapOf<String, String>()
+    /** Source files that the app tried to copy, with the location to save. A failed copy keeps the source location. */
+    private val copies = mutableMapOf<String, String>()
+
+    /** Source files that a background copy reads now. */
+    private val copying = mutableSetOf<String>()
     private var loaded = false
 
     init {
-        CoroutineScope(SupervisorJob() + io).launch { mutex.withLock { ensureLoaded() } }
+        scope.launch { mutex.withLock { ensureLoaded() } }
     }
 
-    override suspend fun addWork(project: EditorProject): VideoSummary = mutex.withLock {
+    override suspend fun addWork(project: EditorProject): VideoSummary = withCopies { pending ->
         ensureLoaded()
         val id = newEditorId()
-        val saved = persistMedia(project.copy(workId = id))
+        val saved = useCopies(project.copy(workId = id), pending)
         val work = saved.summary(id, now())
         projects[id] = saved
         unsaved += id
@@ -102,15 +108,15 @@ internal class LocalMyVideoRepository(
         work
     }
 
-    override suspend fun saveWork(id: String, project: EditorProject): Boolean = mutex.withLock {
+    override suspend fun saveWork(id: String, project: EditorProject): Boolean = withCopies { pending ->
         ensureLoaded()
-        val work = _works.value.find { it.id == id } ?: return@withLock false
-        val saved = persistMedia(project.copy(workId = id))
-        if (id !in unsaved && loadProject(id, work) == saved) return@withLock false
+        val work = _works.value.find { it.id == id } ?: return@withCopies false
+        val saved = useCopies(project.copy(workId = id), pending)
+        if (id !in unsaved && loadProject(id, work) == saved) return@withCopies false
         projects[id] = saved
         samples -= id
         unsaved += id
-        val changed = saved.summary(id, now()).copy(exported = work.exported)
+        val changed = saved.summary(id, now()).copy(exported = work.exported, storageBytes = work.storageBytes)
         _works.value = listOf(changed) + _works.value.filterNot { it.id == id }
         writeFiles(id, saved)
         true
@@ -148,37 +154,68 @@ internal class LocalMyVideoRepository(
         }
     }
 
+    override suspend fun bytesToCopy(uris: List<String>): Long {
+        val needed = mutex.withLock {
+            ensureLoaded()
+            uris.distinct().filterNot { it in copies || it in copying }
+        }
+        return withContext(io) { needed.sumOf { mediaPersister.sizeOf(it) } }
+    }
+
+    override suspend fun freeBytes(): Long = withContext(io) { mediaPersister.freeBytes() }
+
     // =====================================================================
     // Files
     // =====================================================================
 
     /**
-     * Reads the work list once. Without a list file, the list has the sample works.
-     * A list file that the app cannot read gives no works.
+     * Reads the work list and the projects once. Without a list file, the list has the sample works. A list file that
+     * the app cannot read gives no works. After a good read, the files that no work uses go away (D51).
      */
     private suspend fun ensureLoaded() {
         if (loaded) return
-        val entries = try {
-            val text = withContext(io) { store.read(INDEX_FILE) }
-            if (text == null) {
-                EditorSampleData.Works.toSampleEntries(now())
-            } else {
-                WorkJson.decodeFromString<WorkIndexDto>(text).works
+        val index = readIndex()
+        samples += index.entries.filter { it.sample }.map { it.id }
+        var allProjectsRead = true
+        val works = index.entries.map { entry ->
+            val work = entry.toDomain()
+            if (entry.sample) return@map work
+            val project = readProject(entry.id)?.copy(workId = entry.id)?.let { restoreMedia(it) }
+            if (project == null) {
+                allProjectsRead = false
+                return@map work
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            emptyList()
+            projects[entry.id] = project
+            work.copy(storageBytes = storageBytes(project, encode(project)))
         }
-        samples += entries.filter { it.sample }.map { it.id }
-        _works.value = entries.map { it.toDomain() }
+        if (index.trusted) removeUnusedFiles(index.entries.map { it.id }.toSet(), withCopies = allProjectsRead)
+        _works.value = works
         loaded = true
     }
 
-    /** Writes the project file, then the list file. The project file comes first, so that the list never points to a missing project. */
+    /** Reads the work list. [StoredIndex.trusted] is false without a list file or when the app cannot read it. */
+    private suspend fun readIndex(): StoredIndex = try {
+        val text = withContext(io) { store.read(INDEX_FILE) }
+        if (text == null) {
+            StoredIndex(EditorSampleData.Works.toSampleEntries(now()), trusted = false)
+        } else {
+            StoredIndex(WorkJson.decodeFromString<WorkIndexDto>(text).works, trusted = true)
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        StoredIndex(emptyList(), trusted = false)
+    }
+
+    /**
+     * Writes the project file, then the list file with the new size of the work. The project file comes first, so that
+     * the list never points to a missing project.
+     */
     private suspend fun writeFiles(id: String, project: EditorProject) {
-        val text = WorkJson.encodeToString(ProjectFileDto(project = project.toDto()))
+        val text = encode(project)
         withContext(io) { store.write(projectFile(id), text) }
+        val bytes = storageBytes(project, text)
+        _works.value = _works.value.map { if (it.id == id) it.copy(storageBytes = bytes) else it }
         writeIndex(_works.value)
         unsaved -= id
     }
@@ -209,32 +246,110 @@ internal class LocalMyVideoRepository(
         null
     }
 
+    /**
+     * Removes the files that no work uses: project files that the list does not name, files that a write did not
+     * finish, and copies that no project uses. When a project cannot be read, all copies stay, because the copies of
+     * that project are not known.
+     */
+    private suspend fun removeUnusedFiles(ids: Set<String>, withCopies: Boolean) {
+        val keepFiles = ids.mapTo(mutableSetOf(INDEX_FILE)) { projectFile(it) }
+        val keepCopies = projects.values.flatMapTo(mutableSetOf()) { it.mediaUris() }
+        try {
+            withContext(io) {
+                store.list().filterNot { it in keepFiles }.forEach { store.delete(it) }
+                if (withCopies) mediaPersister.cleanUp(keepCopies)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 지우지 못한 파일은 다음 시작 때 다시 지운다.
+        }
+    }
+
+    /** Bytes of a work: its project file and the files of its clips (D51). */
+    private suspend fun storageBytes(project: EditorProject, projectText: String): Long = withContext(io) {
+        projectText.encodeToByteArray().size + project.mediaUris().sumOf { mediaPersister.sizeOf(it) }
+    }
+
     // =====================================================================
     // Source files
     // =====================================================================
 
-    /** The project with lasting access to its source files. A location that changes gets the new location. */
-    private suspend fun persistMedia(project: EditorProject): EditorProject {
-        val uris = project.mediaUris().filterNot { it in persistedUris }
-        if (uris.isNotEmpty()) persistedUris += withContext(io) { uris.associateWith { mediaPersister.persist(it) } }
-        return project.mapMedia { persistedUris[it] ?: it }
+    /**
+     * Runs [block] under the lock, and then starts the copies that [block] asked for. The copies run in the
+     * background, so that a large video does not hold the picker or the editor.
+     */
+    private suspend fun <T> withCopies(block: suspend (MutableList<String>) -> T): T {
+        val pending = mutableListOf<String>()
+        try {
+            return mutex.withLock { block(pending) }
+        } finally {
+            pending.forEach { uri -> scope.launch { copyInBackground(uri) } }
+        }
     }
 
-    /** The project with the current locations of its saved source files. */
+    /**
+     * The project with the copies of its source files. A source file without a copy keeps its location, and
+     * [pending] gets it, so that a copy starts.
+     */
+    private fun useCopies(project: EditorProject, pending: MutableList<String>): EditorProject {
+        project.mediaUris().filterNot { it in copies || it in copying }.forEach { uri ->
+            copying += uri
+            pending += uri
+        }
+        return project.mapMedia { copies[it] ?: it }
+    }
+
+    /**
+     * Copies one source file, and then changes the saved projects that use it to the copy. When no project uses the
+     * file any more, the copy goes away, and the next save copies the file again.
+     */
+    private suspend fun copyInBackground(uri: String) {
+        val copy = try {
+            withContext(io) { mediaPersister.persist(uri) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            uri
+        }
+        mutex.withLock {
+            copying -= uri
+            val users = projects.filterValues { uri in it.mediaUris() }
+            if (copy != uri && users.isEmpty()) {
+                withContext(io) { mediaPersister.release(copy) }
+                return@withLock
+            }
+            copies[uri] = copy
+            if (copy == uri) return@withLock
+            users.forEach { (id, project) ->
+                val updated = project.mapMedia { if (it == uri) copy else it }
+                projects[id] = updated
+                try {
+                    writeFiles(id, updated)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    unsaved += id
+                }
+            }
+        }
+    }
+
+    /** The project with the current locations of its copies. */
     private suspend fun restoreMedia(project: EditorProject): EditorProject {
         val restored = withContext(io) { project.mediaUris().associateWith { mediaPersister.restore(it) } }
-        restored.values.forEach { persistedUris[it] = it }
+        restored.values.forEach { copies[it] = it }
         return project.mapMedia { restored[it] ?: it }
     }
 
-    /** Gives up the access to the source files that no other saved work uses. */
+    /** Removes the copies that no other saved work uses. */
     private suspend fun releaseUnused(media: Set<String>) {
         if (media.isEmpty()) return
         val used = _works.value.filterNot { it.id in samples }.flatMap { loadProject(it.id, it)?.mediaUris().orEmpty() }.toSet()
         val unused = media - used
         if (unused.isEmpty()) return
         withContext(io) { unused.forEach { mediaPersister.release(it) } }
-        persistedUris.entries.removeAll { it.value in unused }
+        copies.entries.removeAll { it.value in unused }
     }
 
     /** Sample project of a sample work. */
@@ -270,6 +385,17 @@ internal class LocalMyVideoRepository(
         return project.copy(captions = captionRepository.generateCaptions(project.totalDuration))
     }
 }
+
+/**
+ * Work list that the app read from the device.
+ *
+ * @property entries Works in the list.
+ * @property trusted True when the app read a list file without an error. Only then the unused files can go away.
+ */
+private class StoredIndex(val entries: List<WorkSummaryDto>, val trusted: Boolean)
+
+/** Text of the project file of a project. */
+private fun encode(project: EditorProject): String = WorkJson.encodeToString(ProjectFileDto(project = project.toDto()))
 
 /** Current time in milliseconds since 1970-01-01 UTC. */
 @OptIn(ExperimentalTime::class)

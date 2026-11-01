@@ -21,6 +21,7 @@ import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.TransitionType
+import com.company.domain.usecase.editor.CheckMediaStorageUseCase
 import com.company.domain.usecase.editor.LeaveEditorUseCase
 import com.company.domain.usecase.editor.LeaveResult
 import com.company.domain.usecase.editor.OpenWorkUseCase
@@ -199,11 +200,13 @@ class LocalMyVideoRepositoryTest {
     }
 
     @Test
-    fun sourceFiles_keepTheirAccess_andDeleteGivesItUp() {
+    fun sourceFiles_areCopied_andDeleteRemovesTheCopy() {
         val video = clip.copy(sourceUri = "picked/a.mp4")
         startNew(EditorProject(name = "새 영상", clips = listOf(video, video.copy(id = "d"))))
         val id = assertNotNull(projects.project.value.workId)
+        // 같은 원본은 한 번만 복사하고, 복사가 끝나면 저장한 프로젝트가 복사본을 쓴다(D50).
         assertEquals(listOf("picked/a.mp4"), persister.persisted)
+        assertTrue(store.files.getValue("work-$id.json").contains("saved/a.mp4"))
         // 편집기는 고른 위치를 계속 쓰지만, 바뀐 것이 없으면 다시 저장하지 않는다.
         assertFalse(runSuspend { SaveWorkUseCase(projects, repository)() })
 
@@ -213,6 +216,58 @@ class LocalMyVideoRepositoryTest {
 
         runSuspend { restarted.deleteWork(id) }
         assertEquals(listOf("current/a.mp4"), persister.released)
+    }
+
+    // =====================================================================
+    // Storage space (D51)
+    // =====================================================================
+
+    @Test
+    fun storageBytes_countTheCopiesAndTheProjectFile() {
+        persister.sizes += mapOf("saved/a.mp4" to 5_000_000L, "current/a.mp4" to 5_000_000L)
+        startNew(EditorProject(name = "새 영상", clips = listOf(clip.copy(sourceUri = "picked/a.mp4"))))
+        val bytes = repository.works.value.first().storageBytes
+        assertTrue(bytes in 5_000_001..5_010_000, "bytes = $bytes")
+        // 다시 켜면 파일에서 다시 센다.
+        assertTrue(newRepository().works.value.first().storageBytes in 5_000_001..5_010_000)
+    }
+
+    @Test
+    fun checkMediaStorage_keepsTheMargin_andCountsOnlyNewFiles() {
+        persister.free = 600_000_000L
+        persister.sizes += mapOf("picked/b.mp4" to 50_000_000L, "picked/c.mp4" to 150_000_000L)
+        val check = CheckMediaStorageUseCase(repository)
+        assertTrue(runSuspend { check(listOf("picked/b.mp4")) })
+        // 600MB - 150MB = 450MB는 여유 500MB보다 작다.
+        assertFalse(runSuspend { check(listOf("picked/c.mp4")) })
+        // 이미 복사한 파일은 공간이 더 필요하지 않다.
+        startNew(EditorProject(name = "새 영상", clips = listOf(clip.copy(sourceUri = "picked/b.mp4"))))
+        assertEquals(0L, runSuspend { repository.bytesToCopy(listOf("picked/b.mp4")) })
+        assertEquals(150_000_000L, runSuspend { repository.bytesToCopy(listOf("picked/b.mp4", "picked/c.mp4", "picked/c.mp4")) })
+    }
+
+    @Test
+    fun startup_removesTheFilesThatNoWorkUses() {
+        startNew(EditorProject(name = "새 영상", clips = listOf(clip.copy(sourceUri = "picked/a.mp4"))))
+        val id = assertNotNull(projects.project.value.workId)
+        store.files["work-gone.json"] = "{}"
+        store.files["works.json.part"] = "{"
+
+        newRepository()
+        assertEquals(setOf("works.json", "work-$id.json"), store.files.keys)
+        assertEquals(setOf("current/a.mp4"), persister.kept)
+    }
+
+    @Test
+    fun unreadableProject_keepsAllCopies() {
+        startNew(EditorProject(name = "새 영상", clips = listOf(clip.copy(sourceUri = "picked/a.mp4"))))
+        val id = assertNotNull(projects.project.value.workId)
+        store.files["work-$id.json"] = "{ broken"
+
+        newRepository()
+        // 모르는 복사본을 지우지 않도록 복사본 정리를 건너뛴다. 목록에 있는 프로젝트 파일도 남는다.
+        assertNull(persister.kept)
+        assertTrue("work-$id.json" in store.files)
     }
 
     /** A project with each kind of element, so that the test finds a field that the file does not keep. */
@@ -273,12 +328,31 @@ private class MemoryWorkFileStore : WorkFileStore {
     override fun delete(fileName: String) {
         files.remove(fileName)
     }
+
+    override fun list(): List<String> = files.keys.toList()
 }
 
-/** Moves "picked/" files to "saved/", and finds them at "current/" after a restart. */
+/** Copies "picked/" files to "saved/", and finds them at "current/" after a restart. */
 private class FakeMediaPersister : MediaPersister {
     val persisted = mutableListOf<String>()
     val released = mutableListOf<String>()
+
+    /** Size of each file. Other files have the size 0. */
+    val sizes = mutableMapOf<String, Long>()
+
+    /** Free bytes on the device. */
+    var free = Long.MAX_VALUE
+
+    /** Copies that the last clean-up kept, or null before a clean-up. */
+    var kept: Set<String>? = null
+
+    override fun sizeOf(uri: String): Long = sizes[uri] ?: 0
+
+    override fun freeBytes(): Long = free
+
+    override fun cleanUp(keep: Set<String>) {
+        kept = keep
+    }
 
     override fun persist(uri: String): String {
         persisted += uri

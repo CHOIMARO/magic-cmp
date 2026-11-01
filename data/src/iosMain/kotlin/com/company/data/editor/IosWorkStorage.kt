@@ -4,22 +4,33 @@ import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSFileSize
+import platform.Foundation.NSFileSystemFreeSize
+import platform.Foundation.NSFileType
+import platform.Foundation.NSFileTypeDirectory
+import platform.Foundation.NSNumber
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSString
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
+import platform.Foundation.NSURLIsExcludedFromBackupKey
+import platform.Foundation.NSURLVolumeAvailableCapacityForImportantUsageKey
 import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.NSUserDomainMask
 import platform.Foundation.create
 import platform.Foundation.stringWithContentsOfFile
 import platform.Foundation.writeToFile
 
-/** Application Support folder of the app. The system does not remove the files in it. */
+/**
+ * Application Support folder of the app. The system does not remove the files in it. The folder is left out of the
+ * iCloud backup, because the copies of the videos are large (D51).
+ */
 @OptIn(ExperimentalForeignApi::class)
 private fun supportFolder(name: String): String {
     val base = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, true).first() as String
     val path = "$base/$name"
     NSFileManager.defaultManager.createDirectoryAtPath(path, withIntermediateDirectories = true, attributes = null, error = null)
+    NSURL.fileURLWithPath(path).setResourceValue(NSNumber(bool = true), forKey = NSURLIsExcludedFromBackupKey, error = null)
     return path
 }
 
@@ -43,14 +54,17 @@ internal class IosWorkFileStore : WorkFileStore {
         NSFileManager.defaultManager.removeItemAtPath("$folder/$fileName", error = null)
     }
 
+    override fun list(): List<String> =
+        NSFileManager.defaultManager.contentsOfDirectoryAtPath(folder, error = null)?.filterIsInstance<String>().orEmpty()
+
     private companion object {
         const val WORK_DIR = "works"
     }
 }
 
 /**
- * Moves the picked photos and videos out of the temporary folder, so that the system does not remove them.
- * The files go to the Application Support folder with the same relative path.
+ * Copies the picked photos and videos out of the temporary folder, so that the system does not remove them (D50).
+ * The copies go to the Application Support folder with the same relative path.
  */
 @OptIn(ExperimentalForeignApi::class)
 internal class IosMediaPersister : MediaPersister {
@@ -81,12 +95,42 @@ internal class IosMediaPersister : MediaPersister {
         NSFileManager.defaultManager.removeItemAtPath("$folder/$relative", error = null)
     }
 
-    /** Path of a saved source file in the media folder, or null for a file outside of it. */
+    override fun sizeOf(uri: String): Long {
+        val path = NSURL.URLWithString(uri)?.takeIf { it.isFileURL() }?.path ?: return 0
+        val size = NSFileManager.defaultManager.attributesOfItemAtPath(path, error = null)?.get(NSFileSize) as? NSNumber
+        return size?.longLongValue ?: 0
+    }
+
+    override fun freeBytes(): Long {
+        // 사용자가 시작한 저장이므로, 시스템이 지울 수 있는 공간까지 센다.
+        val important = NSURL.fileURLWithPath(folder)
+            .resourceValuesForKeys(listOf(NSURLVolumeAvailableCapacityForImportantUsageKey), error = null)
+            ?.get(NSURLVolumeAvailableCapacityForImportantUsageKey) as? NSNumber
+        val free = important ?: NSFileManager.defaultManager.attributesOfFileSystemForPath(folder, error = null)?.get(NSFileSystemFreeSize) as? NSNumber
+        return free?.longLongValue?.takeIf { it > 0 } ?: Long.MAX_VALUE
+    }
+
+    override fun cleanUp(keep: Set<String>) {
+        val fileManager = NSFileManager.defaultManager
+        val keepPaths = keep.mapNotNull { savedRelativePath(it) }.map { "$folder/$it" }.toSet()
+        val entries = fileManager.subpathsOfDirectoryAtPath(folder, error = null)?.filterIsInstance<String>().orEmpty().map { "$folder/$it" }
+        val (folders, files) = entries.partition { isDirectory(it) }
+        files.filterNot { it in keepPaths }.forEach { fileManager.removeItemAtPath(it, error = null) }
+        // 고를 때마다 폴더가 하나씩 생기므로, 비게 된 폴더도 깊은 것부터 지운다.
+        folders.sortedByDescending { it.length }.forEach { path ->
+            if (fileManager.contentsOfDirectoryAtPath(path, error = null)?.isEmpty() == true) fileManager.removeItemAtPath(path, error = null)
+        }
+    }
+
+    /** Path of a copy in the media folder, or null for a file outside of it. */
     private fun savedRelativePath(uri: String): String? {
         val path = NSURL.URLWithString(uri)?.takeIf { it.isFileURL() }?.path ?: return null
         val marker = "/$SUPPORT_DIR/$MEDIA_DIR/"
         return path.substringAfter(marker, missingDelimiterValue = "").ifEmpty { null }
     }
+
+    private fun isDirectory(path: String): Boolean =
+        NSFileManager.defaultManager.attributesOfItemAtPath(path, error = null)?.get(NSFileType) == NSFileTypeDirectory
 
     private companion object {
         const val MEDIA_DIR = "media"

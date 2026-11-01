@@ -26,6 +26,7 @@ import com.company.domain.model.editor.VideoSummary
 import com.company.feature.main.component.MainBottomBar
 import com.company.feature.main.sheet.AppInfoSheetContent
 import com.company.feature.main.sheet.TemplateSheetContent
+import com.company.feature.main.component.storageSizeLabel
 import com.company.feature.main.sheet.WorkMenuSheetContent
 import com.company.feature.main.resources.Res
 import com.company.feature.main.resources.work_delete_cancel
@@ -78,6 +79,7 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
             MainTab.MY -> MyTab(
                 settings = state.settings,
                 exportedCount = state.works.count { it.exported },
+                storageBytes = state.works.sumOf { it.storageBytes },
                 myVoice = state.myVoice,
                 onToggleSetting = { onIntent(MainIntent.ToggleSetting(it)) },
                 onOpenAppInfo = { onIntent(MainIntent.OpenAppInfo) },
@@ -118,6 +120,7 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
                     MainSheet.AppInfo -> AppInfoSheetContent()
                     is MainSheet.Work -> WorkMenuSheetContent(
                         name = state.works.find { it.id == sheet.workId }?.name.orEmpty(),
+                        size = storageSizeLabel(state.works.find { it.id == sheet.workId }?.storageBytes ?: 0),
                         onExport = { closeThen(MainIntent.ExportWork(sheet.workId)) },
                         onDelete = { closeThen(MainIntent.RequestDeleteWork(sheet.workId)) },
                     )

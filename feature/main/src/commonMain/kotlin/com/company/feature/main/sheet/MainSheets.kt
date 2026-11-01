@@ -108,23 +108,29 @@ internal fun ColumnScope.TemplateSheetContent(template: EditorTemplate, onUseTem
 private val DeleteActionColor = oklch(0.76f, 0.15f, 25f)
 
 /**
- * Content of the work menu (S13): the work name, "내보내기", and "삭제하기".
+ * Content of the work menu (S13): the work name and size, "내보내기", and "삭제하기".
  *
  * @param name Name of the work.
+ * @param size Label of the storage that the work uses, for example "320MB" (D51).
  * @param onExport Opens the export screen of the work.
  * @param onDelete Asks the user before the work goes away.
  */
 @Composable
-internal fun ColumnScope.WorkMenuSheetContent(name: String, onExport: () -> Unit, onDelete: () -> Unit) {
+internal fun ColumnScope.WorkMenuSheetContent(name: String, size: String, onExport: () -> Unit, onDelete: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            text = name,
+        Column(
             modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = 10.dp),
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = name,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(text = size, fontSize = 13.sp, color = MagicColors.OnSurface60)
+        }
         WorkMenuAction(icon = Icons.Rounded.IosShare, label = stringResource(Res.string.work_menu_export), color = MagicColors.OnSurface, onClick = onExport)
         WorkMenuAction(icon = Icons.Rounded.Delete, label = stringResource(Res.string.work_menu_delete), color = DeleteActionColor, onClick = onDelete)
     }

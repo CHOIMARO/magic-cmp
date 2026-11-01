@@ -60,6 +60,27 @@ class LeaveEditorUseCase(
     }
 }
 
+/** Free space that must stay on the device after the copies of the picked files, in bytes (D51). */
+const val STORAGE_MARGIN_BYTES = 500L * 1000 * 1000
+
+/**
+ * Checks the device storage before the app copies picked photos and videos into its storage (D50, D51). The picker
+ * calls it before it starts a new work or adds clips.
+ */
+class CheckMediaStorageUseCase(
+    private val myVideoRepository: MyVideoRepository,
+) {
+    /**
+     * @param uris Locations of the picked photos and videos.
+     * @return True when the copies fit, and [STORAGE_MARGIN_BYTES] stay free after them.
+     */
+    suspend operator fun invoke(uris: List<String>): Boolean {
+        val needed = myVideoRepository.bytesToCopy(uris)
+        val free = myVideoRepository.freeBytes()
+        return free - needed >= STORAGE_MARGIN_BYTES
+    }
+}
+
 /** Opens a work from "최근 작업" or "내 영상" in the editor, in its last saved state (F15). */
 class OpenWorkUseCase(
     private val projectRepository: EditorProjectRepository,

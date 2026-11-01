@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.StateFlow
  * Keeps the works of the user (F15). A work is one edit that the user started in the editor: its project and its
  * summary in "최근 작업" and "내 영상".
  *
+ * The repository copies the source photos and videos of a work into the app storage, and the work uses the copies
+ * (D50). Thus a work opens after an app restart, also when the user removed the original from the gallery.
+ *
  * The functions that write can fail, for example when the device storage is full. They then throw an exception.
  */
 interface MyVideoRepository {
@@ -41,7 +44,8 @@ interface MyVideoRepository {
     suspend fun loadWork(id: String): EditorProject?
 
     /**
-     * Removes a work and its project. The source files and the exported videos in the gallery stay.
+     * Removes a work, its project, and the copies of its source files that no other work uses. The originals and the
+     * exported videos in the gallery stay.
      *
      * @param id ID of the work.
      */
@@ -53,4 +57,19 @@ interface MyVideoRepository {
      * @param id ID of the work.
      */
     suspend fun markExported(id: String)
+
+    /**
+     * Tells how many bytes the copies of source files need (D51). A file that a work already copied needs no bytes.
+     *
+     * @param uris Locations of the source photos and videos.
+     * @return The bytes. A file with an unknown size counts as 0.
+     */
+    suspend fun bytesToCopy(uris: List<String>): Long
+
+    /**
+     * Tells the free bytes on the device storage of the works (D51).
+     *
+     * @return The bytes, or [Long.MAX_VALUE] when the device does not tell them.
+     */
+    suspend fun freeBytes(): Long
 }

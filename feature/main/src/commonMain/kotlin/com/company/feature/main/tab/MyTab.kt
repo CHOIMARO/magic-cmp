@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.RecordVoiceOver
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Icon
@@ -53,6 +54,7 @@ import com.company.domain.model.editor.MyVoiceStatus
 import com.company.feature.main.SettingKey
 import com.company.feature.main.component.TabContentBottomPadding
 import com.company.feature.main.component.TabTitle
+import com.company.feature.main.component.storageSizeLabel
 import com.company.feature.main.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -80,6 +82,7 @@ private data class SettingRow(
  *
  * @param settings Current editor settings.
  * @param exportedCount Number of works that the user exported (D43).
+ * @param storageBytes Bytes that all works use on the device (D51).
  * @param myVoice State of the user's own voice.
  * @param onToggleSetting Called with the tapped setting.
  * @param onOpenAppInfo Action of the "앱 정보" row.
@@ -89,6 +92,7 @@ private data class SettingRow(
 internal fun MyTab(
     settings: EditorSettings,
     exportedCount: Int,
+    storageBytes: Long,
     myVoice: MyVoiceStatus,
     onToggleSetting: (SettingKey) -> Unit,
     onOpenAppInfo: () -> Unit,
@@ -116,6 +120,7 @@ internal fun MyTab(
             ),
             SettingRow(Icons.AutoMirrored.Outlined.BrandingWatermark, stringResource(Res.string.my_watermark), toggle = SettingKey.WATERMARK),
             SettingRow(Icons.Outlined.Hd, stringResource(Res.string.my_default_quality), value = "1080p"),
+            SettingRow(Icons.Outlined.Storage, stringResource(Res.string.my_work_storage), value = storageSizeLabel(storageBytes)),
         ),
         stringResource(Res.string.my_group_info) to listOf(
             SettingRow(Icons.Outlined.Info, stringResource(Res.string.my_app_info), value = "v1.0.0", onClick = onOpenAppInfo),

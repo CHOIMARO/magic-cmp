@@ -38,6 +38,8 @@ data class SourceMedia(
  * @property modifiedAt Time of the last saved change, in milliseconds since 1970-01-01 UTC. When the user only opens
  *   or exports the work, it does not change (D44).
  * @property exported True after the user exported the work one time or more (D43).
+ * @property storageBytes Bytes that the work uses on the device: the copies of its source files and its project
+ *   file (D51).
  */
 data class VideoSummary(
     val id: String,
@@ -46,6 +48,7 @@ data class VideoSummary(
     val thumbnailHue: Int?,
     val modifiedAt: Long,
     val exported: Boolean = false,
+    val storageBytes: Long = 0,
 )
 
 /**

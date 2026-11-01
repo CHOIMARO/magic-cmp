@@ -3,6 +3,7 @@ package com.company.domain.di
 import com.company.domain.usecase.GetImageDetailUseCase
 import com.company.domain.usecase.SearchImagesUseCase
 import com.company.domain.usecase.editor.ApplyTemplateUseCase
+import com.company.domain.usecase.editor.CheckMediaStorageUseCase
 import com.company.domain.usecase.editor.GenerateCaptionsUseCase
 import com.company.domain.usecase.editor.LeaveEditorUseCase
 import com.company.domain.usecase.editor.OpenWorkUseCase
@@ -24,4 +25,5 @@ val domainModule = module {
     factoryOf( ::SaveWorkUseCase )
     factoryOf( ::LeaveEditorUseCase )
     factoryOf( ::OpenWorkUseCase )
+    factoryOf( ::CheckMediaStorageUseCase )
 }

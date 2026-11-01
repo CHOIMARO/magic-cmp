@@ -1,6 +1,9 @@
 package com.company.data.editor
 
-/** Stores the text files of the works on the device (F15). The calls block, so call them on a background thread. */
+/**
+ * Stores the text files of the works on the device (F15). The device backup does not keep them (D51).
+ * The calls block, so call them on a background thread.
+ */
 internal interface WorkFileStore {
     /**
      * Reads a file.
@@ -25,23 +28,27 @@ internal interface WorkFileStore {
      * @param fileName Name of the file.
      */
     fun delete(fileName: String)
+
+    /** Names of all the files in the store, also the files that a write did not finish. */
+    fun list(): List<String>
 }
 
 /**
- * Keeps the access to the picked photos and videos after the app restarts, so that a saved work can open them again.
+ * Copies the picked photos and videos into the app storage, so that a saved work can open them after an app restart
+ * and after the user removed the original (D50). The device backup does not keep the copies (D51).
  * The calls block, so call them on a background thread.
  */
 internal interface MediaPersister {
     /**
-     * Makes the access to a source file last.
+     * Copies a source file into the app storage. A copy can take a long time for a large video.
      *
      * @param uri Location of the source file.
-     * @return The location to save in the work. It can differ from [uri], for example after a copy.
+     * @return The location of the copy. When the file needs no copy or the copy fails, [uri].
      */
     fun persist(uri: String): String
 
     /**
-     * Gives the current location of a saved source file. The app folder can move when the app updates.
+     * Gives the current location of a copy. The app folder can move when the app updates.
      *
      * @param uri Location that [persist] gave.
      * @return The location to open now.
@@ -49,9 +56,27 @@ internal interface MediaPersister {
     fun restore(uri: String): String
 
     /**
-     * Gives up the lasting access to a source file. Call it when no work uses the file.
+     * Removes a copy. Call it when no work uses the copy. Nothing happens for a file that is not a copy.
      *
      * @param uri Location that [persist] gave.
      */
     fun release(uri: String)
+
+    /**
+     * Tells the size of a file.
+     *
+     * @param uri Location of a source file or of a copy.
+     * @return The size in bytes, or 0 when it is not known.
+     */
+    fun sizeOf(uri: String): Long
+
+    /** Tells the free bytes for new copies, or [Long.MAX_VALUE] when the device does not tell them. */
+    fun freeBytes(): Long
+
+    /**
+     * Removes all the copies that are not in [keep], also the copies that did not finish.
+     *
+     * @param keep Locations of the copies that the works use.
+     */
+    fun cleanUp(keep: Set<String>)
 }

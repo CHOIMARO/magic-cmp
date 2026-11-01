@@ -52,6 +52,10 @@
     <string name="my_voice_none">없음</string>
     <string name="my_watermark">magic 워터마크</string>
     <string name="my_default_quality">기본 저장 화질</string>
+    <string name="my_work_storage">작업 저장 공간</string>
+    <string name="storage_size_under_1mb">1MB 미만</string>
+    <string name="storage_size_mb">%1$dMB</string>
+    <string name="storage_size_gb">%1$sGB</string>
     <string name="my_group_info">정보</string>
     <string name="my_app_info">앱 정보</string>
     <string name="my_help">도움말 · 문의</string>
