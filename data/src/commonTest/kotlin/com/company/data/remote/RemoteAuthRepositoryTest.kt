@@ -19,7 +19,10 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
@@ -30,7 +33,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Sign-in, token refresh, sign-out, and withdrawal with the API server (F17, app-api-guide 2-6). */
+/** Sign-in, token refresh with refresh token rotation, sign-out, and withdrawal (F17, app-api-guide 2-3, 2-8). */
 class RemoteAuthRepositoryTest {
     private val secureStore = FakeSecureStore()
     private val sessionStore = SessionStore(secureStore)
@@ -89,7 +92,7 @@ class RemoteAuthRepositoryTest {
 
     @Test
     fun failedLogin_doesNotRefresh() = runApiTest {
-        // 로그인 실패도 401이다. 재발급하면 끝없이 반복하므로 /auth/ 요청은 재발급하지 않는다(2-6, 4번).
+        // 로그인 실패도 401이다. 재발급하면 끝없이 반복하므로 /auth/ 요청은 재발급하지 않는다(2-8, 4번).
         signedIn()
         server = { json(INVALID_SNS_TOKEN, HttpStatusCode.Unauthorized) }
 
@@ -119,7 +122,83 @@ class RemoteAuthRepositoryTest {
         assertEquals(listOf("GET /members/me", "POST /auth/refresh", "GET /members/me"), requests.map { it.route })
         assertEquals("""{"refreshToken":"r1"}""", requests[1].text)
         assertNull(requests[1].authorization)
-        assertEquals(AuthTokens("a2", "r1"), SessionStore(secureStore).tokens)
+        // 서버는 재발급할 때마다 refresh 토큰도 바꾼다. 두 토큰을 모두 저장한다(2-3).
+        assertEquals(AuthTokens("a2", "r2"), SessionStore(secureStore).tokens)
+    }
+
+    @Test
+    fun nextRefresh_sendsTheNewRefreshToken() = runApiTest {
+        // 이전 refresh 토큰을 1분 뒤에 다시 보내면 서버는 재사용으로 보고 로그인을 끝낸다(2-3).
+        signedIn(accessToken = "old")
+        val expired = mutableSetOf("Bearer old")
+        server = { request ->
+            when {
+                request.route == "POST /auth/refresh" && request.text == """{"refreshToken":"r1"}""" -> json(TOKENS_A2)
+                request.route == "POST /auth/refresh" && request.text == """{"refreshToken":"r2"}""" -> json(TOKENS_A3)
+                request.route == "POST /auth/refresh" -> json(INVALID_REFRESH_TOKEN, HttpStatusCode.Unauthorized)
+                request.authorization in expired -> json(UNAUTHORIZED, HttpStatusCode.Unauthorized)
+                else -> json(MEMBER)
+            }
+        }
+        repository.refreshMember()
+
+        expired += "Bearer a2"
+        repository.refreshMember()
+
+        val refreshes = requests.filter { it.route == "POST /auth/refresh" }.map { it.text }
+        assertEquals(listOf("""{"refreshToken":"r1"}""", """{"refreshToken":"r2"}"""), refreshes)
+        assertEquals(AuthTokens("a3", "r3"), SessionStore(secureStore).tokens)
+        assertIs<SessionState.SignedIn>(repository.session.value)
+    }
+
+    @Test
+    fun cancelledCaller_stillKeepsTheNewTokens() = runApiTest {
+        // 화면을 떠나 요청이 취소돼도 재발급은 끝까지 하고 두 토큰을 저장한다(4-2, 2번).
+        signedIn(accessToken = "old")
+        val refreshStarted = CompletableDeferred<Unit>()
+        val serverReplies = CompletableDeferred<Unit>()
+        server = { request ->
+            when {
+                request.route == "POST /auth/refresh" -> {
+                    refreshStarted.complete(Unit)
+                    serverReplies.await()
+                    json(TOKENS_A2)
+                }
+                request.authorization == "Bearer a2" -> json(MEMBER)
+                else -> json(UNAUTHORIZED, HttpStatusCode.Unauthorized)
+            }
+        }
+        coroutineScope {
+            val call = launch { repository.updateNickname("새 이름") }
+            refreshStarted.await()
+            call.cancel()
+            serverReplies.complete(Unit)
+            call.join()
+        }
+        assertEquals(AuthTokens("a2", "r2"), SessionStore(secureStore).tokens)
+
+        // 다음 요청은 저장한 새 토큰을 쓴다. 이전 refresh 토큰으로 다시 재발급하지 않는다.
+        requests.clear()
+        repository.refreshMember()
+
+        assertEquals(SessionState.SignedIn(member), repository.session.value)
+        assertTrue(requests.none { it.route == "POST /auth/refresh" })
+        assertEquals("Bearer a2", requests.last().authorization)
+    }
+
+    @Test
+    fun refreshNetworkError_keepsTheTokens() = runApiTest {
+        // 응답만 유실돼도 서버가 이전 refresh 토큰을 1분 더 받아 주므로 토큰을 지우지 않는다(2-8, 3번).
+        signedIn(accessToken = "old")
+        server = { request ->
+            if (request.route == "POST /auth/refresh") throw IOException("offline")
+            json(UNAUTHORIZED, HttpStatusCode.Unauthorized)
+        }
+
+        assertFailsWith<NetworkException> { repository.updateNickname("새 이름") }
+
+        assertEquals(AuthTokens("old", "r1"), SessionStore(secureStore).tokens)
+        assertIs<SessionState.SignedIn>(repository.session.value)
     }
 
     @Test
@@ -251,7 +330,8 @@ class RemoteAuthRepositoryTest {
     private companion object {
         const val BASE_URL = "http://api.test"
         const val TOKENS_A1 = """{"accessToken":"a1","refreshToken":"r1"}"""
-        const val TOKENS_A2 = """{"accessToken":"a2","refreshToken":"r1"}"""
+        const val TOKENS_A2 = """{"accessToken":"a2","refreshToken":"r2"}"""
+        const val TOKENS_A3 = """{"accessToken":"a3","refreshToken":"r3"}"""
         const val MEMBER =
             """{"id":1,"email":null,"nickname":"마로","profileImageUrl":null,"providers":["KAKAO"],"createdAt":"2026-11-02T15:40:43.105877"}"""
         const val UNAUTHORIZED = """{"code":"UNAUTHORIZED","message":"인증이 필요합니다","fieldErrors":[]}"""

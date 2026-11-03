@@ -31,11 +31,12 @@ internal class AndroidSecureStore(context: Context) : SecureStore {
     }
 
     override fun write(key: String, value: String) {
-        prefs.edit().putString(key, encrypt(value)).apply()
+        // apply()는 나중에 디스크에 쓴다. 그 전에 앱이 꺼지면 서버가 이미 바꾼 새 refresh 토큰을 잃는다(app-api-guide 2-8).
+        check(prefs.edit().putString(key, encrypt(value)).commit()) { "Cannot save the value" }
     }
 
     override fun remove(key: String) {
-        prefs.edit().remove(key).apply()
+        prefs.edit().remove(key).commit()
     }
 
     private fun encrypt(value: String): String {

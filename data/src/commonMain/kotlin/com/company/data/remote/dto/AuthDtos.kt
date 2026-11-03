@@ -42,7 +42,7 @@ internal data class RefreshTokenRequest(val refreshToken: String)
  * Tokens that the server gives.
  *
  * @property accessToken Access token. It is valid for 1 hour.
- * @property refreshToken Refresh token. It is valid for 30 days from the sign-in.
+ * @property refreshToken Refresh token. The refresh also gives a new one, and the new one is valid for 30 days.
  */
 @Serializable
 internal data class TokenResponse(val accessToken: String, val refreshToken: String)

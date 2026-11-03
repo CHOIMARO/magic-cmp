@@ -13,7 +13,8 @@ import kotlinx.serialization.json.Json
  * Tokens of the server.
  *
  * @property accessToken Access token. It is valid for 1 hour.
- * @property refreshToken Refresh token. It is valid for 30 days from the sign-in.
+ * @property refreshToken Refresh token. Each refresh gives a new one that is valid for 30 days. The server accepts
+ *   the old one for 1 minute only (app-api-guide 2-3).
  */
 @Serializable
 internal data class AuthTokens(val accessToken: String, val refreshToken: String)
@@ -28,10 +29,11 @@ internal interface SecureStore {
     fun read(key: String): String?
 
     /**
-     * Writes a value. A value with the same key is replaced.
+     * Writes a value. A value with the same key is replaced. The value is on the disk when the call returns.
      *
      * @param key Name of the value.
      * @param value Value to keep.
+     * @throws Exception when the platform cannot write the value.
      */
     fun write(key: String, value: String)
 
@@ -76,13 +78,18 @@ internal class SessionStore(private val secureStore: SecureStore) {
     }
 
     /**
-     * Keeps the tokens after a refresh. The sign-in state does not change.
+     * Keeps both new tokens after a refresh. The server changes the refresh token at each refresh, so the old refresh
+     * token is not valid any more. The sign-in state does not change.
      *
      * @param tokens Tokens that the server gave.
+     * @return False when the user signed out during the refresh. The tokens then stay out.
      */
-    fun replaceTokens(tokens: AuthTokens) {
-        if (_tokens.value == null) return
-        save(tokens)
+    fun replaceTokens(tokens: AuthTokens): Boolean {
+        val current = _tokens.value ?: return false
+        // 재발급하는 사이에 로그아웃했으면 토큰을 되살리지 않는다.
+        if (!_tokens.compareAndSet(current, tokens)) return false
+        persist(tokens)
+        return true
     }
 
     /**
@@ -102,8 +109,20 @@ internal class SessionStore(private val secureStore: SecureStore) {
     }
 
     private fun save(tokens: AuthTokens) {
-        secureStore.write(KEY_TOKENS, Json.encodeToString(AuthTokens.serializer(), tokens))
         _tokens.value = tokens
+        persist(tokens)
+    }
+
+    /**
+     * Writes the tokens to the secure storage. The memory has them first, so a failed write does not stop this
+     * session. For example, the Keychain can be locked before the first unlock after a restart.
+     */
+    private fun persist(tokens: AuthTokens) {
+        try {
+            secureStore.write(KEY_TOKENS, Json.encodeToString(AuthTokens.serializer(), tokens))
+        } catch (_: Exception) {
+            // 다음 재발급에서 다시 저장한다. 앱을 끄면 로그인이 풀릴 수 있다.
+        }
     }
 
     private fun load(): AuthTokens? {

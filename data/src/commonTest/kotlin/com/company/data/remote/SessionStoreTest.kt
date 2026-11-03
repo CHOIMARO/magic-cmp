@@ -4,6 +4,7 @@ import com.company.domain.model.account.Member
 import com.company.domain.model.account.SessionState
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -58,10 +59,33 @@ class SessionStoreTest {
         store.signIn(AuthTokens("a1", "r1"))
         store.clear()
 
-        store.replaceTokens(AuthTokens("a2", "r1"))
+        assertFalse(store.replaceTokens(AuthTokens("a2", "r2")))
 
         assertNull(store.tokens)
         assertTrue(secureStore.values.isEmpty())
+    }
+
+    @Test
+    fun replaceTokens_keepsBothNewTokens_afterRestart() {
+        // 서버는 재발급할 때마다 refresh 토큰도 바꾼다. 이전 토큰으로 돌아가면 로그인이 끊긴다(app-api-guide 2-3).
+        val store = SessionStore(secureStore)
+        store.signIn(AuthTokens("a1", "r1"))
+
+        assertTrue(store.replaceTokens(AuthTokens("a2", "r2")))
+
+        assertEquals(AuthTokens("a2", "r2"), SessionStore(secureStore).tokens)
+    }
+
+    @Test
+    fun failedWrite_keepsTheTokensInMemory() {
+        val store = SessionStore(secureStore)
+        store.signIn(AuthTokens("a1", "r1"))
+        secureStore.failWrites = true
+
+        assertTrue(store.replaceTokens(AuthTokens("a2", "r2")))
+
+        // 저장소에 쓰지 못해도 이번 실행에서는 새 토큰을 쓴다.
+        assertEquals(AuthTokens("a2", "r2"), store.tokens)
     }
 
     @Test

@@ -27,6 +27,8 @@ import platform.Foundation.dataUsingEncoding
 import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
+import platform.Security.SecItemUpdate
+import platform.Security.errSecItemNotFound
 import platform.Security.errSecSuccess
 import platform.Security.kSecAttrAccessible
 import platform.Security.kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
@@ -68,16 +70,23 @@ internal class IosSecureStore : SecureStore {
     }
 
     override fun write(key: String, value: String) {
-        val data = NSString.create(string = value).dataUsingEncoding(NSUTF8StringEncoding) ?: return
-        remove(key)
+        val data = checkNotNull(NSString.create(string = value).dataUsingEncoding(NSUTF8StringEncoding)) { "Cannot encode the value" }
         val dataRef = CFBridgingRetain(data)
+        val changes = CFDictionaryCreateMutable(null, 0, kCFTypeDictionaryKeyCallBacks.ptr, kCFTypeDictionaryValueCallBacks.ptr)
         try {
-            withQuery(
-                key,
-                kSecValueData to dataRef,
-                kSecAttrAccessible to kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
-            ) { SecItemAdd(it, null) }
+            // 지우고 다시 넣지 않고 값만 바꾼다. 그 사이에 앱이 꺼져도 토큰이 없어지지 않는다.
+            CFDictionaryAddValue(changes, kSecValueData, dataRef)
+            var status = withQuery(key) { SecItemUpdate(it, changes) }
+            if (status == errSecItemNotFound) {
+                status = withQuery(
+                    key,
+                    kSecValueData to dataRef,
+                    kSecAttrAccessible to kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+                ) { SecItemAdd(it, null) }
+            }
+            check(status == errSecSuccess) { "Cannot save the value: $status" }
         } finally {
+            CFRelease(changes)
             CFBridgingRelease(dataRef)
         }
     }
