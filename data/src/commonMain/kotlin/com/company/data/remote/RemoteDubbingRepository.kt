@@ -9,6 +9,7 @@ import com.company.data.remote.dto.DubbingOptionsResponse
 import com.company.domain.model.editor.DubbingAudio
 import com.company.domain.model.editor.DubbingContent
 import com.company.domain.model.editor.DubbingVoice
+import com.company.domain.model.account.ServerException
 import com.company.domain.model.editor.MY_VOICE_ID
 import com.company.domain.repository.DubbingRepository
 import io.ktor.client.HttpClient
@@ -18,10 +19,12 @@ import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +44,9 @@ internal class DubbingFailedException(message: String) : Exception(message)
  * The server takes a request at once and makes the audio later. The repository asks for the state every second, for
  * 60 seconds at most. The address of a finished audio is valid for 10 minutes, so the repository asks for a new
  * address right before each use.
+ *
+ * The server makes the audio of one content only one time. An insert after a preview uses the job of the preview,
+ * also when the preview stopped before the job was finished.
  *
  * @param client HTTP client of the API server.
  * @param mediaPersister Keeps the audio files in the app storage.
@@ -66,6 +72,12 @@ internal class RemoteDubbingRepository(
 
     /** Content and job of the last finished audio. A preview and then an insert of the same content use one job. */
     private var lastJob: Pair<DubbingContent, Long>? = null
+
+    /**
+     * Content and job that the server makes now. A request that stopped (for example a preview, when the user taps
+     * the insert button) keeps it, so the next request of the same content waits for this job.
+     */
+    private var pendingJob: Pair<DubbingContent, Long>? = null
 
     override suspend fun loadVoices() {
         try {
@@ -95,8 +107,10 @@ internal class RemoteDubbingRepository(
     }
 
     /**
-     * Gives a finished job of the content with a fresh audio address. The job of the last content is used again.
-     * Otherwise the repository makes a new job and waits for it.
+     * Gives a finished job of the content with a fresh audio address.
+     *
+     * The job of the last finished content is used again. A job of the same content that the server makes now is
+     * waited for. Otherwise the repository makes a new job and waits for it.
      */
     private suspend fun finishedJob(content: DubbingContent): DubbingJobResponse = mutex.withLock {
         // 내 목소리는 Typecast 유료 플랜 전까지 서버에서 쓸 수 없다(app-api-guide 3-8).
@@ -106,12 +120,34 @@ internal class RemoteDubbingRepository(
             val job = getJob(id)
             if (job.status == DubbingJobStatus.COMPLETED && job.audioUrl != null) return@withLock job
         }
-        val request = CreateDubbingJobRequest(text = content.text, presetVoice = content.voiceId, speed = content.speed.factor)
-        val created: DubbingJobResponse = client.post("dubbing-jobs") { setBody(request) }.body()
-        val finished = withTimeoutOrNull(timeoutMillis) { waitForJob(created.id) }
-            ?: throw DubbingFailedException("The audio is not ready after ${timeoutMillis / 1000} seconds")
+        // 미리 듣기를 만드는 중에 더빙 넣기를 누르면, 새로 만들지 않고 그 작업을 이어서 기다린다.
+        val id = pendingJob?.takeIf { it.first == content }?.second ?: createJob(content)
+        val finished = try {
+            withTimeoutOrNull(timeoutMillis) { waitForJob(id) }
+                ?: throw DubbingFailedException("The audio is not ready after ${timeoutMillis / 1000} seconds")
+        } catch (e: DubbingFailedException) {
+            // 서버가 실패했거나 너무 오래 걸린 작업은 버린다. 다시 시도하면 새 작업을 만든다(3-4).
+            pendingJob = null
+            throw e
+        } catch (e: ServerException) {
+            // 서버에 없는 작업(404 DUBBING_JOB_NOT_FOUND)은 버린다. 네트워크 오류면 다음에 같은 작업을 이어서 기다린다.
+            if (e.status == HttpStatusCode.NotFound.value) pendingJob = null
+            throw e
+        }
+        pendingJob = null
         lastJob = content to finished.id
         finished
+    }
+
+    /**
+     * Asks the server for a new job and keeps it as [pendingJob]. The request runs to its end, also when the caller
+     * stops waiting, so that the app knows each job that the server takes.
+     */
+    private suspend fun createJob(content: DubbingContent): Long = withContext(NonCancellable) {
+        val request = CreateDubbingJobRequest(text = content.text, presetVoice = content.voiceId, speed = content.speed.factor)
+        val created: DubbingJobResponse = client.post("dubbing-jobs") { setBody(request) }.body()
+        pendingJob = content to created.id
+        created.id
     }
 
     /** Asks for the state of a job every [pollMillis] until it is finished. */

@@ -18,7 +18,10 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlin.test.Test
@@ -115,6 +118,47 @@ class RemoteDubbingRepositoryTest {
         assertEquals(2.5, audio.length)
         // presigned URL에는 토큰을 붙이지 않는다(3-5).
         assertNull(downloads.single().headers[HttpHeaders.Authorization])
+    }
+
+    @Test
+    fun insertWhileThePreviewIsMade_waitsForTheSameJob() = runApiTest {
+        // 미리 듣기를 만드는 중에 더빙 넣기를 누르면 미리 듣기는 멈추고, 넣기가 같은 작업을 이어서 기다린다.
+        val polling = CompletableDeferred<Unit>()
+        val serverDone = CompletableDeferred<Unit>()
+        server = { request ->
+            when (request.route) {
+                "POST /dubbing-jobs" -> json(job("PENDING"), HttpStatusCode.Accepted)
+                "GET /dubbing-jobs/7" -> {
+                    polling.complete(Unit)
+                    json(job(if (serverDone.isCompleted) "COMPLETED" else "PROCESSING"))
+                }
+                else -> error(request.route)
+            }
+        }
+        coroutineScope {
+            val preview = launch { repository.preview(content) }
+            polling.await()
+            preview.cancel()
+            preview.join()
+        }
+        serverDone.complete(Unit)
+
+        val audio = repository.synthesize(content)
+
+        assertEquals(1, requests.count { it.route == "POST /dubbing-jobs" })
+        assertEquals("saved/audio-$AUDIO_BYTES.mp3", audio.audioUri)
+    }
+
+    @Test
+    fun failedJob_isNotUsedAgain() = runApiTest {
+        jobStates = mutableListOf("FAILED")
+        assertFailsWith<DubbingFailedException> { repository.preview(content) }
+        jobStates = mutableListOf("COMPLETED")
+
+        repository.preview(content)
+
+        // 다시 시도하면 새 작업을 만든다(app-api-guide 3-4).
+        assertEquals(2, requests.count { it.route == "POST /dubbing-jobs" })
     }
 
     @Test
