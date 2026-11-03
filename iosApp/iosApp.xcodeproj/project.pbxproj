@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		D98D046B5A33E0E298D29B83 /* MagicCmp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MagicCmp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D98D046B5A33E0E298D29B83 /* Magic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Magic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -59,7 +59,7 @@
 		B7BF6E0D2015FBD4535A4D2E /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				D98D046B5A33E0E298D29B83 /* MagicCmp.app */,
+				D98D046B5A33E0E298D29B83 /* Magic.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -87,7 +87,7 @@
 			packageProductDependencies = (
 			);
 			productName = iosApp;
-			productReference = D98D046B5A33E0E298D29B83 /* MagicCmp.app */;
+			productReference = D98D046B5A33E0E298D29B83 /* Magic.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
