@@ -10,7 +10,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.company.magic"
+        applicationId = "com.choimaro.magic"
         minSdk = 29
         targetSdk = 37
         versionCode = 1
