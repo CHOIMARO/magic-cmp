@@ -43,6 +43,7 @@ class ExportOverlay(val start: Double, val end: Double, val png: ByteArray)
  * @property overlayTracks Images on top of the video. Each track holds images in time order, and a time
  * without an image shows nothing of that track. The first track is at the bottom.
  * @property transitions Transitions of the video, in time order.
+ * @property dubbings Dubbings to mix into the sound of the video. A dubbing without an audio file stays silent.
  */
 data class ExportRequest(
     val name: String,
@@ -53,6 +54,7 @@ data class ExportRequest(
     val videoArea: FrameArea = FrameArea.FULL,
     val overlayTracks: List<List<ExportOverlay>> = emptyList(),
     val transitions: List<TransitionWindow> = emptyList(),
+    val dubbings: List<Dubbing> = emptyList(),
 )
 
 /** State of a running export. */

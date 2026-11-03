@@ -16,6 +16,7 @@ import com.company.domain.model.editor.ExportRequest
 import com.company.domain.model.editor.ExportStatus
 import com.company.domain.repository.VideoExportRepository
 import com.company.core.media.buildMediaComposition
+import com.company.core.media.timelineAudio
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
@@ -66,6 +67,7 @@ internal class AndroidVideoExportRepository(private val context: Context) : Vide
                 videoArea = request.videoArea,
                 overlayTracks = request.overlayTracks,
                 transitions = request.transitions,
+                audio = request.dubbings.timelineAudio(),
             )
             transformer.start(composition, output.path)
             val progressJob = launch {

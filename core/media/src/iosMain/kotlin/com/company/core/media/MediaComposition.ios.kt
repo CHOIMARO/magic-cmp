@@ -147,6 +147,8 @@ class MediaComposition(
  * @param videoArea Area of the frame that shows the video.
  * @param overlayTracks Images on top of the video. Each track holds images in time order. The first track is at the bottom.
  * @param transitions Transitions of the video, in time order. They change only the video area. See [transitionLook].
+ * @param audio Audio files on the timeline, for example the dubbings. Each row gets its own audio track, and
+ *   AVFoundation mixes the tracks with the sound of the clips. A file that does not open stays silent.
  * @return The composition, or null when a clip has no file or AVFoundation cannot make the video composition.
  */
 @OptIn(ExperimentalForeignApi::class)
@@ -158,6 +160,7 @@ suspend fun buildMediaComposition(
     videoArea: FrameArea = FrameArea.FULL,
     overlayTracks: List<List<ExportOverlay>> = emptyList(),
     transitions: List<TransitionWindow> = emptyList(),
+    audio: List<TimelineAudio> = emptyList(),
 ): MediaComposition? {
     val composition = AVMutableComposition()
     val videoTrack = composition.addMutableTrackWithMediaType(AVMediaTypeVideo, kCMPersistentTrackID_Invalid) ?: return null
@@ -215,6 +218,7 @@ suspend fun buildMediaComposition(
         sources += FrameSource(start = start, transform = null, photo = null)
     }
     if (!hasAudio) composition.removeTrack(audioTrack)
+    val timelineTracks = insertTimelineAudio(composition, audio)
 
     val renderer = FrameRenderer(
         sources = sources,
@@ -235,24 +239,69 @@ suspend fun buildMediaComposition(
     } ?: return null
     videoComposition.setRenderSize(CGSizeMake(frameWidth.toDouble(), frameHeight.toDouble()))
     videoComposition.setFrameDuration(CMTimeMake(value = 1, timescale = FRAME_RATE))
+    val mixParameters = listOfNotNull(if (hasAudio) clipVolumeParameters(audioTrack, clips) else null) +
+        timelineTracks.mapNotNull { (track, row) -> timelineVolumeParameters(track, row) }
     return MediaComposition(
         asset = composition,
         videoComposition = videoComposition,
-        audioMix = if (hasAudio) clipVolumeMix(audioTrack, clips) else null,
+        audioMix = mixParameters.takeIf { it.isNotEmpty() }?.let { AVMutableAudioMix().apply { setInputParameters(it) } },
     )
 }
 
 /**
- * Makes the audio mix that sets the volume of each clip.
+ * Adds one audio track for each row of timeline audio. Each item plays its part of the file at its rate.
+ *
+ * @param composition The composition.
+ * @param audio Audio files on the timeline.
+ * @return Each new track with its row.
+ */
+@OptIn(ExperimentalForeignApi::class)
+private suspend fun insertTimelineAudio(
+    composition: AVMutableComposition,
+    audio: List<TimelineAudio>,
+): List<Pair<AVMutableCompositionTrack, List<TimelineAudio>>> = audio.byLayer().mapNotNull { row ->
+    val track = composition.addMutableTrackWithMediaType(AVMediaTypeAudio, kCMPersistentTrackID_Invalid) ?: return@mapNotNull null
+    var inserted = false
+    for (item in row) {
+        val url = NSURL.URLWithString(item.uri) ?: continue
+        val source = AVURLAsset(uRL = url, options = null).loadFirstTrack(AVMediaTypeAudio) ?: continue
+        val range = CMTimeRangeMake(CMTimeMakeWithSeconds(0.0, TIMESCALE), CMTimeMakeWithSeconds(item.sourceLength, TIMESCALE))
+        val at = CMTimeMakeWithSeconds(item.start, TIMESCALE)
+        if (track.insertScaled(source, range, at, CMTimeMakeWithSeconds(item.length, TIMESCALE))) inserted = true
+    }
+    if (inserted) {
+        track to row
+    } else {
+        composition.removeTrack(track)
+        null
+    }
+}
+
+/**
+ * Volume of each item of a timeline audio track, or null when all items use the full volume.
+ *
+ * @param track Audio track of the row.
+ * @param row Items of the row in time order.
+ */
+@OptIn(ExperimentalForeignApi::class)
+private fun timelineVolumeParameters(track: AVAssetTrack, row: List<TimelineAudio>): AVMutableAudioMixInputParameters? {
+    if (row.all { it.volume == MAX_VOLUME }) return null
+    val parameters = AVMutableAudioMixInputParameters.audioMixInputParametersWithTrack(track)
+    row.forEach { parameters.setVolume(it.gain, atTime = CMTimeMakeWithSeconds(it.start, TIMESCALE)) }
+    return parameters
+}
+
+/**
+ * Makes the audio mix parameters that set the volume of each clip.
  *
  * Each clip sets its volume at its start, so a clip with the full volume sets the full volume again.
  *
  * @param track Audio track of the composition.
  * @param clips Clips in play order.
- * @return The audio mix, or null when all clips use the full volume.
+ * @return The parameters, or null when all clips use the full volume.
  */
 @OptIn(ExperimentalForeignApi::class)
-private fun clipVolumeMix(track: AVAssetTrack, clips: List<Clip>): AVAudioMix? {
+private fun clipVolumeParameters(track: AVAssetTrack, clips: List<Clip>): AVMutableAudioMixInputParameters? {
     if (clips.all { it.volume == MAX_VOLUME }) return null
     val parameters = AVMutableAudioMixInputParameters.audioMixInputParametersWithTrack(track)
     // 합성 트랙에 클립을 넣을 때와 같은 방법으로 시작 시간을 더한다.
@@ -262,7 +311,7 @@ private fun clipVolumeMix(track: AVAssetTrack, clips: List<Clip>): AVAudioMix? {
         parameters.setVolume(volume, atTime = CMTimeMakeWithSeconds(start, TIMESCALE))
         start += clip.duration
     }
-    return AVMutableAudioMix().apply { setInputParameters(listOf(parameters)) }
+    return parameters
 }
 
 /**

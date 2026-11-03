@@ -5,6 +5,7 @@ import com.company.domain.model.editor.ExportStatus
 import com.company.domain.model.editor.GalleryAccessDeniedException
 import com.company.domain.repository.VideoExportRepository
 import com.company.core.media.buildMediaComposition
+import com.company.core.media.timelineAudio
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.roundToInt
@@ -52,6 +53,7 @@ internal class IosVideoExportRepository : VideoExportRepository {
             videoArea = request.videoArea,
             overlayTracks = request.overlayTracks,
             transitions = request.transitions,
+            audio = request.dubbings.timelineAudio(),
         ) ?: error("Cannot build the composition")
         val output = NSURL.fileURLWithPath(NSTemporaryDirectory() + exportFileName(request.name))
         val session = AVAssetExportSession(asset = composition.asset, presetName = AVAssetExportPresetHighestQuality).apply {

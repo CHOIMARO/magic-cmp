@@ -12,6 +12,7 @@ import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.TransitionWindow
 import com.company.core.media.PREVIEW_FRAME_HEIGHT
 import com.company.core.media.PREVIEW_FRAME_WIDTH
+import com.company.core.media.TimelineAudio
 import com.company.core.media.buildMediaComposition
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
@@ -97,14 +98,14 @@ private class IosVideoPreviewPlayer(private val scope: CoroutineScope) : VideoPr
             return if (seconds.isNaN()) targetTime else seconds
         }
 
-    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double, time: Double) {
+    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double, time: Double, audio: List<TimelineAudio>) {
         if (clips.isEmpty()) return
         targetTime = time
         ended = false
         loading = true
         loadJob?.cancel()
         loadJob = scope.launch {
-            val item = buildPlayerItem(clips, transitions, duration)
+            val item = buildPlayerItem(clips, transitions, duration, audio)
             loading = false
             if (item == null) {
                 NSLog("Preview: cannot build the player item")
@@ -204,15 +205,24 @@ private class PlayerLayerView(player: AVPlayer) : UIView(frame = CGRectMake(0.0,
     }
 }
 
-/** Makes the player item of the clips with the same composition as the export. After the last clip, it is black until [duration]. */
+/**
+ * Makes the player item of the clips and the timeline audio with the same composition as the export. After the last
+ * clip, it is black until [duration].
+ */
 @OptIn(ExperimentalForeignApi::class)
-private suspend fun buildPlayerItem(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double): AVPlayerItem? {
+private suspend fun buildPlayerItem(
+    clips: List<Clip>,
+    transitions: List<TransitionWindow>,
+    duration: Double,
+    audio: List<TimelineAudio>,
+): AVPlayerItem? {
     val composition = buildMediaComposition(
         clips = clips,
         duration = duration,
         frameWidth = PREVIEW_FRAME_WIDTH,
         frameHeight = PREVIEW_FRAME_HEIGHT,
         transitions = transitions,
+        audio = audio,
     ) ?: return null
     return AVPlayerItem(asset = composition.asset).apply {
         videoComposition = composition.videoComposition

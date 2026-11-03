@@ -9,6 +9,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.company.core.media.timelineAudio
 import com.company.domain.model.editor.transitionWindows
 import kotlin.math.abs
 import kotlinx.coroutines.delay
@@ -37,6 +38,8 @@ internal fun rememberEditorPlayback(state: EditorState, onIntent: (EditorIntent)
     }
     // 영상은 가장 늦게 끝나는 요소까지다. 마지막 클립 뒤는 검은 화면으로 재생한다(F16).
     val duration = state.project.totalDuration
+    // 더빙 소리도 미리보기에 섞는다. 저장할 때와 같은 목록이다.
+    val audio = remember(state.project.dubbings) { state.project.dubbings.timelineAudio() }
     val hasFiles = clips.isNotEmpty() && clips.all { it.sourceUri != null }
     val videoPlayer = if (hasFiles) rememberVideoPreviewPlayer() else null
     val player: PreviewPlayer = videoPlayer ?: remember { ClockPreviewPlayer() }
@@ -44,10 +47,10 @@ internal fun rememberEditorPlayback(state: EditorState, onIntent: (EditorIntent)
     val latestOnIntent by rememberUpdatedState(onIntent)
     val loaded = remember(player) { mutableStateOf(false) }
 
-    // 클립, 전환, 영상 길이가 바뀌면 재생할 내용을 다시 만든다. 연속으로 바뀌면 마지막 변경만 반영한다.
-    LaunchedEffect(player, clips, transitions, duration) {
+    // 클립, 전환, 영상 길이, 더빙이 바뀌면 재생할 내용을 다시 만든다. 연속으로 바뀌면 마지막 변경만 반영한다.
+    LaunchedEffect(player, clips, transitions, duration, audio) {
         if (loaded.value) delay(CONTENT_DELAY_MILLIS)
-        player.setClips(clips, transitions, duration, latestState.time)
+        player.setClips(clips, transitions, duration, latestState.time, audio)
         loaded.value = true
         if (latestState.playing) player.play()
     }
