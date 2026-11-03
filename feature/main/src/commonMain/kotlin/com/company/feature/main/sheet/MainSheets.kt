@@ -84,7 +84,6 @@ internal fun ColumnScope.TemplateSheetContent(template: EditorTemplate, onUseTem
                 scale = 0.57f,
                 modifier = Modifier.matchParentSize(),
                 labelPadding = 5.dp to 1.dp,
-                captionRadius = 5f,
             )
         }
         Column(

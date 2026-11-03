@@ -8,33 +8,24 @@ class TemplateFavoritesTest {
 
     @Test
     fun templatesWithFavoritesFirst_putsTheNewestFavoriteFirst_andKeepsTheOtherOrder() {
-        val order = templatesWithFavoritesFirst(listOf(TextStyleType.DASH, TextStyleType.NEON))
+        val order = templatesWithFavoritesFirst(listOf(TextStyleType.MINIMAL, TextStyleType.NEON))
 
-        assertEquals(
-            listOf(
-                TextStyleType.DASH,
-                TextStyleType.NEON,
-                TextStyleType.IMPACT,
-                TextStyleType.MARKER,
-                TextStyleType.MINIMAL,
-                TextStyleType.SHOUT,
-                TextStyleType.FLAME,
-                TextStyleType.SPARK,
-            ),
-            order,
-        )
+        assertEquals(listOf(TextStyleType.MINIMAL, TextStyleType.NEON, TextStyleType.IMPACT, TextStyleType.MARKER), order)
     }
 
     @Test
     fun templatesWithFavoritesFirst_withoutFavorites_keepsTheNormalOrder() {
-        assertEquals(TextStyleType.entries, templatesWithFavoritesFirst(emptyList()))
+        assertEquals(
+            listOf(TextStyleType.IMPACT, TextStyleType.NEON, TextStyleType.MARKER, TextStyleType.MINIMAL),
+            templatesWithFavoritesFirst(emptyList()),
+        )
     }
 
     @Test
-    fun templatesWithFavoritesFirst_showsEachTemplateOnce() {
-        val order = templatesWithFavoritesFirst(listOf(TextStyleType.SHOUT, TextStyleType.SHOUT))
+    fun templatesWithFavoritesFirst_showsEachTemplateOnce_andNoThumbnailLines() {
+        val order = templatesWithFavoritesFirst(listOf(TextStyleType.NEON, TextStyleType.NEON, TextStyleType.THUMB_FIRE_1))
 
-        assertEquals(TextStyleType.entries.size, order.size)
-        assertEquals(TextStyleType.SHOUT, order.first())
+        assertEquals(4, order.size)
+        assertEquals(TextStyleType.NEON, order.first())
     }
 }

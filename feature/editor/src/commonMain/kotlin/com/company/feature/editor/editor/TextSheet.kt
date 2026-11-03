@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.exclude
@@ -38,12 +39,15 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.BorderColor
+import androidx.compose.material.icons.rounded.BorderOuter
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.CropSquare
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.FormatBold
 import androidx.compose.material.icons.rounded.Gradient
+import androidx.compose.material.icons.rounded.RoundedCorner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -96,12 +100,17 @@ import com.company.core.designsystem.component.sheetIme
 import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicTheme
 import com.company.core.designsystem.theme.oklch
+import com.company.domain.model.editor.BackgroundShape
 import com.company.domain.model.editor.Decoration
+import com.company.domain.model.editor.EditorTemplate
 import com.company.domain.model.editor.SIZE_STEP_COUNT
 import com.company.domain.model.editor.TextFontType
 import com.company.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.ThumbnailTemplate
+import com.company.domain.model.editor.drawnFont
 import com.company.domain.model.editor.valuesIn
 import com.company.feature.editor.resources.*
+import com.company.ui.editor.TemplatePreview
 import com.company.ui.editor.TextFrame
 import com.company.ui.editor.displayName
 import com.company.ui.editor.fontFamily
@@ -113,6 +122,9 @@ import org.jetbrains.compose.resources.stringResource
 
 /** Size factor of the sample text in a style card. */
 internal const val STYLE_SAMPLE_SCALE = 0.66f
+
+/** Size factor of the lines in a thumbnail tile of the template tab, as in the design. */
+private const val THUMBNAIL_TILE_SCALE = 0.44f
 
 /** Text in the cards of the text sheet while the text field is empty. */
 private val SampleText: String
@@ -165,6 +177,13 @@ internal fun TextSheet(state: EditorState, onIntent: (EditorIntent) -> Unit, onC
     state.textDraft?.let { lastDraft.value = it }
     val draft = lastDraft.value ?: return
     val keyboardOpen by rememberKeyboardOpen()
+    state.colorPicker?.let { picker ->
+        ColorPickerPanel(
+            picker = picker,
+            onChange = { onIntent(EditorIntent.ChangePickerColor(it)) },
+            onClose = { onIntent(EditorIntent.CloseColorPicker) },
+        )
+    }
     // 키보드 없이 그린 탭 영역(위 간격 포함)의 높이. 키보드가 열리는 동안 시트 윗변을 이 높이에 맞춰 둔다.
     var tabAreaHeight by remember { mutableIntStateOf(0) }
 
@@ -363,18 +382,20 @@ private val FavoriteColor = oklch(0.78f, 0.17f, 10f)
 
 /**
  * Text templates in list order: the favorites first, the newest favorite first, and then the other templates in their
- * normal order (F14).
+ * normal order (F14). The lines of the thumbnails are not in the list.
  *
  * @param favorites Favorite templates, the newest first.
  */
 internal fun templatesWithFavoritesFirst(favorites: List<TextStyleType>): List<TextStyleType> {
-    val first = favorites.distinct()
-    return first + TextStyleType.entries.filterNot { it in first }
+    val templates = TextStyleType.entries.filterNot { it.thumbnail }
+    val first = favorites.distinct().filter { it in templates }
+    return first + templates.filterNot { it in first }
 }
 
 /**
- * Template tab. Each card plays the animation of its style in a loop. The favorites come first. Under the cards, a
- * hint tells how to add a favorite, and a reset button goes back to the default template.
+ * Template tab, as in the design: the 4 text templates, a hint and a reset button under them, and then the thumbnails.
+ * Each text template card plays the animation of its template in a loop, and the favorites come first. A thumbnail
+ * adds all its lines at once.
  *
  * @param draft Text that the user types.
  * @param text Text in the cards.
@@ -399,8 +420,49 @@ private fun TextTemplatePage(draft: TextDraft, text: String, favorites: List<Tex
             color = MagicColors.OnSurface50,
             textAlign = TextAlign.Center,
         )
-        if (draft.style != TextStyleType.IMPACT) {
-            SmallPillButton(label = stringResource(Res.string.template_reset), onClick = { onIntent(EditorIntent.ChangeDraftStyle(TextStyleType.IMPACT)) })
+        if (draft.style != null) {
+            SmallPillButton(label = stringResource(Res.string.template_reset), onClick = { onIntent(EditorIntent.ChangeDraftStyle(null)) })
+        }
+    }
+    if (!draft.isCaption) ThumbnailTiles(onIntent = onIntent)
+}
+
+/**
+ * Thumbnails of the template tab: a label and a grid of 3 columns. Each tile shows all lines of a thumbnail. A tap
+ * adds all lines and closes the sheet.
+ *
+ * @param onIntent Called with each user action.
+ */
+@Composable
+private fun ThumbnailTiles(onIntent: (EditorIntent) -> Unit) {
+    Column(modifier = Modifier.padding(top = 14.dp, bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(Res.string.template_section_thumbnail),
+            fontSize = 12.5.sp,
+            fontWeight = FontWeight.Bold,
+            color = MagicColors.OnSurface70,
+        )
+        FixedGrid(items = ThumbnailTemplate.entries, columns = 3, horizontalSpacing = 8.dp, verticalSpacing = 8.dp) { template ->
+            Column(
+                modifier = Modifier.pressClickable(pressedScale = 0.96f) { onIntent(EditorIntent.AddThumbnail(template)) },
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                TemplatePreview(
+                    template = EditorTemplate.Thumbnail(template),
+                    scale = THUMBNAIL_TILE_SCALE,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f).clip(RoundedCornerShape(14.dp)),
+                )
+                Text(
+                    text = template.displayName,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MagicColors.OnSurface60,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -444,8 +506,8 @@ private fun TemplateStrip(draft: TextDraft, text: String, favorites: List<TextSt
  */
 @Composable
 private fun FontStrip(draft: TextDraft, text: String, downloading: TextFontType?, onIntent: (EditorIntent) -> Unit) {
-    // 글꼴을 고르지 않았으면 스타일의 글꼴이 선택된 것으로 보인다.
-    val selectedFont = draft.font ?: draft.style.look().font
+    // 글꼴을 고르지 않았으면 템플릿의 글꼴(템플릿이 없으면 프리텐다드)이 선택된 것으로 보인다.
+    val selectedFont = draft.content.drawnFont
     val fonts = TextFontType.entries
     StripRow(state = rememberStripState(selectedIndex = fonts.indexOf(selectedFont))) {
         items(fonts) { font ->
@@ -531,10 +593,12 @@ private fun TemplateCard(
     val haptic = LocalHapticFeedback.current
     val longPress = remember { LongPressGuard() }
     val toggleFavorite by rememberUpdatedState { onIntent(EditorIntent.ToggleFavoriteTextStyle(style)) }
+    val selected = draft.style == style
     TextSheetCard(
         label = style.displayName,
-        selected = draft.style == style,
-        onClick = longPress.guard { onIntent(EditorIntent.ChangeDraftStyle(style)) },
+        selected = selected,
+        // 이미 고른 템플릿을 다시 눌러도 바뀌지 않는다.
+        onClick = longPress.guard { if (!selected) onIntent(EditorIntent.ChangeDraftStyle(style)) },
         // 카드를 길게 눌러도 하트처럼 즐겨찾기를 바꾼다.
         modifier = modifier.pointerInput(longPress) {
             awaitLongPresses(longPress) {
@@ -543,7 +607,8 @@ private fun TemplateCard(
             }
         },
     ) {
-        val look = style.look(STYLE_SAMPLE_SCALE, draft.font)
+        // 템플릿이 남긴 글꼴은 직접 고른 글꼴이 아니라서, 카드는 각 템플릿의 기본 글꼴로 보여 준다 (D61).
+        val look = style.look(STYLE_SAMPLE_SCALE, if (draft.fontFromTemplate) null else draft.font)
         StyleSample(text = text, look = look, frame = look.animation.previewFrameAt(clock.longValue), scale = STYLE_SAMPLE_SCALE)
         Box(
             modifier = Modifier
@@ -572,8 +637,8 @@ private fun TemplateCard(
  */
 @Composable
 private fun TextFontPage(draft: TextDraft, downloading: TextFontType?, onIntent: (EditorIntent) -> Unit) {
-    // 글꼴을 고르지 않았으면 스타일의 글꼴이 선택된 것으로 보인다.
-    val selectedFont = draft.font ?: draft.style.look().font
+    // 글꼴을 고르지 않았으면 템플릿의 글꼴(템플릿이 없으면 프리텐다드)이 선택된 것으로 보인다.
+    val selectedFont = draft.content.drawnFont
     Column(modifier = Modifier.padding(horizontal = 0.dp)) {
         TextFontType.entries.forEach { font ->
             val selected = selectedFont == font
@@ -742,7 +807,6 @@ private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: 
     val colors = draft.decorationValues { it.color }
     // 배경이 있는 글자는 글자색을 자동으로 정하므로 색상을 고를 수 없다 (D05).
     val colorOff = length > 0 && backgrounds.any { it != null }
-    var customColorOpen by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 6.dp)) {
         Row(
@@ -768,6 +832,7 @@ private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: 
         if (!draft.isCaption) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = stringResource(Res.string.decoration_size), modifier = Modifier.width(40.dp), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
+
                 Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     SizeSteps(draft = draft, boxSize = 44.dp, diameters = SizeStepDiameters, onIntent = onIntent)
                 }
@@ -786,7 +851,7 @@ private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: 
                     recentColors = recentColors,
                     enabled = !colorOff,
                     customEnabled = !colorOff && length > 0,
-                    onCustom = { customColorOpen = true },
+                    onCustom = { onIntent(EditorIntent.OpenColorPicker(ColorTarget.TEXT)) },
                     onIntent = onIntent,
                 )
             }
@@ -797,26 +862,19 @@ private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(text = stringResource(Res.string.decoration_background), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
             SwatchRow {
-                BackgroundSwatches(backgrounds = backgrounds, hasText = length > 0, onIntent = onIntent)
+                BackgroundSwatches(backgrounds = backgrounds, recentColors = recentColors, hasText = length > 0, onIntent = onIntent)
+            }
+            Row(modifier = Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                BoxToggles(draft = draft, onIntent = onIntent, modifier = Modifier.weight(1f))
             }
         }
-    }
-    if (customColorOpen) {
-        CustomColorDialog(
-            initial = colors.singleOrNull() ?: 0xFFFFFF,
-            onPick = { rgb ->
-                customColorOpen = false
-                onIntent(EditorIntent.PickCustomColor(rgb))
-            },
-            onDismiss = { customColorOpen = false },
-        )
     }
 }
 
 /**
  * Decoration controls above the keyboard, in two rows that scroll to the side. The first row has the size steps,
- * bold, outline, and shadow. The second row has the text colors and the background colors. The user can select
- * characters in the text field and change only them, while the keyboard stays open.
+ * bold, outline, and shadow. The second row has the text colors, the background colors, and the box toggles. The
+ * user can select characters in the text field and change only them, while the keyboard stays open.
  *
  * @param draft Draft of the sheet.
  * @param recentColors Colors from the color picker, newest first.
@@ -829,7 +887,6 @@ private fun DecorationStrip(draft: TextDraft, recentColors: List<Int>, onIntent:
     val colors = draft.decorationValues { it.color }
     // 배경이 있는 글자는 글자색을 자동으로 정하므로 색상을 고를 수 없다 (D05).
     val colorOff = length > 0 && backgrounds.any { it != null }
-    var customColorOpen by remember { mutableStateOf(false) }
 
     Column {
         SwatchRow {
@@ -851,24 +908,16 @@ private fun DecorationStrip(draft: TextDraft, recentColors: List<Int>, onIntent:
                     recentColors = recentColors,
                     enabled = !colorOff,
                     customEnabled = !colorOff && length > 0,
-                    onCustom = { customColorOpen = true },
+                    onCustom = { onIntent(EditorIntent.OpenColorPicker(ColorTarget.TEXT)) },
                     onIntent = onIntent,
                 )
             }
             StripDivider()
             StripLabel(text = stringResource(Res.string.decoration_background))
-            BackgroundSwatches(backgrounds = backgrounds, hasText = length > 0, onIntent = onIntent)
+            BackgroundSwatches(backgrounds = backgrounds, recentColors = recentColors, hasText = length > 0, onIntent = onIntent)
+            StripDivider()
+            BoxToggles(draft = draft, onIntent = onIntent, compact = true)
         }
-    }
-    if (customColorOpen) {
-        CustomColorDialog(
-            initial = colors.singleOrNull() ?: 0xFFFFFF,
-            onPick = { rgb ->
-                customColorOpen = false
-                onIntent(EditorIntent.PickCustomColor(rgb))
-            },
-            onDismiss = { customColorOpen = false },
-        )
     }
 }
 
@@ -925,6 +974,53 @@ private fun DecorationToggles(draft: TextDraft, onIntent: (EditorIntent) -> Unit
 }
 
 /**
+ * Shape and border toggles of the background box: "둥근 네모", "네모", and "테두리". They change only the characters
+ * with a background. Without a background in the range, they are turned off. The border shows "섞임" when the
+ * characters differ.
+ *
+ * @param draft Draft of the sheet.
+ * @param onIntent Called with each user action.
+ * @param modifier Modifier for each toggle.
+ * @param compact True for the small toggles above the keyboard.
+ */
+@Composable
+private fun BoxToggles(draft: TextDraft, onIntent: (EditorIntent) -> Unit, modifier: Modifier = Modifier, compact: Boolean = false) {
+    val shapes = draft.decorationValues { if (it.background != null) it.backgroundShape else null }.filterNotNull().toSet()
+    val borders = draft.decorationValues { if (it.background != null) it.backgroundBorder else null }.filterNotNull().toSet()
+    val enabled = shapes.isNotEmpty()
+    Row(
+        modifier = Modifier.alpha(if (enabled) 1f else 0.4f),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 6.dp),
+    ) {
+        listOf(BackgroundShape.ROUNDED, BackgroundShape.SQUARE).forEach { shape ->
+            val on = shapes == setOf(shape)
+            DecorationChip(
+                icon = if (shape == BackgroundShape.ROUNDED) Icons.Rounded.RoundedCorner else Icons.Rounded.CropSquare,
+                label = stringResource(if (shape == BackgroundShape.ROUNDED) Res.string.decoration_box_rounded else Res.string.decoration_box_square),
+                on = on,
+                mixed = false,
+                enabled = enabled,
+                modifier = modifier,
+                compact = compact,
+                onClick = { if (!on) onIntent(EditorIntent.DecorateDraft(DecorationChange.BackgroundShape(shape))) },
+            )
+        }
+        val borderMixed = borders.size > 1
+        val borderOn = borders == setOf(true)
+        DecorationChip(
+            icon = Icons.Rounded.BorderOuter,
+            label = stringResource(Res.string.decoration_box_border),
+            on = borderOn,
+            mixed = borderMixed,
+            enabled = enabled,
+            modifier = modifier,
+            compact = compact,
+            onClick = { onIntent(EditorIntent.DecorateDraft(DecorationChange.BackgroundBorder(borderMixed || !borderOn))) },
+        )
+    }
+}
+
+/**
  * Button of the color picker, then the recent colors and the palette for the text color.
  *
  * @param colors Text colors in the range.
@@ -956,14 +1052,22 @@ private fun TextColorSwatches(
 }
 
 /**
- * "No background" swatch, then the palette for the background.
+ * Button of the color picker, the "no background" swatch, then the recent colors and the palette for the background.
  *
  * @param backgrounds Backgrounds in the range.
+ * @param recentColors Colors from the color picker, newest first.
  * @param hasText True when the draft has text.
  * @param onIntent Called with each user action.
  */
 @Composable
-private fun BackgroundSwatches(backgrounds: Set<Int?>, hasText: Boolean, onIntent: (EditorIntent) -> Unit) {
+private fun BackgroundSwatches(backgrounds: Set<Int?>, recentColors: List<Int>, hasText: Boolean, onIntent: (EditorIntent) -> Unit) {
+    CustomColorButton(
+        enabled = hasText,
+        onClick = { onIntent(EditorIntent.OpenColorPicker(ColorTarget.BACKGROUND)) },
+        shape = RoundedCornerShape(10.dp),
+        innerShape = RoundedCornerShape(7.dp),
+        description = stringResource(Res.string.decoration_custom_background),
+    )
     ColorSwatch(
         color = MagicColors.SurfaceHigh,
         selected = backgrounds.singleOrNull() == null && hasText,
@@ -971,7 +1075,7 @@ private fun BackgroundSwatches(backgrounds: Set<Int?>, hasText: Boolean, onInten
         icon = Icons.Rounded.Block,
         onClick = { onIntent(EditorIntent.DecorateDraft(DecorationChange.Background(null))) },
     )
-    DecorationPalette.forEach { rgb ->
+    (recentColors.filter { it !in DecorationPalette } + DecorationPalette).forEach { rgb ->
         ColorSwatch(
             color = rgbColor(rgb),
             selected = backgrounds.singleOrNull() == rgb,
@@ -1040,19 +1144,33 @@ private fun ColorSwatch(
     }
 }
 
-/** Button that opens the color picker. It has a rainbow ring and a plus mark. */
+/**
+ * Button that opens the color picker. It has a rainbow ring and a plus mark.
+ *
+ * @param enabled Set to false for the disabled state.
+ * @param onClick Opens the color picker.
+ * @param shape Outer shape: a circle for the text color, a rounded square for the background.
+ * @param innerShape Shape of the dark middle.
+ * @param description Name of the button for screen readers.
+ */
 @Composable
-private fun CustomColorButton(enabled: Boolean, onClick: () -> Unit) {
+private fun CustomColorButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+    shape: androidx.compose.ui.graphics.Shape = CircleShape,
+    innerShape: androidx.compose.ui.graphics.Shape = CircleShape,
+    description: String = stringResource(Res.string.decoration_custom_color),
+) {
     Box(
         modifier = Modifier
             .size(34.dp)
             .pressClickable(enabled = enabled, onClick = onClick)
-            .clip(CircleShape)
+            .clip(shape)
             .background(Brush.sweepGradient(listOf(Color(0xFFFF9A9A), Color(0xFFFFE08A), Color(0xFF9AF0B0), Color(0xFF8AD0FF), Color(0xFFC49AFF), Color(0xFFFF9A9A)))),
         contentAlignment = Alignment.Center,
     ) {
-        Box(modifier = Modifier.size(26.dp).clip(CircleShape).background(MagicColors.Surface), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.Add, contentDescription = stringResource(Res.string.decoration_custom_color), modifier = Modifier.size(18.dp))
+        Box(modifier = Modifier.size(26.dp).clip(innerShape).background(MagicColors.Surface), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Add, contentDescription = description, modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -1078,10 +1196,38 @@ private fun DecorationToggle(
 ) {
     val mixed = values.size > 1
     val on = values == setOf(true)
+    DecorationChip(icon = icon, label = label, on = on, mixed = mixed, enabled = true, modifier = modifier, compact = compact) {
+        onChange(mixed || !on)
+    }
+}
+
+/**
+ * Chip of a decoration toggle. A mixed chip shows "섞임".
+ *
+ * @param icon Icon of the chip.
+ * @param label Name of the chip.
+ * @param on True to draw the chip in the on state.
+ * @param mixed True when the range has different values.
+ * @param enabled Set to false for the disabled state.
+ * @param modifier Modifier for the chip.
+ * @param compact True for the small chip above the keyboard. It has no icon.
+ * @param onClick Action on click.
+ */
+@Composable
+private fun DecorationChip(
+    icon: ImageVector,
+    label: String,
+    on: Boolean,
+    mixed: Boolean,
+    enabled: Boolean,
+    modifier: Modifier,
+    compact: Boolean,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = modifier
             .height(if (compact) 34.dp else 44.dp)
-            .pressClickable { onChange(mixed || !on) }
+            .pressClickable(enabled = enabled, onClick = onClick)
             .clip(RoundedCornerShape(14.dp))
             .background(
                 when {

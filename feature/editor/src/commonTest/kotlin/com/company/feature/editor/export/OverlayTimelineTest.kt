@@ -4,6 +4,7 @@ import com.company.domain.model.editor.CaptionSegment
 import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.EditorProject
 import com.company.domain.model.editor.LayoutType
+import com.company.domain.model.editor.TextEntrance
 import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.TextStyleType
 import kotlin.math.abs
@@ -43,8 +44,11 @@ class OverlayTimelineTest {
 
     @Test
     fun text_givesOneSpanPerAnimationFrameAndOneStaticSpan() {
-        // 버럭: 팝 350ms 등장, 페이드 200ms 퇴장.
-        val text = TextOverlay(id = "t", text = "hi", start = 0.5, length = 2.0, style = TextStyleType.SHOUT, x = 50.0, y = 50.0)
+        // 템플릿 없는 글자에 팝 350ms 등장을 골랐다. 퇴장은 기본 페이드 200ms다.
+        val text = TextOverlay(
+            id = "t", text = "hi", start = 0.5, length = 2.0, style = null, x = 50.0, y = 50.0,
+            entrance = TextEntrance.POP, entranceMillis = 350,
+        )
         val spans = project.copy(texts = listOf(text)).textSpans(watermark = false)
         assertCovers(spans, 0.5, 2.5)
         val static = spans.single { it.end - it.start > 0.5 }

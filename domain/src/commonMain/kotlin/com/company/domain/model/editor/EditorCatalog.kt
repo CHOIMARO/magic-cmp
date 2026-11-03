@@ -32,11 +32,109 @@ enum class LayoutType(val clipCount: Int) {
 }
 
 /**
- * Look of a text overlay. The order is the order of the template lists. A new text uses [IMPACT].
+ * Text template: the look of a text overlay. A new text has no template.
  *
- * SHOUT, FLAME, SPARK, and DASH are the thumbnail looks: heavy letters with an outline and a solid 3D shadow.
+ * The first 4 entries are the text templates, in the order of the template lists. The other entries are the lines of
+ * the thumbnail templates. Each line of a [ThumbnailTemplate] is one text with its own look. The lines follow the same
+ * rules as the text templates (9.3, D61).
+ *
+ * @property font Default font of the template. A font that the user picks replaces it.
+ * @property thumbnail True for a line of a thumbnail template.
  */
-enum class TextStyleType { IMPACT, NEON, MARKER, MINIMAL, SHOUT, FLAME, SPARK, DASH }
+enum class TextStyleType(val font: TextFontType, val thumbnail: Boolean = false) {
+    /** IMPACT : Yellow heavy letters with a black outline ("예능"). */
+    IMPACT(TextFontType.BLACK_HAN_SANS),
+
+    /** NEON : Pink letters with a glow ("네온"). */
+    NEON(TextFontType.PRETENDARD),
+
+    /** MARKER : Black letters on a yellow band ("형광펜"). */
+    MARKER(TextFontType.PRETENDARD),
+
+    /** MINIMAL : Small thin letters with wide spaces ("미니멀"). */
+    MINIMAL(TextFontType.PRETENDARD),
+
+    // ----- "불꽃·핑크 입체" -----
+
+    /** THUMB_FIRE_1 : White letters with a brown outline, an orange glow, and a flame behind them. */
+    THUMB_FIRE_1(TextFontType.KUKDETOPOKKI, thumbnail = true),
+
+    /** THUMB_FIRE_2 : Large pink letters with a white outline and a solid shadow. */
+    THUMB_FIRE_2(TextFontType.GELLYROLL, thumbnail = true),
+
+    /** THUMB_FIRE_3 : Large pink letters with a white outline, a solid shadow, and a pink star. */
+    THUMB_FIRE_3(TextFontType.GELLYROLL, thumbnail = true),
+
+    /** THUMB_FIRE_4 : Small black letters on a white rounded box. */
+    THUMB_FIRE_4(TextFontType.GAEGU, thumbnail = true),
+
+    // ----- "옐로 버블" -----
+
+    /** THUMB_BUBBLE_1 : Large yellow letters with a dark outline, a white glow, and two stars. */
+    THUMB_BUBBLE_1(TextFontType.GELLYROLL, thumbnail = true),
+
+    /** THUMB_BUBBLE_2 : Large yellow letters with a dark outline and a white glow. */
+    THUMB_BUBBLE_2(TextFontType.GELLYROLL, thumbnail = true),
+
+    /** THUMB_BUBBLE_3 : Pink letters with a white outline, a dark glow, and a star. */
+    THUMB_BUBBLE_3(TextFontType.GELLYROLL, thumbnail = true),
+
+    // ----- "손글씨 풀스크린" -----
+
+    /** THUMB_HAND_1 : Tall yellow handwriting with a black outline, turned to the left. */
+    THUMB_HAND_1(TextFontType.KKUBULIM, thumbnail = true),
+
+    /** THUMB_HAND_2 : Tall yellow handwriting with a black outline, turned a little to the right. */
+    THUMB_HAND_2(TextFontType.KKUBULIM, thumbnail = true),
+
+    /** THUMB_HAND_3 : Tall yellow handwriting with a black outline, turned to the right. */
+    THUMB_HAND_3(TextFontType.KKUBULIM, thumbnail = true),
+
+    // ----- "얇은 고딕 미니멀" -----
+
+    /** THUMB_THIN_1 : Small green letters on a light green box, with a white burst. */
+    THUMB_THIN_1(TextFontType.PRETENDARD, thumbnail = true),
+
+    /** THUMB_THIN_2 : White letters with a soft shadow. */
+    THUMB_THIN_2(TextFontType.PRETENDARD, thumbnail = true),
+
+    /** THUMB_THIN_3 : Large thin white letters with a soft shadow. */
+    THUMB_THIN_3(TextFontType.PRETENDARD, thumbnail = true),
+
+    /** THUMB_THIN_4 : Small white letters with a soft shadow. */
+    THUMB_THIN_4(TextFontType.PRETENDARD, thumbnail = true),
+
+    /** THUMB_THIN_5 : Small white slanted letters with a soft shadow and a white bar. */
+    THUMB_THIN_5(TextFontType.PRETENDARD, thumbnail = true),
+
+    // ----- "볼드 고딕 하이라이트" -----
+
+    /** THUMB_BOLD_1 : Small black letters on a yellow box. */
+    THUMB_BOLD_1(TextFontType.PRETENDARD, thumbnail = true),
+
+    /** THUMB_BOLD_2 : Large white heavy letters with a dark outline and a soft shadow. */
+    THUMB_BOLD_2(TextFontType.BLACK_HAN_SANS, thumbnail = true),
+
+    /** THUMB_BOLD_3 : Large white heavy letters with a dark outline and a soft shadow. */
+    THUMB_BOLD_3(TextFontType.BLACK_HAN_SANS, thumbnail = true),
+
+    /** THUMB_BOLD_4 : Large yellow heavy letters with a dark outline and a soft shadow. */
+    THUMB_BOLD_4(TextFontType.BLACK_HAN_SANS, thumbnail = true),
+
+    // ----- "픽셀 손글씨" -----
+
+    /** THUMB_PIXEL_1 : Small black letters on a light blue box. */
+    THUMB_PIXEL_1(TextFontType.PRETENDARD, thumbnail = true),
+
+    /** THUMB_PIXEL_2 : Cream pixel letters with a navy outline and two sparkles. */
+    THUMB_PIXEL_2(TextFontType.MONA12, thumbnail = true),
+
+    /** THUMB_PIXEL_3 : Cream pixel letters with a navy outline and two sparkles. */
+    THUMB_PIXEL_3(TextFontType.MONA12, thumbnail = true),
+
+    /** THUMB_PIXEL_4 : Blue pixel letters with a navy outline and two sparkles. */
+    THUMB_PIXEL_4(TextFontType.MONA12, thumbnail = true),
+}
 
 /**
  * Font of a text overlay. The downloadable fonts use the SIL Open Font License 1.1. The license notices of the fonts
@@ -106,6 +204,9 @@ enum class TextFontType(val downloadable: Boolean = false, val isNew: Boolean = 
 
     /** Song Myung (송명), a serif font. */
     SONG_MYUNG(downloadable = true),
+
+    /** Dokdo (독도), a rough handwriting font. A thumbnail template uses it. */
+    DOKDO(downloadable = true, isNew = true),
 }
 
 /** How a text comes on screen. */
@@ -266,13 +367,20 @@ enum class SoundEffectCategory {
 /** Look of the automatic captions. */
 enum class CaptionStyleType { BASIC, POP, BOX, MINIMAL, SERIF, BIG }
 
-/** Kind of an [EditorTemplate]. */
-enum class TemplateKind { LAYOUT, TEXT, CAPTION }
+/** Kind of an [EditorTemplate]. The order is the order of the categories in the template tab. */
+enum class TemplateKind {
+    /** LAYOUT : A layout of the clips ("레이아웃"). */
+    LAYOUT,
+
+    /** THUMBNAIL : A cover title of several lines ("썸네일"). */
+    THUMBNAIL,
+}
 
 /**
- * Template that the user picks in the template tab.
+ * Template that the user picks in the template tab (S02).
  *
- * A template changes one part of the project: the layout, the text style, or the caption style.
+ * A layout template changes the layout. A thumbnail template adds its title lines. The text and the caption templates
+ * are not in the template tab: the user picks them in the text sheet and the caption sheet of the editor.
  */
 sealed interface EditorTemplate {
     /** Kind of the template. */
@@ -292,23 +400,13 @@ sealed interface EditorTemplate {
     }
 
     /**
-     * Text template.
+     * Thumbnail template.
      *
-     * @property style Text style to apply.
+     * @property template Thumbnail with the lines to add.
      */
-    data class Text(val style: TextStyleType) : EditorTemplate {
-        override val kind = TemplateKind.TEXT
-        override val key = "${kind.name}:${style.name}"
-    }
-
-    /**
-     * Caption template.
-     *
-     * @property style Caption style to apply.
-     */
-    data class Caption(val style: CaptionStyleType) : EditorTemplate {
-        override val kind = TemplateKind.CAPTION
-        override val key = "${kind.name}:${style.name}"
+    data class Thumbnail(val template: ThumbnailTemplate) : EditorTemplate {
+        override val kind = TemplateKind.THUMBNAIL
+        override val key = "${kind.name}:${template.name}"
     }
 
     companion object {
@@ -324,8 +422,7 @@ sealed interface EditorTemplate {
             val (kind, id) = parts
             return when (kind) {
                 TemplateKind.LAYOUT.name -> LayoutType.entries.find { it.name == id }?.let(::Layout)
-                TemplateKind.TEXT.name -> TextStyleType.entries.find { it.name == id }?.let(::Text)
-                TemplateKind.CAPTION.name -> CaptionStyleType.entries.find { it.name == id }?.let(::Caption)
+                TemplateKind.THUMBNAIL.name -> ThumbnailTemplate.entries.find { it.name == id }?.let(::Thumbnail)
                 else -> null
             }
         }

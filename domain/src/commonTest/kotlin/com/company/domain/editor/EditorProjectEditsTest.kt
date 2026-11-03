@@ -1,7 +1,6 @@
 package com.company.domain.editor
 
 import com.company.domain.model.editor.CaptionSegment
-import com.company.domain.model.editor.CaptionStyleType
 import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.Dubbing
 import com.company.domain.model.editor.DubbingSpeed
@@ -17,6 +16,7 @@ import com.company.domain.model.editor.SoundEffectClip
 import com.company.domain.model.editor.TextFontType
 import com.company.domain.model.editor.TextOverlay
 import com.company.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.ThumbnailTemplate
 import com.company.domain.model.editor.addText
 import com.company.domain.model.editor.applyTemplate
 import com.company.domain.model.editor.clipAt
@@ -89,9 +89,9 @@ class EditorProjectEditsTest {
         assertEquals(0.0, added.texts.single().start)
         assertEquals(3.0, added.texts.single().length)
         assertEquals(3.0, added.totalDuration)
-        // 템플릿의 기본 글자도 같은 규칙을 따른다.
-        val template = EditorProject(name = "p").applyTemplate(EditorTemplate.Text(TextStyleType.NEON), "title", emptyList())
-        assertEquals(3.0, template.texts.single().length)
+        // 썸네일 템플릿의 줄도 같은 규칙을 따른다.
+        val template = EditorProject(name = "p").applyTemplate(EditorTemplate.Thumbnail(ThumbnailTemplate.HAND))
+        assertTrue(template.texts.all { it.length == 3.0 })
     }
 
     @Test
@@ -304,31 +304,34 @@ class EditorProjectEditsTest {
     }
 
     @Test
-    fun applyTemplate_textAddsDefaultTitleWhenNoText() {
-        val result = project.applyTemplate(EditorTemplate.Text(TextStyleType.NEON), "title", emptyList())
-        assertEquals("title", result.texts.single().text)
-        assertEquals(TextStyleType.NEON, result.texts.single().style)
+    fun applyTemplate_layoutChangesOnlyTheLayout() {
+        val result = project.applyTemplate(EditorTemplate.Layout(LayoutType.CINEMA))
+        assertEquals(LayoutType.CINEMA, result.layout)
+        assertEquals(project.texts, result.texts)
     }
 
     @Test
-    fun applyTemplate_captionKeepsExistingCaptions() {
-        val existing = listOf(CaptionSegment("c", "old", 0.0, 1.0))
-        val fallback = listOf(CaptionSegment("n", "new", 0.0, 1.0))
-        val result = project.copy(captions = existing)
-            .applyTemplate(EditorTemplate.Caption(CaptionStyleType.BIG), "title", fallback)
-        assertEquals(CaptionStyleType.BIG, result.captionStyle)
-        assertEquals(existing, result.captions)
+    fun applyTemplate_thumbnailAddsAllLines_from0To3Seconds() {
+        val result = project.applyTemplate(EditorTemplate.Thumbnail(ThumbnailTemplate.FIRE))
+        assertEquals(listOf("이제는 마지막...", "서울", "7-8억대 아파트", "강서구 1편"), result.texts.map { it.text })
+        assertTrue(result.texts.all { it.start == 0.0 && it.length == 3.0 })
+        assertEquals(listOf(0, 1, 2, 3), result.texts.map { it.layer })
+        // 디자인의 위치(1080×1920 캔버스의 540, 781)를 퍼센트로 바꾼다.
+        assertEquals(50.0, result.texts[1].x)
+        assertEquals(40.68, result.texts[1].y)
     }
 
     @Test
     fun templateKey_roundTrips() {
         val templates = listOf(
             EditorTemplate.Layout(LayoutType.POLAROID),
-            EditorTemplate.Text(TextStyleType.MARKER),
-            EditorTemplate.Caption(CaptionStyleType.MINIMAL),
+            EditorTemplate.Thumbnail(ThumbnailTemplate.PIXEL),
         )
         templates.forEach { assertEquals(it, EditorTemplate.fromKey(it.key)) }
         assertNull(EditorTemplate.fromKey("LAYOUT:UNKNOWN"))
+        // 글자·자막 템플릿은 템플릿 탭에 없다.
+        assertNull(EditorTemplate.fromKey("TEXT:NEON"))
+        assertNull(EditorTemplate.fromKey("CAPTION:BIG"))
         assertNull(EditorTemplate.fromKey(null))
         assertTrue(templates.map { it.key }.toSet().size == templates.size)
     }

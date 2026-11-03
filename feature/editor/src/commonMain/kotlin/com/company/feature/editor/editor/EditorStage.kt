@@ -697,7 +697,14 @@ private const val DRAFT_TEXT_ID = "__draft"
 private fun EditorProject.liveTexts(draft: TextDraft?, time: Double, placeholder: String): List<TextOverlay> {
     if (draft == null || draft.isCaption) return texts
     val show = { overlay: TextOverlay ->
-        overlay.copy(text = draft.text, style = draft.style, font = draft.font, sizeStep = draft.sizeStep, decorations = draft.decorations)
+        overlay.copy(
+            text = draft.text,
+            style = draft.style,
+            font = draft.font,
+            fontFromTemplate = draft.fontFromTemplate,
+            sizeStep = draft.sizeStep,
+            decorations = draft.decorations,
+        )
     }
     return if (draft.id != null) {
         texts.map { if (it.id == draft.id) show(it) else it }

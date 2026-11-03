@@ -2,15 +2,17 @@ package com.company.feature.editor.editor
 
 import com.company.domain.model.editor.Decoration
 import com.company.domain.model.editor.DecorationRange
-import com.company.domain.model.editor.TextContent
 import com.company.domain.model.editor.TextEntrance
 import com.company.domain.model.editor.TextExit
 import com.company.domain.model.editor.TextFontType
 import com.company.domain.model.editor.TextLoop
 import com.company.domain.model.editor.TextStyleType
+import com.company.domain.model.editor.ThumbnailTemplate
+import com.company.domain.model.editor.addThumbnail
 import com.company.domain.model.editor.addText
 import com.company.domain.model.editor.afterTextChange
 import com.company.domain.model.editor.decorate
+import com.company.domain.model.editor.drawnFont
 import com.company.domain.model.editor.placedCaptions
 import com.company.domain.model.editor.removeCaption
 import com.company.domain.model.editor.removeText
@@ -20,6 +22,12 @@ import com.company.domain.model.editor.setTextAnimationLength
 import com.company.domain.model.editor.trimWith
 import com.company.domain.model.editor.updateCaption
 import com.company.domain.model.editor.updateText
+import com.company.domain.model.editor.valuesIn
+import com.company.domain.model.editor.withBackground
+import com.company.domain.model.editor.withBackgroundBorder
+import com.company.domain.model.editor.withBackgroundShape
+import com.company.domain.model.editor.withFont
+import com.company.domain.model.editor.withTemplate
 import com.company.domain.repository.FontRepository
 import com.company.feature.editor.resources.Res
 import com.company.feature.editor.resources.empty_text
@@ -27,6 +35,8 @@ import com.company.feature.editor.resources.toast_animation_reset
 import com.company.feature.editor.resources.toast_deleted_undoable
 import com.company.feature.editor.resources.toast_enter_caption
 import com.company.feature.editor.resources.toast_font_failed
+import com.company.feature.editor.resources.toast_thumbnail_added
+import com.company.ui.editor.nameResource
 import com.company.ui.text.uiText
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
@@ -61,10 +71,19 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
     fun openTextEditor(textId: String?) {
         host.pause()
         val overlay = host.state.project.texts.find { it.id == textId }
+        // 새 글자는 템플릿·꾸미기 없이 흰 프리텐다드 3단계로 시작한다 (9.3).
         val draft = overlay?.let {
-            TextDraft(id = it.id, text = it.text, style = it.style, font = it.font, sizeStep = it.sizeStep, decorations = it.decorations)
-        } ?: TextDraft(id = null, text = "", style = TextStyleType.IMPACT)
-        host.reduce { copy(sheet = EditorSheet.TEXT, textDraft = draft) }
+            TextDraft(
+                id = it.id,
+                text = it.text,
+                style = it.style,
+                font = it.font,
+                fontFromTemplate = it.fontFromTemplate,
+                sizeStep = it.sizeStep,
+                decorations = it.decorations,
+            )
+        } ?: TextDraft(id = null, text = "")
+        host.reduce { copy(sheet = EditorSheet.TEXT, textDraft = draft, colorPicker = null) }
     }
 
     /**
@@ -75,8 +94,8 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
     fun openCaptionEditor(captionId: String) {
         host.pause()
         val caption = host.state.project.placedCaptions.find { it.id == captionId } ?: return
-        val draft = TextDraft(id = null, text = caption.text, style = TextStyleType.IMPACT, decorations = caption.decorations, captionId = caption.id)
-        host.reduce { copy(sheet = EditorSheet.TEXT, textDraft = draft, selectedTrackItem = TrackSelection.Caption(caption.id)) }
+        val draft = TextDraft(id = null, text = caption.text, decorations = caption.decorations, captionId = caption.id)
+        host.reduce { copy(sheet = EditorSheet.TEXT, textDraft = draft, selectedTrackItem = TrackSelection.Caption(caption.id), colorPicker = null) }
     }
 
     /**
@@ -109,14 +128,14 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
     fun changeFont(font: TextFontType) {
         if (host.state.fontDownloading != null) return
         if (!font.downloadable || fontRepository.downloadedFonts.value.containsKey(font)) {
-            host.reduce { copy(textDraft = textDraft?.copy(font = font)) }
+            host.reduce { copy(textDraft = textDraft?.let { it.withContent(it.content.withFont(font)) }) }
             return
         }
         host.reduce { copy(fontDownloading = font) }
         host.scope.launch {
             try {
                 fontRepository.download(font)
-                host.reduce { copy(textDraft = textDraft?.copy(font = font)) }
+                host.reduce { copy(textDraft = textDraft?.let { it.withContent(it.content.withFont(font)) }) }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -128,7 +147,68 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
     }
 
     /**
-     * Changes one decoration of the selected characters, or of all characters.
+     * Applies a template, or removes it when [style] is null (9.3, D61). The decorations go away. A template with a
+     * font that is not on the device downloads the font. The text uses Pretendard until the font is ready.
+     *
+     * @param style New template, or null for no template.
+     */
+    fun changeStyle(style: TextStyleType?) {
+        host.reduce { copy(textDraft = textDraft?.let { it.withContent(it.content.withTemplate(style)) }) }
+        host.state.textDraft?.content?.drawnFont?.let { downloadFonts(setOf(it), quiet = false) }
+    }
+
+    /**
+     * Adds all lines of a thumbnail with their texts, places, and accents, as the design does. The lines start at 0
+     * seconds, or at the start of the saved text of the sheet, which they replace. Then the sheet closes. It is one
+     * undo step.
+     *
+     * @param template Thumbnail to add.
+     */
+    fun addThumbnail(template: ThumbnailTemplate) {
+        val draft = host.state.textDraft ?: return
+        if (draft.isCaption) return
+        val current = draft.id?.let { id -> host.state.project.texts.find { it.id == id } }
+        host.projects.commit { it.addThumbnail(template, start = current?.start ?: 0.0, replaceTextId = current?.id) }
+        host.reduce { copy(sheet = null, textDraft = null, colorPicker = null, selectedTextId = null) }
+        downloadFonts(template.lines.mapTo(mutableSetOf()) { it.style.font }, quiet = false)
+        host.toast(uiText(Res.string.toast_thumbnail_added, uiText(template.nameResource)))
+    }
+
+    /**
+     * Opens a tab of the text sheet. The template tab first downloads the template fonts that are not on the device,
+     * so the cards show the right fonts.
+     *
+     * @param tab Tab to open.
+     */
+    fun selectTab(tab: TextSheetTab) {
+        host.reduce { copy(textDraft = textDraft?.copy(tab = tab)) }
+        if (tab == TextSheetTab.TEMPLATE) downloadFonts(TextStyleType.entries.mapTo(mutableSetOf()) { it.font }, quiet = true)
+    }
+
+    /**
+     * Downloads the fonts that the device does not have, in the background. A text uses Pretendard until its font is
+     * ready.
+     *
+     * @param fonts Fonts that texts use.
+     * @param quiet True to show no toast when a download fails.
+     */
+    fun downloadFonts(fonts: Set<TextFontType>, quiet: Boolean) {
+        fonts.filter { it.downloadable && !fontRepository.downloadedFonts.value.containsKey(it) }.forEach { font ->
+            host.scope.launch {
+                try {
+                    fontRepository.download(font)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    if (!quiet) host.toast(uiText(Res.string.toast_font_failed))
+                }
+            }
+        }
+    }
+
+    /**
+     * Changes one decoration of the selected characters, or of all characters. A text with a template loses the
+     * template first (9.3).
      *
      * @param change New value of one property.
      */
@@ -137,19 +217,51 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
             val draft = textDraft ?: return@reduce this
             if (draft.text.isEmpty()) return@reduce this
             val range = draft.decorationRange
-            val decorations = draft.decorations.decorate(draft.text.length, range.first, range.last + 1) { it.with(change) }
-            copy(textDraft = draft.copy(decorations = decorations))
+            copy(textDraft = draft.withContent(draft.content.decorate(range.first, range.last + 1) { it.with(change) }))
         }
     }
 
+    // =====================================================================
+    // Color picker
+    // =====================================================================
+
     /**
-     * Sets a color from the color picker, and keeps the color first in the recent colors.
+     * Opens the color picker at the current color of the selected characters.
      *
-     * @param rgb Color as 0xRRGGBB.
+     * @param target Text color or background color.
      */
-    fun pickCustomColor(rgb: Int) {
-        decorate(DecorationChange.Color(rgb))
-        host.reduce { copy(recentColors = (listOf(rgb) + recentColors.filter { it != rgb }).take(RECENT_COLOR_COUNT)) }
+    fun openColorPicker(target: ColorTarget) {
+        val draft = host.state.textDraft ?: return
+        if (draft.text.isEmpty()) return
+        val range = draft.decorationRange
+        val values = draft.decorations.valuesIn(draft.text.length, range.first, range.last + 1) {
+            if (target == ColorTarget.TEXT) it.color else it.background
+        }
+        val start = values.singleOrNull() ?: if (target == ColorTarget.TEXT) WHITE else DecorationPalette.first()
+        host.reduce { copy(colorPicker = ColorPicker(target, start)) }
+    }
+
+    /**
+     * Changes the color of the open picker. The draft shows the color at once.
+     *
+     * @param rgb New color as 0xRRGGBB.
+     */
+    fun changePickerColor(rgb: Int) {
+        val picker = host.state.colorPicker ?: return
+        if (picker.changed && picker.rgb == rgb) return
+        decorate(if (picker.target == ColorTarget.TEXT) DecorationChange.Color(rgb) else DecorationChange.Background(rgb))
+        host.reduce { copy(colorPicker = picker.copy(rgb = rgb, changed = true)) }
+    }
+
+    /** Closes the color picker. A changed color goes first in the recent colors. */
+    fun closeColorPicker() {
+        val picker = host.state.colorPicker ?: return
+        host.reduce {
+            copy(
+                colorPicker = null,
+                recentColors = if (picker.changed) (listOf(picker.rgb) + recentColors.filter { it != picker.rgb }).take(RECENT_COLOR_COUNT) else recentColors,
+            )
+        }
     }
 
     /** Adds or changes the text overlay or the caption of the sheet, then closes the sheet. */
@@ -163,7 +275,7 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
                 return
             }
             host.projects.commit { it.updateCaption(captionId, text, decorations) }
-            host.reduce { copy(sheet = null, textDraft = null) }
+            host.reduce { copy(sheet = null, textDraft = null, colorPicker = null) }
             return
         }
         // 빈 칸으로 저장하면 '글자'로 넣고, 앞뒤 빈칸을 지운 만큼 꾸미기도 당긴다.
@@ -182,12 +294,12 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
      * @param decorations Decorations of [text].
      */
     private fun commitText(draft: TextDraft, text: String, decorations: List<DecorationRange>) {
-        val content = TextContent(text = text, style = draft.style, font = draft.font, sizeStep = draft.sizeStep, decorations = decorations)
+        val content = draft.content.copy(text = text, decorations = decorations)
         val time = host.state.time
         host.projects.commit { project ->
             if (draft.id != null) project.updateText(draft.id, content) else project.addText(content, time).first
         }
-        host.reduce { copy(sheet = null, textDraft = null) }
+        host.reduce { copy(sheet = null, textDraft = null, colorPicker = null) }
     }
 
     /** Removes the text overlay or the caption of the sheet, then closes the sheet. */
@@ -198,11 +310,11 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
         when {
             captionId != null -> {
                 host.projects.commit { it.removeCaption(captionId) }
-                host.reduce { copy(sheet = null, textDraft = null, selectedTrackItem = null) }
+                host.reduce { copy(sheet = null, textDraft = null, colorPicker = null, selectedTrackItem = null) }
             }
             textId != null -> {
                 host.projects.commit { it.removeText(textId) }
-                host.reduce { copy(sheet = null, textDraft = null, selectedTextId = selectedTextId.takeIf { it != textId }) }
+                host.reduce { copy(sheet = null, textDraft = null, colorPicker = null, selectedTextId = selectedTextId.takeIf { it != textId }) }
             }
             else -> return
         }
@@ -283,11 +395,16 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
     }
 }
 
+/** White as 0xRRGGBB. The color picker starts with it for a text without a color decoration. */
+private const val WHITE = 0xFFFFFF
+
 /** Applies one decoration change. */
 private fun Decoration.with(change: DecorationChange): Decoration = when (change) {
     is DecorationChange.Color -> copy(color = change.rgb)
     is DecorationChange.Bold -> copy(bold = change.on)
     is DecorationChange.Outline -> copy(outline = change.on)
     is DecorationChange.Shadow -> copy(shadow = change.on)
-    is DecorationChange.Background -> copy(background = change.rgb)
+    is DecorationChange.Background -> withBackground(change.rgb)
+    is DecorationChange.BackgroundShape -> withBackgroundShape(change.shape)
+    is DecorationChange.BackgroundBorder -> withBackgroundBorder(change.on)
 }

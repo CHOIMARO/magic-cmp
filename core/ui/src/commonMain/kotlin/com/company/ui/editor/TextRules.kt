@@ -17,10 +17,16 @@ import kotlin.math.pow
 private const val STAGE_WIDTH_DP = 264.375f
 
 /** Converts spec canvas pixels to stage dp. */
-private const val DP_PER_SPEC_PX = STAGE_WIDTH_DP / 1080f
+internal const val DP_PER_SPEC_PX = STAGE_WIDTH_DP / 1080f
 
 /** Safety margin of the character count per line. */
 private const val CHARS_PER_LINE_MARGIN = 0.9f
+
+/** Line height of a text, as a part of the font size. */
+const val DEFAULT_LINE_HEIGHT_EM = 1.25f
+
+/** Default widest text box, as a part of the stage width. */
+private const val DEFAULT_BOX_WIDTH_RATIO = 0.84f
 
 /** Smallest font scale when a text is too long. */
 private const val MIN_FONT_SCALE = 0.7f
@@ -294,6 +300,23 @@ internal fun TextLook.charactersPerLine(): Int {
     return maxOf(1, floor(boxWidth / letterWidth * CHARS_PER_LINE_MARGIN).toInt())
 }
 
+/**
+ * Widest text box that keeps [text] on one line, as a part of the stage width, as the thumbnail lines of the design
+ * do. It is never smaller than the default box.
+ *
+ * @param text Text of the line.
+ * @param fontSize Font size in dp at scale 1.
+ * @param font Font of the line.
+ * @param letterSpacingEm Letter spacing in em.
+ * @param paddingHorizontal Horizontal padding of the box in dp.
+ */
+internal fun oneLineBoxRatio(text: String, fontSize: Float, font: TextFontType, letterSpacingEm: Float, paddingHorizontal: Float): Float {
+    // 글자 수에 하나를 더해 줄당 글자 수 계산의 반올림 오차로 줄이 나뉘지 않게 한다.
+    val count = text.count { !it.isWhitespace() } + 1
+    val width = count / CHARS_PER_LINE_MARGIN * fontSize * (font.glyphWidthRatio + letterSpacingEm) + paddingHorizontal * 2
+    return maxOf(DEFAULT_BOX_WIDTH_RATIO, width / STAGE_WIDTH_DP)
+}
+
 /** Average letter width of the font, as a part of the font size. The values come from the spec. */
 internal val TextFontType.glyphWidthRatio: Float
     get() = when (this) {
@@ -302,6 +325,7 @@ internal val TextFontType.glyphWidthRatio: Float
         TextFontType.BLACK_HAN_SANS -> 0.98f
         TextFontType.DO_HYEON, TextFontType.OK_DANDAN -> 0.85f
         TextFontType.GAEGU, TextFontType.MYOEUN_HEULLIM -> 0.8f
+        TextFontType.DOKDO -> 0.78f
         // 아래 글꼴은 한글 글자 폭을 재서, 기존 스펙 값과 같은 비율(약 1.1배)로 맞췄다.
         TextFontType.KKUBULIM -> 0.95f
         TextFontType.GELLYROLL -> 0.9f

@@ -76,6 +76,11 @@
     <string name="decoration_shadow">그림자</string>
     <string name="decoration_no_background">배경 없음</string>
     <string name="decoration_custom_color">직접 고르기</string>
+    <string name="decoration_custom_background">배경색 직접 고르기</string>
+    <string name="decoration_box_rounded">둥근 네모</string>
+    <string name="decoration_box_square">네모</string>
+    <string name="decoration_box_border">테두리</string>
+    <string name="template_section_thumbnail">썸네일 · 고르면 모든 줄과 꾸미기가 영상 처음 3초에 들어가요</string>
     <string name="decoration_mixed">%1$s 섞임</string>
     <string name="speed_factor">%1$s배</string>
     <string name="speed_clip_length">이 클립 길이: %1$s초</string>
@@ -153,11 +158,11 @@
     <string name="music_fade">페이드</string>
     <string name="editor_undo">되돌리기</string>
     <string name="editor_finish">완성</string>
-    <string name="color_dialog_title">색 직접 고르기</string>
-    <string name="color_dialog_hue">색</string>
-    <string name="color_dialog_saturation">선명도</string>
-    <string name="color_dialog_brightness">밝기</string>
-    <string name="color_dialog_pick">고르기</string>
+    <string name="color_picker_title">색 직접 고르기</string>
+    <string name="color_picker_area">선명도와 밝기</string>
+    <string name="color_picker_hue">색상</string>
+    <string name="color_picker_hex">HEX</string>
+    <string name="color_picker_done">완료</string>
     <string name="transition_intro_opening">영상이 시작될 때 첫 장면이 나타나는 방식이에요</string>
     <string name="transition_intro_boundary">%1$d번째와 %2$d번째 클립 사이 · %3$s초 · 전체 길이는 그대로예요</string>
     <string name="transition_direction">방향</string>
@@ -268,6 +273,7 @@
     <string name="toast_split_at_line">흰 선 위치에서 나눴어요</string>
     <string name="toast_duplicated">복제했어요</string>
     <string name="toast_deleted_undoable">삭제했어요 · 되돌리기 가능</string>
+    <string name="toast_thumbnail_added">'%1$s' 썸네일을 넣었어요 · 되돌리기 가능</string>
     <string name="toast_undone">되돌렸어요</string>
     <string name="toast_layout_reset">레이아웃을 처음으로 돌렸어요</string>
     <string name="toast_favorite_added">즐겨찾기에 넣었어요 · 맨 앞에 보여요</string>

@@ -110,6 +110,7 @@ internal class RemoteFontRepository(private val store: FontFileStore) : FontRepo
             TextFontType.DONGLE to FontSource("dongle/Dongle-Regular.ttf", "dongle/Dongle-Bold.ttf"),
             TextFontType.GUGI to FontSource("gugi/Gugi-Regular.ttf", null),
             TextFontType.SONG_MYUNG to FontSource("songmyung/SongMyung-Regular.ttf", null),
+            TextFontType.DOKDO to FontSource("dokdo/Dokdo-Regular.ttf", null),
         )
     }
 }
