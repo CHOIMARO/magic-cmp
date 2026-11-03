@@ -10,8 +10,7 @@ android {
     }
 
     defaultConfig {
-        // 앱 ID는 스토어와 로그인 등록에 쓰는 고유한 값이다. 코드 패키지(namespace)와 따로 정한다.
-        applicationId = "com.choimaro.magic"
+        applicationId = "com.company.magic"
         minSdk = 29
         targetSdk = 37
         versionCode = 1
