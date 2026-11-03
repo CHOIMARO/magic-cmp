@@ -253,7 +253,7 @@ internal class LocalMyVideoRepository(
         }
     }
 
-    /** Bytes of a work: its project file and the files of its clips (D51). */
+    /** Bytes of a work: its project file and the files of its clips and dubbings (D51). */
     private suspend fun storageBytes(project: EditorProject, projectText: String): Long = withContext(io) {
         projectText.encodeToByteArray().size + project.mediaUris().sumOf { mediaPersister.sizeOf(it) }
     }
@@ -376,10 +376,16 @@ private fun EditorProject.thumbnail(): WorkThumbnail? {
     return WorkThumbnail(uri = uri, type = first.type, time = first.inPoint)
 }
 
-/** Locations of the source files of the clips. */
-private fun EditorProject.mediaUris(): Set<String> = clips.mapNotNull { it.sourceUri }.toSet()
+/** Locations of the source files of the clips and of the audio files of the dubbings. */
+private fun EditorProject.mediaUris(): Set<String> =
+    (clips.mapNotNull { it.sourceUri } + dubbings.mapNotNull { it.audioUri }).toSet()
 
-/** The project with each source location changed by [transform]. */
-private fun EditorProject.mapMedia(transform: (String) -> String): EditorProject =
-    if (clips.none { it.sourceUri != null }) this
-    else copy(clips = clips.map { clip -> clip.sourceUri?.let { clip.copy(sourceUri = transform(it)) } ?: clip })
+/** The project with each source location of the clips and the dubbings changed by [transform]. */
+private fun EditorProject.mapMedia(transform: (String) -> String): EditorProject {
+    if (clips.none { it.sourceUri != null } && dubbings.none { it.audioUri != null }) return this
+    return copy(
+        clips = clips.map { clip -> clip.sourceUri?.let { clip.copy(sourceUri = transform(it)) } ?: clip },
+        // 더빙 오디오는 앱이 받은 파일이다. iOS에서는 앱을 업데이트하면 경로가 바뀌므로 함께 바꾼다.
+        dubbings = dubbings.map { dubbing -> dubbing.audioUri?.let { dubbing.copy(audioUri = transform(it)) } ?: dubbing },
+    )
+}

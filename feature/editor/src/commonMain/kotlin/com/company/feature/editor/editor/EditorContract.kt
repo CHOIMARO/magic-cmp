@@ -264,7 +264,9 @@ data class MusicDraft(
  * @property captionId Caption that the text came from, or null.
  * @property editId Dubbing to make again, or null for a new dubbing.
  * @property busy True while the voice makes the audio.
- * @property previewing True while the preview plays. A change of the text, the voice, or the speed stops it.
+ * @property previewing True while the server makes the preview or the preview plays. A change of the text, the
+ *   voice, or the speed stops it.
+ * @property previewUrl Address of the preview audio while it plays, or null while the server makes it.
  */
 data class DubbingDraft(
     val text: String,
@@ -274,6 +276,7 @@ data class DubbingDraft(
     val editId: String?,
     val busy: Boolean = false,
     val previewing: Boolean = false,
+    val previewUrl: String? = null,
 )
 
 /** Tab of the animation sheet, in the order of the tabs. */
@@ -812,6 +815,9 @@ sealed class EditorIntent : Intent() {
 
     /** DubbingPreviewEnded : The preview of the dubbing played to the end. */
     data object DubbingPreviewEnded : EditorIntent()
+
+    /** DubbingPreviewFailed : The player could not play the preview of the dubbing. */
+    data object DubbingPreviewFailed : EditorIntent()
 
     /** FitDubbing : Plays the selected dubbing faster so that it ends with its caption. */
     data object FitDubbing : EditorIntent()

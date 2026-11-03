@@ -120,7 +120,7 @@ class EditorViewModel(
     mediaLibraryRepository: MediaLibraryRepository,
     generateCaptions: GenerateCaptionsUseCase,
     fontRepository: FontRepository,
-    dubbingRepository: DubbingRepository,
+    private val dubbingRepository: DubbingRepository,
     private val myVoiceRepository: MyVoiceRepository,
     private val saveWork: SaveWorkUseCase,
     private val leaveEditor: LeaveEditorUseCase,
@@ -132,7 +132,7 @@ class EditorViewModel(
         project = projectRepository.project.value,
         canUndo = projectRepository.canUndo.value,
         musicTracks = mediaLibraryRepository.getMusicTracks(),
-        voices = dubbingRepository.getVoices(),
+        voices = dubbingRepository.voices.value,
         soundEffects = mediaLibraryRepository.getSoundEffects(),
         myVoice = myVoiceRepository.status.value,
     )
@@ -206,20 +206,29 @@ class EditorViewModel(
         viewModelScope.launch { projectRepository.project.drop(1).collect { scheduleSave() } }
         viewModelScope.launch { projectRepository.canUndo.collect { reduce { copy(canUndo = it) } } }
         viewModelScope.launch { authRepository.session.collect { reduce { copy(signedIn = it is SessionState.SignedIn) } } }
+        // 더빙 목소리는 서버에서 받는다(공개 API). 받기 전에 연 초안은 받은 뒤 첫 목소리를 고른다.
+        viewModelScope.launch {
+            dubbingRepository.voices.collect { voices ->
+                reduce {
+                    val draft = dubbingDraft?.let { draft ->
+                        if (draft.voiceId == MY_VOICE_ID || voices.any { it.id == draft.voiceId }) draft
+                        else draft.copy(voiceId = voices.firstOrNull()?.id.orEmpty())
+                    }
+                    copy(voices = voices, dubbingDraft = draft)
+                }
+            }
+        }
+        viewModelScope.launch { dubbingRepository.loadVoices() }
         viewModelScope.launch {
             settingsRepository.settings.collect { reduce { copy(watermark = it.watermark, favoriteTextStyles = it.favoriteTextStyles) } }
         }
         viewModelScope.launch {
             myVoiceRepository.status.collect { status ->
                 reduce {
+                    // 내 목소리는 서버에서 아직 쓸 수 없으므로(Typecast 유료 플랜 전) 다 만들어져도 자동으로 고르지 않는다.
+                    // 내 목소리를 지우면 그 목소리를 고른 초안은 기본 목소리로 바꾼다.
                     val draft = dubbingDraft?.let {
-                        when {
-                            // 더빙 시트에서 내 목소리를 만들었으면, 다 된 목소리를 바로 고른다.
-                            status == MyVoiceStatus.Ready && myVoice != MyVoiceStatus.Ready -> it.copy(voiceId = MY_VOICE_ID)
-                            // 내 목소리를 지우면 그 목소리를 고른 초안은 기본 목소리로 바꾼다.
-                            status != MyVoiceStatus.Ready && it.voiceId == MY_VOICE_ID -> it.copy(voiceId = voices.first().id)
-                            else -> it
-                        }
+                        if (status != MyVoiceStatus.Ready && it.voiceId == MY_VOICE_ID) it.copy(voiceId = voices.firstOrNull()?.id.orEmpty()) else it
                     }
                     copy(myVoice = status, dubbingDraft = draft)
                 }
@@ -398,15 +407,16 @@ class EditorViewModel(
                 audio.openDubbing(intent.captionId, intent.editId)
             }
             is EditorIntent.ChangeDubbingText -> audio.changeDubbingText(intent.text)
-            is EditorIntent.PickDubbingVoice -> reduce { copy(dubbingDraft = dubbingDraft?.copy(voiceId = intent.voiceId, previewing = false)) }
-            is EditorIntent.PickDubbingSpeed -> reduce { copy(dubbingDraft = dubbingDraft?.copy(speed = intent.speed, previewing = false)) }
+            is EditorIntent.PickDubbingVoice -> audio.changeDubbingDraft { copy(voiceId = intent.voiceId) }
+            is EditorIntent.PickDubbingSpeed -> audio.changeDubbingDraft { copy(speed = intent.speed) }
             EditorIntent.InsertDubbing -> requireSignIn(LoginReason.DUBBING) { audio.insertDubbing() }
             EditorIntent.ToggleDubbingPreview -> if (currentState.dubbingDraft?.previewing == true) {
                 audio.stopDubbingPreview()
             } else {
                 requireSignIn(LoginReason.DUBBING) { audio.startDubbingPreview() }
             }
-            EditorIntent.DubbingPreviewEnded -> reduce { copy(dubbingDraft = dubbingDraft?.copy(previewing = false)) }
+            EditorIntent.DubbingPreviewEnded -> audio.stopDubbingPreview()
+            EditorIntent.DubbingPreviewFailed -> audio.failDubbingPreview()
             EditorIntent.FitDubbing -> audio.fitDubbing()
             EditorIntent.OpenMyVoice -> requireSignIn(LoginReason.MY_VOICE) {
                 pause()

@@ -330,7 +330,7 @@ enum class PushDirection {
 /**
  * Reading speed of a dubbing.
  *
- * @property factor Speed factor. 1 is the normal speed.
+ * @property factor Speed factor. 1 is the normal speed. The values are the speed presets of the server.
  */
 enum class DubbingSpeed(val factor: Double) {
     /** SLOW : Slow reading ("느리게"). */
@@ -340,7 +340,7 @@ enum class DubbingSpeed(val factor: Double) {
     NORMAL(1.0),
 
     /** FAST : Fast reading ("빠르게"). */
-    FAST(1.25),
+    FAST(1.2),
 }
 
 /** Category of a sound effect. */

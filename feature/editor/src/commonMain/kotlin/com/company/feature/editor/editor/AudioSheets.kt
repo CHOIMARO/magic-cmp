@@ -38,7 +38,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
@@ -54,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.MagicButton
 import com.company.core.designsystem.component.MagicButtonLoading
 import com.company.core.designsystem.component.MagicChip
+import com.company.core.designsystem.component.MagicSpinner
 import com.company.core.designsystem.component.SegmentOption
 import com.company.core.designsystem.component.SegmentedControl
 import com.company.core.designsystem.component.bleedHorizontal
@@ -178,14 +178,22 @@ internal fun DubbingSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
         containerColor = MagicColors.Background,
         itemHeight = 40.dp,
     )
-    val canInsert = draft.text.isNotBlank() && !draft.busy
+    val canInsert = draft.text.isNotBlank() && draft.voiceId.isNotEmpty() && !draft.busy
+    // 서버가 준 주소는 서명이 있는 임시 주소다. 받자마자 바로 재생한다(app-api-guide 3-5).
+    draft.previewUrl?.let { url ->
+        StreamAudioPlayer(
+            url = url,
+            onEnded = { onIntent(EditorIntent.DubbingPreviewEnded) },
+            onError = { onIntent(EditorIntent.DubbingPreviewFailed) },
+        )
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         DubbingPreviewButton(
             seconds = estimatedDubbingSeconds(draft.text, draft.speed),
             enabled = canInsert,
-            playing = draft.previewing,
+            previewing = draft.previewing,
+            playing = draft.previewUrl != null,
             onToggle = { onIntent(EditorIntent.ToggleDubbingPreview) },
-            onEnded = { onIntent(EditorIntent.DubbingPreviewEnded) },
         )
         MagicButton(
             text = stringResource(if (draft.editId != null) Res.string.dubbing_replace else Res.string.dubbing_insert),
@@ -300,16 +308,18 @@ private fun VoiceAvatar(color: Color, content: @Composable () -> Unit) {
 /**
  * stringResource(Res.string.listen_preview) button of the dubbing sheet. It fills from the left while the preview plays.
  *
+ * The server makes the audio first, so the button shows a spinner until the audio plays. The fill uses the estimated
+ * length, and the player ends the preview.
+ *
  * @param seconds Estimated length of the dubbing.
  * @param enabled Set to false when the text is empty.
+ * @param previewing True while the server makes the preview or the preview plays.
  * @param playing True while the preview plays.
  * @param onToggle Plays or stops the preview.
- * @param onEnded Called when the preview played to the end.
  */
 @Composable
-private fun DubbingPreviewButton(seconds: Double, enabled: Boolean, playing: Boolean, onToggle: () -> Unit, onEnded: () -> Unit) {
+private fun DubbingPreviewButton(seconds: Double, enabled: Boolean, previewing: Boolean, playing: Boolean, onToggle: () -> Unit) {
     var progress by remember { mutableFloatStateOf(0f) }
-    val currentOnEnded by rememberUpdatedState(onEnded)
     LaunchedEffect(playing) {
         progress = 0f
         if (!playing) return@LaunchedEffect
@@ -317,7 +327,6 @@ private fun DubbingPreviewButton(seconds: Double, enabled: Boolean, playing: Boo
         while (progress < 1f) {
             withFrameMillis { progress = ((it - start) / (seconds * 1000)).toFloat().coerceAtMost(1f) }
         }
-        currentOnEnded()
     }
     Box(
         modifier = Modifier
@@ -333,7 +342,11 @@ private fun DubbingPreviewButton(seconds: Double, enabled: Boolean, playing: Boo
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val content = if (enabled) MagicColors.OnSurface else MagicColors.OnSurface.copy(alpha = 0.35f)
-            Icon(if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow, contentDescription = null, tint = content, modifier = Modifier.size(22.dp))
+            if (previewing && !playing) {
+                MagicSpinner(color = content, trackColor = content.copy(alpha = 0.18f), size = 20.dp)
+            } else {
+                Icon(if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow, contentDescription = null, tint = content, modifier = Modifier.size(22.dp))
+            }
             Text(text = stringResource(Res.string.listen_preview), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = content)
         }
     }

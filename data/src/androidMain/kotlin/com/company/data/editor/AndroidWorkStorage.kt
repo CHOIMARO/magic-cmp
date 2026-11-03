@@ -72,6 +72,21 @@ internal class AndroidMediaPersister(private val context: Context) : MediaPersis
         }
     }
 
+    override fun saveAudio(bytes: ByteArray, extension: String): String {
+        folder.mkdirs()
+        val target = File(folder, "${UUID.randomUUID()}.$extension")
+        // 다 쓴 뒤에 이름을 바꿔서, 쓰다 앱이 꺼져도 반쯤 쓴 파일을 쓰지 않게 한다.
+        val temp = File(folder, "${target.name}.part")
+        try {
+            temp.writeBytes(bytes)
+            check(temp.renameTo(target)) { "Cannot save the audio file" }
+        } catch (e: Exception) {
+            temp.delete()
+            throw e
+        }
+        return Uri.fromFile(target).toString()
+    }
+
     override fun restore(uri: String): String = uri
 
     override fun isCopy(uri: String): Boolean = copyFile(uri) != null

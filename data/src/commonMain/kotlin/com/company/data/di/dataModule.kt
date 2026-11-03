@@ -1,7 +1,6 @@
 package com.company.data.di
 
 import com.company.data.editor.FakeCaptionRepository
-import com.company.data.editor.FakeDubbingRepository
 import com.company.data.editor.FakeMyVoiceRepository
 import com.company.data.editor.InMemoryEditorProjectRepository
 import com.company.data.editor.InMemoryEditorSettingsRepository
@@ -9,6 +8,7 @@ import com.company.data.editor.LocalMyVideoRepository
 import com.company.data.font.RemoteFontRepository
 import com.company.data.media.MediaLibraryRepositoryImpl
 import com.company.data.remote.RemoteAuthRepository
+import com.company.data.remote.RemoteDubbingRepository
 import com.company.data.remote.SessionStore
 import com.company.data.remote.createMagicHttpClient
 import com.company.data.repository.PixabayRepositoryImpl
@@ -49,7 +49,6 @@ val dataModule = module {
     single<MyVideoRepository> { LocalMyVideoRepository(get(), get()) }
     singleOf(::InMemoryEditorSettingsRepository) { bind<EditorSettingsRepository>() }
     singleOf(::FakeCaptionRepository) { bind<CaptionRepository>() }
-    singleOf(::FakeDubbingRepository) { bind<DubbingRepository>() }
     singleOf(::FakeMyVoiceRepository) { bind<MyVoiceRepository>() }
 
     // 글꼴 (Google Fonts 저장소에서 내려받기)
@@ -59,4 +58,7 @@ val dataModule = module {
     single { SessionStore(get()) }
     single(MagicApiClient) { createMagicHttpClient(get()) }
     single<AuthRepository> { RemoteAuthRepository(get(MagicApiClient), get()) }
+
+    // 더빙 (F05): 서버가 음성을 만들고, 받은 mp3는 작업 저장소에 둔다.
+    single<DubbingRepository> { RemoteDubbingRepository(get(MagicApiClient), get(), get()) }
 }

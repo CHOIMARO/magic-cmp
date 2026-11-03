@@ -306,6 +306,21 @@ class LocalMyVideoRepositoryTest {
     }
 
     @Test
+    fun dubbingAudio_staysWithTheWork_andGoesWithIt() {
+        // 서버에서 받은 더빙 mp3도 작업의 파일이다. 정리에서 남기고, 경로를 다시 만들고, 작업과 함께 지운다.
+        val dubbing = Dubbing(id = "d1", text = "안녕", voiceId = "SEOHYEON", speed = DubbingSpeed.NORMAL, start = 0.0, length = 1.0, audioUri = "saved/audio-1.mp3")
+        startNew(EditorProject(name = "새 영상", clips = listOf(clip.copy(sourceUri = "picked/a.mp4")), dubbings = listOf(dubbing)))
+        val id = assertNotNull(projects.project.value.workId)
+
+        val restarted = newRepository()
+        assertEquals(setOf("current/a.mp4", "current/audio-1.mp3"), persister.kept)
+        assertEquals("current/audio-1.mp3", assertNotNull(runSuspend { restarted.loadWork(id) }).dubbings.single().audioUri)
+
+        runSuspend { restarted.deleteWork(id) }
+        assertTrue("current/audio-1.mp3" in persister.released)
+    }
+
+    @Test
     fun startup_removesTheFilesThatNoWorkUses() {
         startNew(EditorProject(name = "새 영상", clips = listOf(clip.copy(sourceUri = "picked/a.mp4"))))
         val id = assertNotNull(projects.project.value.workId)
@@ -422,6 +437,8 @@ private class FakeMediaPersister : MediaPersister {
         persisted += uri
         return if (copyFails) uri else uri.replace("picked/", "saved/")
     }
+
+    override fun saveAudio(bytes: ByteArray, extension: String): String = "saved/audio-${bytes.size}.$extension"
 
     override fun restore(uri: String): String = uri.replace("saved/", "current/")
 

@@ -1,6 +1,5 @@
 package com.company.data.editor
 
-import com.company.domain.model.editor.DubbingVoice
 import com.company.domain.model.editor.MusicTrack
 import com.company.domain.model.editor.SoundEffect
 import com.company.domain.model.editor.SoundEffectCategory
@@ -23,15 +22,6 @@ internal object EditorSampleData {
         MusicTrack(id = "m6", title = "반짝이는 오후", mood = "신나는", durationSeconds = 38, thumbnailHue = 60),
         MusicTrack(id = "m7", title = "느린 산책", mood = "어쿠스틱", durationSeconds = 47, thumbnailHue = 140),
         MusicTrack(id = "m8", title = "푸른 새벽", mood = "몽환", durationSeconds = 56, thumbnailHue = 220),
-    )
-
-    /** Voices for dubbings: two women, two men, and one character (PRD D11). */
-    val Voices: List<DubbingVoice> = listOf(
-        DubbingVoice(id = "v1", name = "하늘", description = "여성 · 맑고 밝은 목소리", hue = 330),
-        DubbingVoice(id = "v2", name = "서윤", description = "여성 · 차분한 내레이션", hue = 260),
-        DubbingVoice(id = "v3", name = "도윤", description = "남성 · 친근한 브이로그", hue = 200),
-        DubbingVoice(id = "v4", name = "준호", description = "남성 · 낮고 믿음직한 목소리", hue = 150),
-        DubbingVoice(id = "v5", name = "뽀삐", description = "캐릭터 · 통통 튀는 말투", hue = 70),
     )
 
     /** Sound effects. */
