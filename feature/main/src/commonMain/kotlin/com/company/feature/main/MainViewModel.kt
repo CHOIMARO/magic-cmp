@@ -5,18 +5,23 @@ import com.company.core.base.BaseViewModel
 import com.company.core.base.Intent
 import com.company.core.base.SideEffect
 import com.company.core.base.State
+import com.company.domain.model.account.SessionState
 import com.company.domain.model.editor.EditorSettings
 import com.company.domain.model.editor.MyVoiceStatus
 import com.company.domain.model.editor.EditorTemplate
 import com.company.domain.model.editor.TemplateKind
 import com.company.domain.model.editor.VideoSummary
+import com.company.domain.repository.AuthRepository
 import com.company.domain.repository.EditorSettingsRepository
 import com.company.domain.repository.MyVoiceRepository
 import com.company.domain.repository.MyVideoRepository
+import com.company.domain.usecase.account.SignOutUseCase
 import com.company.domain.usecase.editor.OpenWorkUseCase
 import com.company.feature.main.resources.Res
 import com.company.feature.main.resources.toast_work_delete_failed
 import com.company.feature.main.resources.toast_work_deleted
+import com.company.ui.account.LoginGate
+import com.company.ui.account.LoginReason
 import com.company.ui.text.UiText
 import com.company.ui.text.uiText
 import kotlinx.coroutines.CancellationException
@@ -68,6 +73,8 @@ sealed interface MainSheet {
  * @property deleteWorkId Work that the delete popup asks about, or null when the popup is closed.
  * @property settings Editor settings.
  * @property myVoice State of the user's own voice for dubbings.
+ * @property session Sign-in state. The "마이" tab shows the profile or the login card from it (F17).
+ * @property logoutConfirm True while the logout popup asks the user.
  */
 data class MainState(
     val tab: MainTab = MainTab.HOME,
@@ -77,6 +84,8 @@ data class MainState(
     val deleteWorkId: String? = null,
     val settings: EditorSettings = EditorSettings(),
     val myVoice: MyVoiceStatus = MyVoiceStatus.None,
+    val session: SessionState = SessionState.SignedOut,
+    val logoutConfirm: Boolean = false,
 ) : State()
 
 /** User actions on the main screen. */
@@ -129,8 +138,23 @@ sealed class MainIntent : Intent() {
     /** DismissDeleteWork : Closes the delete popup. The work stays. */
     data object DismissDeleteWork : MainIntent()
 
-    /** OpenMyVoice : Opens the screen of the user's own voice. */
+    /** OpenMyVoice : Opens the screen of the user's own voice. Without an account, the login sheet opens first. */
     data object OpenMyVoice : MainIntent()
+
+    /** OpenLogin : Opens the login sheet from the login card or from a row that needs an account. */
+    data object OpenLogin : MainIntent()
+
+    /** OpenAccount : Opens the account management screen (S15). */
+    data object OpenAccount : MainIntent()
+
+    /** RequestLogout : Asks the user before the logout. */
+    data object RequestLogout : MainIntent()
+
+    /** ConfirmLogout : Signs out. The works on the device and the dubbings in them stay. */
+    data object ConfirmLogout : MainIntent()
+
+    /** DismissLogout : Closes the logout popup. The user stays signed in. */
+    data object DismissLogout : MainIntent()
 }
 
 /** One-time events of the main screen. */
@@ -152,6 +176,9 @@ sealed class MainSideEffect : SideEffect() {
 
     /** OpenMyVoice : Navigates to the screen of the user's own voice. */
     data object OpenMyVoice : MainSideEffect()
+
+    /** OpenAccount : Navigates to the account management screen (S15). */
+    data object OpenAccount : MainSideEffect()
 }
 
 /**
@@ -164,6 +191,9 @@ class MainViewModel(
     private val settingsRepository: EditorSettingsRepository,
     private val openWork: OpenWorkUseCase,
     myVoiceRepository: MyVoiceRepository,
+    private val authRepository: AuthRepository,
+    private val loginGate: LoginGate,
+    private val signOut: SignOutUseCase,
 ) : BaseViewModel<MainState, MainIntent, MainSideEffect>(
     initialState = MainState()
 ) {
@@ -172,6 +202,12 @@ class MainViewModel(
         viewModelScope.launch { myVideoRepository.works.collect { reduce { copy(works = it) } } }
         viewModelScope.launch { settingsRepository.settings.collect { reduce { copy(settings = it) } } }
         viewModelScope.launch { myVoiceRepository.status.collect { reduce { copy(myVoice = it) } } }
+        viewModelScope.launch { authRepository.session.collect { reduce { copy(session = it) } } }
+        // 앱을 다시 시작하면 토큰만 남아 있다. 계정 정보는 서버에서 다시 불러온다.
+        viewModelScope.launch {
+            val session = authRepository.session.value
+            if (session is SessionState.SignedIn && session.member == null) authRepository.refreshMember()
+        }
     }
 
     // =====================================================================
@@ -204,8 +240,30 @@ class MainViewModel(
             is MainIntent.RequestDeleteWork -> reduce { copy(sheet = null, deleteWorkId = intent.workId) }
             MainIntent.ConfirmDeleteWork -> deleteWork()
             MainIntent.DismissDeleteWork -> reduce { copy(deleteWorkId = null) }
-            MainIntent.OpenMyVoice -> postSideEffect { MainSideEffect.OpenMyVoice }
+            MainIntent.OpenMyVoice -> openMyVoice()
+            MainIntent.OpenLogin -> loginGate.open(LoginReason.MY_TAB)
+            MainIntent.OpenAccount -> postSideEffect { MainSideEffect.OpenAccount }
+            MainIntent.RequestLogout -> reduce { copy(logoutConfirm = true) }
+            MainIntent.ConfirmLogout -> logout()
+            MainIntent.DismissLogout -> reduce { copy(logoutConfirm = false) }
         }
+    }
+
+    // =====================================================================
+    // Account (F17)
+    // =====================================================================
+
+    /** Opens the screen of the user's own voice. The voice is on the server, so the user signs in first. */
+    private fun openMyVoice() {
+        viewModelScope.launch {
+            if (loginGate.ensureSignedIn(LoginReason.MY_VOICE)) postSideEffect { MainSideEffect.OpenMyVoice }
+        }
+    }
+
+    /** Signs out. The tab then shows the login card. */
+    private fun logout() {
+        reduce { copy(logoutConfirm = false) }
+        viewModelScope.launch { signOut() }
     }
 
     // =====================================================================

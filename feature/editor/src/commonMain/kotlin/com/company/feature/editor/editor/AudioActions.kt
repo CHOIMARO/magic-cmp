@@ -139,7 +139,8 @@ internal class AudioActions(private val host: EditorHost, private val dubbingRep
                 ?: captions.find { state.time >= it.start && state.time < it.end }
             DubbingDraft(
                 text = caption?.text.orEmpty().take(MAX_DUBBING_CHARACTERS),
-                voiceId = if (state.myVoice == MyVoiceStatus.Ready) MY_VOICE_ID else state.voices.first().id,
+                // 내 목소리는 계정에 있으므로 로그인했을 때만 기본으로 고른다.
+                voiceId = if (state.myVoice == MyVoiceStatus.Ready && state.signedIn) MY_VOICE_ID else state.voices.first().id,
                 speed = DubbingSpeed.NORMAL,
                 captionId = caption?.id,
                 editId = null,
@@ -154,7 +155,19 @@ internal class AudioActions(private val host: EditorHost, private val dubbingRep
      * @param text New text.
      */
     fun changeDubbingText(text: String) {
-        host.reduce { copy(dubbingDraft = dubbingDraft?.copy(text = text.take(MAX_DUBBING_CHARACTERS))) }
+        host.reduce { copy(dubbingDraft = dubbingDraft?.copy(text = text.take(MAX_DUBBING_CHARACTERS), previewing = false)) }
+    }
+
+    /** Plays the preview of the dubbing. The text must not be empty. */
+    fun startDubbingPreview() {
+        val draft = host.state.dubbingDraft ?: return
+        if (draft.text.isBlank() || draft.busy) return
+        host.reduce { copy(dubbingDraft = draft.copy(previewing = true)) }
+    }
+
+    /** Stops the preview of the dubbing. */
+    fun stopDubbingPreview() {
+        host.reduce { copy(dubbingDraft = dubbingDraft?.copy(previewing = false)) }
     }
 
     /** Makes the audio, then adds the dubbing or replaces the old dubbing, and closes the sheet. */
@@ -162,7 +175,7 @@ internal class AudioActions(private val host: EditorHost, private val dubbingRep
         val draft = host.state.dubbingDraft ?: return
         if (draft.text.isBlank() || draft.busy) return
         val content = DubbingContent(text = draft.text.trim(), voiceId = draft.voiceId, speed = draft.speed)
-        host.reduce { copy(dubbingDraft = draft.copy(busy = true)) }
+        host.reduce { copy(dubbingDraft = draft.copy(busy = true, previewing = false)) }
         dubbingJob = host.scope.launch {
             try {
                 val audio = dubbingRepository.synthesize(content)

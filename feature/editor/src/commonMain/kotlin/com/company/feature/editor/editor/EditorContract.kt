@@ -264,6 +264,7 @@ data class MusicDraft(
  * @property captionId Caption that the text came from, or null.
  * @property editId Dubbing to make again, or null for a new dubbing.
  * @property busy True while the voice makes the audio.
+ * @property previewing True while the preview plays. A change of the text, the voice, or the speed stops it.
  */
 data class DubbingDraft(
     val text: String,
@@ -272,6 +273,7 @@ data class DubbingDraft(
     val captionId: String?,
     val editId: String?,
     val busy: Boolean = false,
+    val previewing: Boolean = false,
 )
 
 /** Tab of the animation sheet, in the order of the tabs. */
@@ -403,6 +405,7 @@ data class TextSnapGuide(val vertical: Boolean = false, val horizontal: Boolean 
  * @property musicDraft Music that the user tries in the music sheet, or null.
  * @property voices Voices for dubbings. The user's own voice is not in the list.
  * @property myVoice State of the user's own voice.
+ * @property signedIn True when the user has an account. Without it, the dubbing sheet does not offer the own voice.
  * @property dubbingDraft Dubbing that the user prepares, or null.
  * @property soundEffects Sound effects of the catalog.
  * @property soundEffectTab Tab of the effect list.
@@ -446,6 +449,7 @@ data class EditorState(
     val musicDraft: MusicDraft? = null,
     val voices: List<DubbingVoice> = emptyList(),
     val myVoice: MyVoiceStatus = MyVoiceStatus.None,
+    val signedIn: Boolean = false,
     val dubbingDraft: DubbingDraft? = null,
     val soundEffects: List<SoundEffect> = emptyList(),
     val soundEffectTab: SoundEffectTab = SoundEffectTab.All,
@@ -800,13 +804,19 @@ sealed class EditorIntent : Intent() {
     /** PickDubbingSpeed(speed) : Selects a reading speed. */
     data class PickDubbingSpeed(val speed: DubbingSpeed) : EditorIntent()
 
-    /** InsertDubbing : Makes the audio and adds or replaces the dubbing. */
+    /** InsertDubbing : Makes the audio and adds or replaces the dubbing. Without an account, the login sheet opens first. */
     data object InsertDubbing : EditorIntent()
+
+    /** ToggleDubbingPreview : Plays or stops the preview of the dubbing. Without an account, the login sheet opens first. */
+    data object ToggleDubbingPreview : EditorIntent()
+
+    /** DubbingPreviewEnded : The preview of the dubbing played to the end. */
+    data object DubbingPreviewEnded : EditorIntent()
 
     /** FitDubbing : Plays the selected dubbing faster so that it ends with its caption. */
     data object FitDubbing : EditorIntent()
 
-    /** OpenMyVoice : Opens the screen of the user's own voice. */
+    /** OpenMyVoice : Opens the screen of the user's own voice. Without an account, the login sheet opens first. */
     data object OpenMyVoice : EditorIntent()
 
     // ----- Sound effects and volume -----

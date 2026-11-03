@@ -17,6 +17,7 @@ import org.koin.compose.viewmodel.koinViewModel
  * @param onOpenEditor Opens the editor with the current project.
  * @param onOpenExport Opens the export screen of the current project, without the editor.
  * @param onOpenMyVoice Opens the screen of the user's own voice.
+ * @param onOpenAccount Opens the account management screen (S15).
  * @param viewModel ViewModel of the screen.
  */
 @Composable
@@ -26,6 +27,7 @@ internal fun MainRoute(
     onOpenEditor: () -> Unit,
     onOpenExport: () -> Unit,
     onOpenMyVoice: () -> Unit,
+    onOpenAccount: () -> Unit,
     viewModel: MainViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -39,6 +41,7 @@ internal fun MainRoute(
                 MainSideEffect.OpenEditor -> onOpenEditor()
                 MainSideEffect.OpenExport -> onOpenExport()
                 MainSideEffect.OpenMyVoice -> onOpenMyVoice()
+                MainSideEffect.OpenAccount -> onOpenAccount()
                 is MainSideEffect.ShowToast -> toast.show(effect.message.resolve())
             }
         }

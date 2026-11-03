@@ -7,6 +7,10 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import com.company.feature.account.navigation.AccountRoute
+import com.company.feature.account.navigation.WithdrawRoute
+import com.company.feature.account.navigation.accountScreen
+import com.company.feature.account.navigation.withdrawScreen
 import com.company.feature.capture.navigation.cameraScreen
 import com.company.feature.capture.navigation.galleryScreen
 import com.company.feature.capture.navigation.navigateToCamera
@@ -52,6 +56,15 @@ fun AppNavHost(
                 onOpenEditor = { navController.navigate(EditorRoute) },
                 onOpenExport = { navController.navigate(ExportRoute(fromList = true)) },
                 onOpenMyVoice = { navController.navigate(MyVoiceRoute) },
+                onOpenAccount = { navController.navigate(AccountRoute) },
+            )
+            accountScreen(
+                onClose = { navController.popBackStack() },
+                onOpenWithdraw = { navController.navigate(WithdrawRoute) },
+            )
+            withdrawScreen(
+                onClose = { navController.popBackStack() },
+                onWithdrawn = { navController.navigateToHome() },
             )
             galleryScreen(
                 onClose = { navController.popBackStack() },
@@ -72,13 +85,16 @@ fun AppNavHost(
             exportScreen(
                 onBack = { navController.popBackStack() },
                 onOpenEditor = { navController.navigateToEditorFromMain() },
-                onGoHome = {
-                    navController.navigate(MainRoute) {
-                        popUpTo<MainRoute> { inclusive = true }
-                    }
-                },
+                onGoHome = { navController.navigateToHome() },
             )
         }
+}
+
+/** 홈 탭으로 간다. 위에 쌓인 화면을 모두 지우고, 탭 화면도 처음 상태(홈 탭)로 다시 만든다. */
+private fun NavController.navigateToHome() {
+    navigate(MainRoute) {
+        popUpTo<MainRoute> { inclusive = true }
+    }
 }
 
 /** 새 프로젝트를 만든 뒤 편집 화면을 연다. 뒤로 가면 갤러리·촬영이 아니라 탭 화면으로 돌아간다. */

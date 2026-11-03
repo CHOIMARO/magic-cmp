@@ -38,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
@@ -153,7 +154,9 @@ internal fun DubbingSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
         modifier = Modifier.fillMaxWidth().heightIn(max = 176.dp).bleedHorizontal(8.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        MyVoiceRow(status = state.myVoice, selected = draft.voiceId == MY_VOICE_ID, playing = samplePlaying == MY_VOICE_ID, onIntent = onIntent) {
+        // 로그인 전에는 내 목소리를 고를 수 없다. 만들기 행을 누르면 로그인부터 한다.
+        val myVoice = if (state.signedIn) state.myVoice else MyVoiceStatus.None
+        MyVoiceRow(status = myVoice, selected = draft.voiceId == MY_VOICE_ID, playing = samplePlaying == MY_VOICE_ID, onIntent = onIntent) {
             samplePlaying = if (samplePlaying == MY_VOICE_ID) null else MY_VOICE_ID
         }
         state.voices.forEach { voice ->
@@ -180,7 +183,9 @@ internal fun DubbingSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
         DubbingPreviewButton(
             seconds = estimatedDubbingSeconds(draft.text, draft.speed),
             enabled = canInsert,
-            key = draft.text to draft.speed,
+            playing = draft.previewing,
+            onToggle = { onIntent(EditorIntent.ToggleDubbingPreview) },
+            onEnded = { onIntent(EditorIntent.DubbingPreviewEnded) },
         )
         MagicButton(
             text = stringResource(if (draft.editId != null) Res.string.dubbing_replace else Res.string.dubbing_insert),
@@ -297,25 +302,27 @@ private fun VoiceAvatar(color: Color, content: @Composable () -> Unit) {
  *
  * @param seconds Estimated length of the dubbing.
  * @param enabled Set to false when the text is empty.
- * @param key Text and speed. A change stops the preview.
+ * @param playing True while the preview plays.
+ * @param onToggle Plays or stops the preview.
+ * @param onEnded Called when the preview played to the end.
  */
 @Composable
-private fun DubbingPreviewButton(seconds: Double, enabled: Boolean, key: Any) {
-    var playing by remember(key) { mutableStateOf(false) }
-    var progress by remember(key) { mutableFloatStateOf(0f) }
-    LaunchedEffect(playing, key) {
+private fun DubbingPreviewButton(seconds: Double, enabled: Boolean, playing: Boolean, onToggle: () -> Unit, onEnded: () -> Unit) {
+    var progress by remember { mutableFloatStateOf(0f) }
+    val currentOnEnded by rememberUpdatedState(onEnded)
+    LaunchedEffect(playing) {
         progress = 0f
         if (!playing) return@LaunchedEffect
         val start = withFrameMillis { it }
         while (progress < 1f) {
             withFrameMillis { progress = ((it - start) / (seconds * 1000)).toFloat().coerceAtMost(1f) }
         }
-        playing = false
+        currentOnEnded()
     }
     Box(
         modifier = Modifier
             .height(56.dp)
-            .pressClickable(enabled = enabled) { playing = !playing }
+            .pressClickable(enabled = enabled, onClick = onToggle)
             .clip(CircleShape)
             .background(MagicColors.SurfaceHighest),
     ) {

@@ -20,9 +20,16 @@ kotlin {
             dependencies {
                 implementation(projects.domain)
                 implementation(projects.core.designsystem)
+                implementation(libs.kotlinx.coroutines.core)
 
                 // 화면 이동 연타 방지(onlyWhenResumed)
                 implementation(libs.androidx.lifecycle.runtimeCompose)
+            }
+        }
+
+        commonTest {
+            dependencies {
+                implementation(libs.kotlinx.coroutines.test)
             }
         }
 

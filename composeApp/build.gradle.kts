@@ -52,6 +52,7 @@ kotlin {
             implementation(projects.feature.main)
             implementation(projects.feature.capture)
             implementation(projects.feature.editor)
+            implementation(projects.feature.account)
             implementation(projects.core.designsystem)
             implementation(projects.domain)
             implementation(projects.data)
@@ -73,6 +74,7 @@ kotlin {
 
             implementation(libs.androidx.navigation.compose) // 네비게이션
             implementation(libs.kotlinx.serialization.json) // 직렬화
+            implementation(libs.kotlinx.coroutines.core) // iOS 로그인 브리지
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
