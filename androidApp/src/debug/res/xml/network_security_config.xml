@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- debug 빌드만: 개발 서버와 에뮬레이터의 로컬 서버는 HTTP라서 두 주소만 허용한다(app-api-guide 4-3). -->
+<!-- 도메인과 HTTPS를 붙이면 이 파일과 debug 매니페스트를 지운다. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">54.117.33.15</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

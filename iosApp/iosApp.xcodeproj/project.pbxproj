@@ -75,6 +75,7 @@
 				9B3997A8B3D24F4699E438A7 /* Sources */,
 				669BD21538416DF82085C298 /* Frameworks */,
 				CAFBAD6D0F3CCA5528B2BD6D /* Resources */,
+				4F1A2B3C4D5E6F7081920A1B /* Allow HTTP in Debug */,
 			);
 			buildRules = (
 			);
@@ -135,6 +136,26 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		4F1A2B3C4D5E6F7081920A1B /* Allow HTTP in Debug */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Allow HTTP in Debug";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Debug 구성만 HTTP 개발 서버 접속을 허용한다(app-api-guide 4-3). Release에는 넣지 않는다.\n# NSExceptionDomains는 IP 주소에 적용되지 않아서 NSAllowsArbitraryLoads를 쓴다.\n# 도메인과 HTTPS를 붙이면 이 단계를 지운다.\nif [ \"$CONFIGURATION\" != \"Debug\" ]; then\n  exit 0\nfi\nPLIST=\"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n/usr/libexec/PlistBuddy -c \"Delete :NSAppTransportSecurity\" \"$PLIST\" 2>/dev/null || true\n/usr/libexec/PlistBuddy -c \"Add :NSAppTransportSecurity dict\" -c \"Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool true\" \"$PLIST\"\n";
+		};
 		7C6797FEE81C5DFE0573071D /* Compile Kotlin Framework */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;

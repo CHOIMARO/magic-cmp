@@ -9,6 +9,8 @@ import com.company.data.font.AndroidFontFileStore
 import com.company.data.font.FontFileStore
 import com.company.data.media.AndroidMediaMetadataReader
 import com.company.data.media.MediaMetadataReader
+import com.company.data.remote.AndroidSecureStore
+import com.company.data.remote.SecureStore
 import com.company.domain.repository.VideoExportRepository
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -20,4 +22,5 @@ internal actual val platformDataModule: Module = module {
     single<FontFileStore> { AndroidFontFileStore(get()) }
     single<WorkFileStore> { AndroidWorkFileStore(get()) }
     single<MediaPersister> { AndroidMediaPersister(get()) }
+    single<SecureStore> { AndroidSecureStore(get()) }
 }

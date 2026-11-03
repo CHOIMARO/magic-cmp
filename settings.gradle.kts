@@ -30,6 +30,10 @@ dependencyResolutionManagement {
         }
         mavenCentral()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+        // 카카오 SDK는 카카오 저장소에만 있다.
+        maven("https://devrepo.kakao.com/nexus/content/groups/public/") {
+            mavenContent { includeGroupAndSubgroups("com.kakao") }
+        }
     }
 }
 

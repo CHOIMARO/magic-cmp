@@ -8,9 +8,13 @@ import com.company.data.editor.InMemoryEditorSettingsRepository
 import com.company.data.editor.LocalMyVideoRepository
 import com.company.data.font.RemoteFontRepository
 import com.company.data.media.MediaLibraryRepositoryImpl
+import com.company.data.remote.RemoteAuthRepository
+import com.company.data.remote.SessionStore
+import com.company.data.remote.createMagicHttpClient
 import com.company.data.repository.PixabayRepositoryImpl
 import com.company.data.source.remote.PixabayRemoteDataSource
 import com.company.data.source.remote.PixabayRemoteDataSourceImpl
+import com.company.domain.repository.AuthRepository
 import com.company.domain.repository.CaptionRepository
 import com.company.domain.repository.DubbingRepository
 import com.company.domain.repository.EditorProjectRepository
@@ -23,7 +27,11 @@ import com.company.domain.repository.PixabayRepository
 import com.company.data.api.PixabayApi
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
+
+/** Koin name of the HTTP client of the API server. The Pixabay client of core:network has no name. */
+private val MagicApiClient = named("magicApi")
 
 val dataModule = module {
     includes(platformDataModule)
@@ -46,4 +54,9 @@ val dataModule = module {
 
     // 글꼴 (Google Fonts 저장소에서 내려받기)
     singleOf(::RemoteFontRepository) { bind<FontRepository>() }
+
+    // 계정 (F17): 토큰은 플랫폼 보안 저장소에 둔다.
+    single { SessionStore(get()) }
+    single(MagicApiClient) { createMagicHttpClient(get()) }
+    single<AuthRepository> { RemoteAuthRepository(get(MagicApiClient), get()) }
 }
