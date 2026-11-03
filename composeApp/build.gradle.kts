@@ -13,7 +13,8 @@ plugins {
 
 kotlin {
     android {
-        namespace = "com.company.magiccmp"
+        // 앱 모듈(androidApp)이 com.company.magic을 쓰므로, 이 모듈의 R 클래스는 격치지 않는 이름을 쓴다.
+        namespace = "com.company.magic.composeapp"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
@@ -86,5 +87,5 @@ dependencies {
 
 
 compose.resources {
-    packageOfResClass = "com.company.magiccmp.resources"
+    packageOfResClass = "com.company.magic.resources"
 }

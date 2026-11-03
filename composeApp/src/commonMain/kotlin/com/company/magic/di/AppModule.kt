@@ -1,4 +1,4 @@
-package com.company.magiccmp.di
+package com.company.magic.di
 
 import com.company.data.di.dataModule
 import com.company.domain.di.domainModule

@@ -1,4 +1,4 @@
-package com.company.magiccmp.di
+package com.company.magic.di
 
 // Swift에서 호출할 함수
 fun doInitKoin() {

@@ -1,4 +1,4 @@
-package com.company.magiccmp.navigation
+package com.company.magic.navigation
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition

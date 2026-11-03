@@ -1,4 +1,4 @@
-package com.company.androidapp
+package com.company.magic
 
 import android.graphics.Color
 import android.os.Bundle
@@ -13,8 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.company.androidapp.ui.theme.MagicCmpTheme
-import com.company.magiccmp.App
+import com.company.magic.ui.theme.MagicCmpTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

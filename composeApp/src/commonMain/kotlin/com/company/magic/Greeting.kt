@@ -1,4 +1,4 @@
-package com.company.magiccmp
+package com.company.magic
 
 class Greeting {
     private val platform = getPlatform()

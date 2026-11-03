@@ -1,4 +1,4 @@
-package com.company.androidapp
+package com.company.magic
 
 import org.junit.Test
 

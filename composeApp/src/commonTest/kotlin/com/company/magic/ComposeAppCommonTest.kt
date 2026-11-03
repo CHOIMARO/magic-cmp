@@ -1,4 +1,4 @@
-package com.company.magiccmp
+package com.company.magic
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

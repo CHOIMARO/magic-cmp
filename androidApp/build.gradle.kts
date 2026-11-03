@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "com.company.androidapp"
+    namespace = "com.company.magic"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.company.androidapp"
+        applicationId = "com.company.magic"
         minSdk = 29
         targetSdk = 37
         versionCode = 1

@@ -1,4 +1,4 @@
-package com.company.magiccmp.ui
+package com.company.magic.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -27,9 +27,9 @@ import com.company.domain.repository.FontRepository
 import com.company.domain.repository.MyVoiceRepository
 import com.company.feature.editor.navigation.MyVoiceRoute
 import com.company.feature.main.splash.MagicSplash
-import com.company.magiccmp.navigation.AppNavHost
-import com.company.magiccmp.resources.Res
-import com.company.magiccmp.resources.my_voice_ready
+import com.company.magic.navigation.AppNavHost
+import com.company.magic.resources.Res
+import com.company.magic.resources.my_voice_ready
 import com.company.ui.editor.LocalDownloadedFonts
 import org.jetbrains.compose.resources.getString
 import org.koin.compose.koinInject

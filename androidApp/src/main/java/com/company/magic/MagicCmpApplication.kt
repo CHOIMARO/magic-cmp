@@ -1,7 +1,7 @@
-package com.company.androidapp
+package com.company.magic
 
 import android.app.Application
-import com.company.magiccmp.di.initKoin
+import com.company.magic.di.initKoin
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 

@@ -1,4 +1,4 @@
-package com.company.androidapp.ui.theme
+package com.company.magic.ui.theme
 
 import android.app.Activity
 import android.os.Build
