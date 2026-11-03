@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -43,6 +42,7 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -305,8 +305,12 @@ private fun VoiceAvatar(color: Color, content: @Composable () -> Unit) {
     Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(color), contentAlignment = Alignment.Center) { content() }
 }
 
+/** Fill of the preview button while the preview plays. */
+private val PreviewFillColor = MagicColors.OnSurface.copy(alpha = 0.12f)
+
 /**
- * stringResource(Res.string.listen_preview) button of the dubbing sheet. It fills from the left while the preview plays.
+ * "미리 듣기" button of the dubbing sheet. It fills from the left while the preview plays. The fill does not change
+ * the width of the button.
  *
  * The server makes the audio first, so the button shows a spinner until the audio plays. The fill uses the estimated
  * length, and the player ends the preview.
@@ -333,19 +337,24 @@ private fun DubbingPreviewButton(seconds: Double, enabled: Boolean, previewing: 
             .height(56.dp)
             .pressClickable(enabled = enabled, onClick = onToggle)
             .clip(CircleShape)
-            .background(MagicColors.SurfaceHighest),
+            .background(MagicColors.SurfaceHighest)
+            // 진행 표시는 그리기만 한다. 레이아웃에 넣으면 버튼 폭이 진행만큼 늘어난다.
+            .drawBehind { drawRect(PreviewFillColor, size = size.copy(width = size.width * progress)) },
+        contentAlignment = Alignment.Center,
     ) {
-        Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(progress).background(MagicColors.OnSurface.copy(alpha = 0.12f)))
         Row(
-            modifier = Modifier.align(Alignment.Center).padding(horizontal = 18.dp),
+            modifier = Modifier.padding(horizontal = 18.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val content = if (enabled) MagicColors.OnSurface else MagicColors.OnSurface.copy(alpha = 0.35f)
-            if (previewing && !playing) {
-                MagicSpinner(color = content, trackColor = content.copy(alpha = 0.18f), size = 20.dp)
-            } else {
-                Icon(if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow, contentDescription = null, tint = content, modifier = Modifier.size(22.dp))
+            // 스피너(20dp)와 아이콘(22dp)이 바뀌어도 폭이 그대로이도록 같은 칸에 둔다.
+            Box(modifier = Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+                if (previewing && !playing) {
+                    MagicSpinner(color = content, trackColor = content.copy(alpha = 0.18f), size = 20.dp)
+                } else {
+                    Icon(if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow, contentDescription = null, tint = content, modifier = Modifier.size(22.dp))
+                }
             }
             Text(text = stringResource(Res.string.listen_preview), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = content)
         }
