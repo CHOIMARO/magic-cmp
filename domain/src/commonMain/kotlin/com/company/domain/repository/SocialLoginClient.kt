@@ -23,4 +23,12 @@ interface SocialLoginClient {
 
     /** Ends the sessions of the provider SDKs on this device. Errors are ignored. */
     suspend fun signOut()
+
+    /**
+     * Ends the sessions of the provider SDKs after a withdrawal, and removes the access that the user gave to the app.
+     *
+     * The server cannot revoke the Google tokens, so the app removes the Google access (app-api-guide 2-7). The server
+     * disconnects Kakao and Apple. Errors are ignored.
+     */
+    suspend fun disconnect()
 }

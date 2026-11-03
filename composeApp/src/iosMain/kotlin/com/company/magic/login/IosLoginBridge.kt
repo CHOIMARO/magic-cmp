@@ -78,6 +78,12 @@ interface IosLoginBridge {
 
     /** Ends the sessions of the Kakao and Google SDKs on this device. */
     fun signOut()
+
+    /**
+     * Ends the sessions after a withdrawal. Google revokes the access of the app (`GIDSignIn.disconnect`), because the
+     * server cannot revoke it (app-api-guide 2-7). The server disconnects Kakao and Apple.
+     */
+    fun disconnect()
 }
 
 /**
@@ -114,5 +120,9 @@ internal class IosSocialLoginClient(private val bridge: IosLoginBridge) : Social
 
     override suspend fun signOut() {
         bridge.signOut()
+    }
+
+    override suspend fun disconnect() {
+        bridge.disconnect()
     }
 }

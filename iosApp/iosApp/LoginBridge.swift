@@ -121,6 +121,21 @@ final class LoginBridge: NSObject, IosLoginBridge {
         }
     }
 
+    // MARK: - Withdrawal
+
+    func disconnect() {
+        DispatchQueue.main.async {
+            // 서버는 구글 토큰을 취소하지 못하므로 앱이 연결을 끊는다(app-api-guide 2-7).
+            // 앱을 다시 시작한 뒤에도 Google SDK가 Keychain의 토큰을 읽어 취소한다.
+            GIDSignIn.sharedInstance.disconnect { error in
+                // 취소에 실패해도(예: 네트워크 없음) 기기의 구글 로그인 상태는 지운다.
+                if error != nil { GIDSignIn.sharedInstance.signOut() }
+            }
+            // 카카오 연결 끊기는 서버가 한다. 앱은 기기의 토큰만 지운다.
+            if Self.kakaoReady { UserApi.shared.logout { _ in } }
+        }
+    }
+
     // MARK: - Helpers
 
     /// Value of Info.plist, or nil when it is empty.

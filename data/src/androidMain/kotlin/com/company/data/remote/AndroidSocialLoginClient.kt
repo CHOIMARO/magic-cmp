@@ -49,14 +49,30 @@ internal class AndroidSocialLoginClient(
         LoginProvider.APPLE -> throw UnsupportedOperationException("Android does not offer Sign in with Apple")
     }
 
-    override suspend fun signOut() {
+    override suspend fun signOut() = endSessions()
+
+    /**
+     * On Android, the app removes the Google access with the Credential Manager state (app-api-guide 2-7). The server
+     * disconnects Kakao, so the app only removes the Kakao token on the device.
+     */
+    override suspend fun disconnect() = endSessions()
+
+    /** Removes the Google state and the Kakao token on the device. One failure does not stop the other. */
+    private suspend fun endSessions() {
+        ignoreFailure { CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest()) }
+        if (kakaoReady) {
+            // 카카오 로그아웃은 서버 응답과 관계없이 기기의 토큰을 지운다.
+            ignoreFailure { suspendCancellableCoroutine { cont -> UserApiClient.instance.logout { cont.resume(Unit) } } }
+        }
+    }
+
+    private suspend fun ignoreFailure(block: suspend () -> Unit) {
         try {
-            if (kakaoReady) suspendCancellableCoroutine { cont -> UserApiClient.instance.logout { cont.resume(Unit) } }
-            CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
+            block()
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            // 기기의 SDK 세션을 지우지 못해도 앱의 로그아웃은 이미 끝났다.
+            // 기기의 SDK 세션을 지우지 못해도 앱의 로그아웃·탈퇴는 이미 끝났다.
         }
     }
 

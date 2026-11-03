@@ -123,6 +123,7 @@ class LoginViewModelTest {
         }
 
         override suspend fun signOut() = Unit
+        override suspend fun disconnect() = Unit
     }
 
     private class FakeAuthRepository : AuthRepository {

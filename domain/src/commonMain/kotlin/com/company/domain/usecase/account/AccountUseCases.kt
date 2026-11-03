@@ -38,8 +38,9 @@ class SignOutUseCase(
 }
 
 /**
- * Deletes the account (S16). The server deletes the account data and disconnects the login providers. The works on
- * the device stay.
+ * Deletes the account (S16). The server deletes the account data and disconnects Kakao and Apple. The app then
+ * removes the Google access on the device, because the server cannot revoke it (app-api-guide 2-7). The works on the
+ * device stay.
  */
 class WithdrawUseCase(
     private val socialLoginClient: SocialLoginClient,
@@ -51,6 +52,7 @@ class WithdrawUseCase(
      */
     suspend operator fun invoke() {
         authRepository.withdraw()
-        socialLoginClient.signOut()
+        // 탈퇴에 성공한 뒤에만 연결을 끊는다. 실패하면 계정과 로그인이 그대로 남는다.
+        socialLoginClient.disconnect()
     }
 }
