@@ -1,10 +1,18 @@
 package com.company.magic.di
 
-// Swift에서 호출할 함수
-fun doInitKoin() {
+import com.company.domain.repository.SocialLoginClient
+import com.company.magic.login.IosLoginBridge
+import com.company.magic.login.IosSocialLoginClient
+import org.koin.dsl.module
+
+/**
+ * Starts Koin. The iOS app calls it one time when it starts.
+ *
+ * @param loginBridge Login SDKs of the Swift code: Kakao, Google, and Apple.
+ */
+fun doInitKoin(loginBridge: IosLoginBridge) {
     initKoin {
-        // iOS는 Context가 필요 없으므로 비워둡니다.
-        // 필요하다면 여기서 iOS 전용 모듈을 추가할 수도 있습니다.
-        // modules(iosSpecificModule) 
+        // 로그인 SDK는 Swift 패키지라서 Swift가 만든 구현을 받아 등록한다.
+        modules(module { single<SocialLoginClient> { IosSocialLoginClient(loginBridge) } })
     }
 }

@@ -5,3 +5,12 @@ PRODUCT_BUNDLE_IDENTIFIER=com.choimaro.magic
 
 CURRENT_PROJECT_VERSION=1
 MARKETING_VERSION=1.0
+
+// 로그인 키 (F17). 실제 값은 Secrets.xcconfig에 둔다. 그 파일은 저장소에 올리지 않는다.
+// Secrets.example.xcconfig를 Secrets.xcconfig로 복사하고 값을 채운다.
+KAKAO_NATIVE_APP_KEY=
+GOOGLE_IOS_CLIENT_ID=
+GOOGLE_REVERSED_CLIENT_ID=
+GOOGLE_WEB_CLIENT_ID=
+
+#include? "Secrets.xcconfig"

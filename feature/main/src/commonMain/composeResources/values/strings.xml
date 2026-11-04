@@ -39,7 +39,9 @@
     <string name="my_group_account">계정</string>
     <string name="my_profile_edit">프로필 편집</string>
     <string name="my_account_manage">계정 관리</string>
-    <string name="my_account_google">Google 계정</string>
+    <string name="my_provider_kakao">카카오</string>
+    <string name="my_provider_google">Google</string>
+    <string name="my_provider_apple">Apple</string>
     <string name="my_subscription">구독</string>
     <string name="my_plan_free">무료 플랜</string>
     <string name="my_group_notification">알림</string>
@@ -60,7 +62,15 @@
     <string name="my_help">도움말 · 문의</string>
     <string name="my_terms">약관 및 개인정보</string>
     <string name="my_logout">로그아웃</string>
-    <string name="my_profile_name">민지</string>
-    <string name="my_profile_summary">@minji.daily · 내보낸 영상 %1$d개</string>
+    <string name="my_profile_summary">완성한 영상 %1$d개</string>
     <string name="my_profile_modify">프로필 수정</string>
+    <!-- 로그인 전 마이 탭 (F17) -->
+    <string name="my_login_title">로그인하고 AI 더빙을 써 보세요</string>
+    <string name="my_login_body">편집과 저장은 로그인 없이도 돼요</string>
+    <string name="my_login">로그인</string>
+    <!-- 로그아웃 확인 -->
+    <string name="my_logout_title">로그아웃할까요?</string>
+    <string name="my_logout_message">이 기기의 작업과 이미 넣은 더빙은 그대로 남아요</string>
+    <string name="my_logout_confirm">로그아웃</string>
+    <string name="my_logout_cancel">취소</string>
 </resources>

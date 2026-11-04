@@ -48,6 +48,17 @@ internal interface MediaPersister {
     fun persist(uri: String): String
 
     /**
+     * Keeps an audio file that the app downloaded, for example the audio of a dubbing. The file is a copy like the
+     * copies of [persist], so [restore], [release], and [cleanUp] also work for it.
+     *
+     * @param bytes Content of the file.
+     * @param extension Extension of the file without the dot, for example "mp3".
+     * @return The location of the file.
+     * @throws Exception When the file cannot be written, for example when the storage is full.
+     */
+    fun saveAudio(bytes: ByteArray, extension: String): String
+
+    /**
      * Gives the current location of a copy. The app folder can move when the app updates.
      *
      * @param uri Location that [persist] gave.

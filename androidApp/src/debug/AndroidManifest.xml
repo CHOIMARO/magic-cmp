@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- debug 빌드만 HTTP 개발 서버에 접속한다. release 매니페스트에는 이 설정이 없다. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 아이콘 등 나머지 속성은 main 매니페스트에서 합쳐진다. -->
+    <application
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:ignore="MissingApplicationIcon" />
+
+</manifest>

@@ -25,6 +25,7 @@ import com.company.core.designsystem.component.rememberMagicToastState
 import com.company.core.designsystem.theme.MagicColors
 import com.company.domain.repository.FontRepository
 import com.company.domain.repository.MyVoiceRepository
+import com.company.feature.account.login.LoginSheetHost
 import com.company.feature.editor.navigation.MyVoiceRoute
 import com.company.feature.main.splash.MagicSplash
 import com.company.magic.navigation.AppNavHost
@@ -66,6 +67,8 @@ fun MainApp() {
                 )
                 MagicToastHost(state = toastState)
             }
+            // 로그인 시트는 모든 화면 위에 하나만 둔다. 화면이 LoginGate로 요청하면 열린다(S14).
+            LoginSheetHost()
             // 스플래시는 상태 표시줄까지 화면 전체를 덮고, 흐려지면서 아래의 홈 화면이 비쳐 보인다.
             if (showSplash) {
                 MagicSplash(onFinished = { showSplash = false }, modifier = Modifier.fillMaxSize())

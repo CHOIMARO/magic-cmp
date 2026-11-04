@@ -3,6 +3,7 @@ package com.company.magic.di
 import com.company.data.di.dataModule
 import com.company.domain.di.domainModule
 import com.company.core.network.di.networkModule
+import com.company.feature.account.di.accountModule
 import com.company.feature.capture.di.captureModule
 import com.company.feature.editor.di.editorModule
 import com.company.feature.home.di.homeModule
@@ -20,6 +21,7 @@ val appModule = module {
         mainModule,
         captureModule,
         editorModule,
+        accountModule,
     ) // feature 모듈
 
     includes(

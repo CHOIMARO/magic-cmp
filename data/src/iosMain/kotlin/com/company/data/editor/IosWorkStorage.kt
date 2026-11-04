@@ -2,7 +2,10 @@ package com.company.data.editor
 
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
 import platform.Foundation.NSApplicationSupportDirectory
+import platform.Foundation.NSData
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSFileSize
 import platform.Foundation.NSFileSystemFreeSize
@@ -16,6 +19,7 @@ import platform.Foundation.NSURL
 import platform.Foundation.NSURLIsExcludedFromBackupKey
 import platform.Foundation.NSURLVolumeAvailableCapacityForImportantUsageKey
 import platform.Foundation.NSUTF8StringEncoding
+import platform.Foundation.NSUUID
 import platform.Foundation.NSUserDomainMask
 import platform.Foundation.create
 import platform.Foundation.stringWithContentsOfFile
@@ -84,6 +88,17 @@ internal class IosMediaPersister : MediaPersister {
         return NSURL.fileURLWithPath(target).absoluteString ?: uri
     }
 
+    @OptIn(BetaInteropApi::class)
+    override fun saveAudio(bytes: ByteArray, extension: String): String {
+        val directory = "$folder/$AUDIO_DIR"
+        NSFileManager.defaultManager.createDirectoryAtPath(directory, withIntermediateDirectories = true, attributes = null, error = null)
+        val target = "$directory/${NSUUID().UUIDString}.$extension"
+        val data = bytes.usePinned { NSData.create(bytes = it.addressOf(0), length = bytes.size.toULong()) }
+        // atomically로 써서 쓰는 중에 앱이 꺼져도 반쯤 쓴 파일이 남지 않게 한다.
+        check(data.writeToFile(target, atomically = true)) { "Cannot save the audio file" }
+        return checkNotNull(NSURL.fileURLWithPath(target).absoluteString) { "Cannot make the address of the audio file" }
+    }
+
     override fun restore(uri: String): String {
         val relative = savedRelativePath(uri) ?: return uri
         // 앱을 업데이트하면 앱 폴더 경로가 바뀔 수 있으므로 지금의 폴더로 다시 만든다.
@@ -137,5 +152,8 @@ internal class IosMediaPersister : MediaPersister {
     private companion object {
         const val MEDIA_DIR = "media"
         const val SUPPORT_DIR = "Application Support"
+
+        /** Folder of the downloaded audio files in the media folder. */
+        const val AUDIO_DIR = "audio"
     }
 }

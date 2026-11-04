@@ -11,5 +11,36 @@
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
 	</dict>
+	<!-- 로그인 키 (F17). 값은 Configuration/Secrets.xcconfig에서 온다. -->
+	<key>KakaoNativeAppKey</key>
+	<string>$(KAKAO_NATIVE_APP_KEY)</string>
+	<key>GoogleIOSClientID</key>
+	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
+	<key>GoogleReversedClientID</key>
+	<string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
+	<key>GoogleWebClientID</key>
+	<string>$(GOOGLE_WEB_CLIENT_ID)</string>
+	<!-- 카카오계정·Google 로그인이 끝나면 이 스킴으로 앱이 다시 열린다. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>kakao$(KAKAO_NATIVE_APP_KEY)</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
+			</array>
+		</dict>
+	</array>
+	<!-- 카카오톡이 설치되어 있으면 카카오톡으로 로그인한다. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>kakaokompassauth</string>
+		<string>kakaolink</string>
+	</array>
 </dict>
 </plist>

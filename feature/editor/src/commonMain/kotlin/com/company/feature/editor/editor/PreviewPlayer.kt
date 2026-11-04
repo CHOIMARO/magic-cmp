@@ -2,6 +2,7 @@ package com.company.feature.editor.editor
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.company.core.media.TimelineAudio
 import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.TransitionWindow
 import kotlin.time.TimeMark
@@ -26,8 +27,9 @@ internal interface PreviewPlayer {
      * @param transitions Transitions in time order.
      * @param duration Length of the video. After the last clip, the video is black (F16).
      * @param time Position to show after the change.
+     * @param audio Audio files on the timeline, for example the dubbings. The player mixes them with the clips.
      */
-    fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double, time: Double)
+    fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double, time: Double, audio: List<TimelineAudio>)
 
     /** Starts the playback from the current position. */
     fun play()
@@ -90,7 +92,7 @@ internal class ClockPreviewPlayer : PreviewPlayer {
     override val ended: Boolean
         get() = mark != null && currentTime >= duration
 
-    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double, time: Double) {
+    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double, time: Double, audio: List<TimelineAudio>) {
         this.duration = duration
         seekTo(time)
     }

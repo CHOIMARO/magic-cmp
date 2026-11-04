@@ -61,6 +61,8 @@ private const val MIN_GAP_US = 1_000L
  * @param videoArea Area of the frame that shows the video.
  * @param overlayTracks Images on top of the video. Each track holds images in time order. The first track is at the bottom.
  * @param transitions Transitions of the video, in time order. They change only the video area. See [transitionLook].
+ * @param audio Audio files on the timeline, for example the dubbings. Each row becomes an audio sequence, and Media3
+ *   mixes the sequences with the sound of the clips.
  * @return The composition. The audio track has silence where a clip has no sound.
  */
 @OptIn(UnstableApi::class, ExperimentalApi::class)
@@ -72,6 +74,7 @@ fun buildMediaComposition(
     videoArea: FrameArea = FrameArea.FULL,
     overlayTracks: List<List<ExportOverlay>> = emptyList(),
     transitions: List<TransitionWindow> = emptyList(),
+    audio: List<TimelineAudio> = emptyList(),
 ): Composition {
     val areaWidth = (videoArea.width * frameWidth).roundToInt().coerceAtLeast(1)
     val areaHeight = (videoArea.height * frameHeight).roundToInt().coerceAtLeast(1)
@@ -105,7 +108,9 @@ fun buildMediaComposition(
         .addItems(clips.map { it.toEditedMediaItem(itemEffects) })
         .apply { if (gapUs >= MIN_GAP_US) addGap(gapUs) }
         .build()
-    return Composition.Builder(sequence)
+    // 더빙은 줄마다 소리만 있는 시퀀스가 된다. 첫 시퀀스(영상)가 영상 길이를 정한다.
+    val audioSequences = audio.byLayer().map { row -> row.toAudioSequence() }
+    return Composition.Builder(listOf(sequence) + audioSequences)
         .setEffects(Effects(emptyList(), compositionEffects))
         // HDR 그대로 합성하면 Ultra HDR 사진의 게인맵을 GPU에 올리다가 일부 기기(Adreno)에서 앱이 멈춘다.
         // SDR로 합성하면 게인맵을 쓰지 않는다. OpenGL 톤 매핑은 API 29 이상에서 되고, 기기마다 결과가 고르다.
@@ -135,7 +140,7 @@ private fun Clip.toEditedMediaItem(videoEffects: List<Effect>): EditedMediaItem 
             val mediaItem = MediaItem.Builder().setUri(uri).setClippingConfiguration(clipping).build()
             EditedMediaItem.Builder(mediaItem)
                 .setDurationUs((sourceDuration * 1_000_000).roundToLong())
-                .setEffects(Effects(volumeProcessors(), videoEffects))
+                .setEffects(Effects(volumeProcessors(volume), videoEffects))
                 .apply {
                     // 배속을 바꿔도 소리의 높이는 그대로 둔다.
                     if (speed != 1.0) setSpeed(SpeedParameters(ConstantSpeedProvider(speed.toFloat()), true))
@@ -143,6 +148,34 @@ private fun Clip.toEditedMediaItem(videoEffects: List<Effect>): EditedMediaItem 
                 .build()
         }
     }
+}
+
+/**
+ * Audio sequence of one row of timeline audio. A gap fills the time before each item.
+ *
+ * The item plays [TimelineAudio.sourceLength] seconds of its file at its rate. The pitch stays.
+ */
+@OptIn(UnstableApi::class, ExperimentalApi::class)
+private fun List<TimelineAudio>.toAudioSequence(): EditedMediaItemSequence {
+    val builder = EditedMediaItemSequence.Builder(setOf(C.TRACK_TYPE_AUDIO))
+    var cursorUs = 0L
+    for (item in this) {
+        val startUs = (item.start * 1_000_000).roundToLong()
+        if (startUs - cursorUs >= MIN_GAP_US) builder.addGap(startUs - cursorUs)
+        val sourceUs = (item.sourceLength * 1_000_000).roundToLong().coerceAtLeast(1L)
+        val clipping = MediaItem.ClippingConfiguration.Builder().setEndPositionMs(sourceUs / 1000).build()
+        val mediaItem = MediaItem.Builder().setUri(item.uri).setClippingConfiguration(clipping).build()
+        builder.addItem(
+            EditedMediaItem.Builder(mediaItem)
+                .setRemoveVideo(true)
+                .setDurationUs(sourceUs)
+                .setEffects(Effects(volumeProcessors(item.volume), emptyList()))
+                .apply { if (item.rate != 1.0) setSpeed(SpeedParameters(ConstantSpeedProvider(item.rate.toFloat()), true)) }
+                .build(),
+        )
+        cursorUs = maxOf(cursorUs, startUs) + (sourceUs / item.rate).roundToLong()
+    }
+    return builder.build()
 }
 
 /** Show time of a photo clip in milliseconds. */
@@ -172,12 +205,14 @@ private fun Clip.compositionLengthUs(): Long = when (type) {
 }
 
 /**
- * Audio processors that set the volume of the clip sound. The list is empty at full volume.
+ * Audio processors that set the volume of a sound. The list is empty at full volume.
  *
  * A diagonal matrix multiplies each channel by the volume. The processor keeps the number of channels.
+ *
+ * @param volume Volume from 0 to 100.
  */
 @OptIn(UnstableApi::class)
-private fun Clip.volumeProcessors(): List<AudioProcessor> {
+private fun volumeProcessors(volume: Int): List<AudioProcessor> {
     if (volume >= MAX_VOLUME) return emptyList()
     val gain = volume.coerceAtLeast(0) / MAX_VOLUME.toFloat()
     val processor = ChannelMixingAudioProcessor()

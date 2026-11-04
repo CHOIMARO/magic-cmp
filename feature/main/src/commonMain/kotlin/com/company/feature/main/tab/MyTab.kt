@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,7 +42,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.MagicButton
 import com.company.core.designsystem.component.MagicButtonStyle
@@ -49,6 +52,8 @@ import com.company.core.designsystem.component.MagicSwitch
 import com.company.core.designsystem.component.StripeBox
 import com.company.core.designsystem.component.pressClickable
 import com.company.core.designsystem.theme.MagicColors
+import com.company.domain.model.account.LoginProvider
+import com.company.domain.model.account.SessionState
 import com.company.domain.model.editor.EditorSettings
 import com.company.domain.model.editor.MyVoiceStatus
 import com.company.feature.main.SettingKey
@@ -80,13 +85,20 @@ private data class SettingRow(
 /**
  * "마이" tab: profile, settings, and logout.
  *
+ * Without an account, the tab shows a login card instead of the profile. The account group then has only the
+ * subscription row, and the logout button is not there (F17).
+ *
  * @param settings Current editor settings.
  * @param exportedCount Number of works that the user exported (D43).
  * @param storageBytes Bytes that all works use on the device (D51).
  * @param myVoice State of the user's own voice.
+ * @param session Sign-in state.
  * @param onToggleSetting Called with the tapped setting.
  * @param onOpenAppInfo Action of the "앱 정보" row.
  * @param onOpenMyVoice Action of the "내 목소리" row.
+ * @param onLogin Action of the login card and of the rows that need an account.
+ * @param onOpenAccount Action of the "계정 관리" row.
+ * @param onLogout Action of the logout button.
  */
 @Composable
 internal fun MyTab(
@@ -94,16 +106,31 @@ internal fun MyTab(
     exportedCount: Int,
     storageBytes: Long,
     myVoice: MyVoiceStatus,
+    session: SessionState,
     onToggleSetting: (SettingKey) -> Unit,
     onOpenAppInfo: () -> Unit,
     onOpenMyVoice: () -> Unit,
+    onLogin: () -> Unit,
+    onOpenAccount: () -> Unit,
+    onLogout: () -> Unit,
 ) {
+    val signedIn = session as? SessionState.SignedIn
+    val member = signedIn?.member
     val groups = listOf(
-        stringResource(Res.string.my_group_account) to listOf(
-            SettingRow(Icons.Outlined.Person, stringResource(Res.string.my_profile_edit)),
-            SettingRow(Icons.Outlined.ManageAccounts, stringResource(Res.string.my_account_manage), value = stringResource(Res.string.my_account_google)),
-            SettingRow(Icons.Outlined.WorkspacePremium, stringResource(Res.string.my_subscription), value = stringResource(Res.string.my_plan_free)),
-        ),
+        stringResource(Res.string.my_group_account) to if (signedIn != null) {
+            listOf(
+                SettingRow(Icons.Outlined.Person, stringResource(Res.string.my_profile_edit)),
+                SettingRow(
+                    Icons.Outlined.ManageAccounts,
+                    stringResource(Res.string.my_account_manage),
+                    value = member?.providers?.firstOrNull()?.let { stringResource(it.label) }.orEmpty(),
+                    onClick = onOpenAccount,
+                ),
+                SettingRow(Icons.Outlined.WorkspacePremium, stringResource(Res.string.my_subscription), value = stringResource(Res.string.my_plan_free)),
+            )
+        } else {
+            listOf(SettingRow(Icons.Outlined.WorkspacePremium, stringResource(Res.string.my_subscription), onClick = onLogin))
+        },
         stringResource(Res.string.my_group_notification) to listOf(
             SettingRow(Icons.Outlined.Campaign, stringResource(Res.string.my_template_news), toggle = SettingKey.TEMPLATE_NEWS),
         ),
@@ -111,10 +138,12 @@ internal fun MyTab(
             SettingRow(
                 Icons.Outlined.RecordVoiceOver,
                 stringResource(Res.string.my_voice),
-                value = when (myVoice) {
-                    MyVoiceStatus.Ready -> stringResource(Res.string.my_voice_ready)
-                    is MyVoiceStatus.Making -> stringResource(Res.string.my_voice_making)
-                    MyVoiceStatus.None -> stringResource(Res.string.my_voice_none)
+                // 로그인 전에는 상태를 보여 주지 않는다. 누르면 로그인부터 한다.
+                value = when {
+                    signedIn == null -> ""
+                    myVoice == MyVoiceStatus.Ready -> stringResource(Res.string.my_voice_ready)
+                    myVoice is MyVoiceStatus.Making -> stringResource(Res.string.my_voice_making)
+                    else -> stringResource(Res.string.my_voice_none)
                 },
                 onClick = onOpenMyVoice,
             ),
@@ -137,7 +166,11 @@ internal fun MyTab(
             .padding(top = 12.dp, bottom = TabContentBottomPadding),
     ) {
         TabTitle(text = stringResource(Res.string.tab_my), modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 22.dp))
-        ProfileRow(exportedCount = exportedCount)
+        if (signedIn != null) {
+            ProfileRow(name = member?.nickname.orEmpty(), exportedCount = exportedCount)
+        } else {
+            LoginCard(onLogin = onLogin)
+        }
         groups.forEach { (title, rows) ->
             Column(
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 20.dp),
@@ -160,17 +193,59 @@ internal fun MyTab(
                 }
             }
         }
+        if (signedIn != null) {
+            MagicButton(
+                text = stringResource(Res.string.my_logout),
+                onClick = onLogout,
+                modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                style = MagicButtonStyle.DANGER,
+            )
+        }
+    }
+}
+
+/** Card that asks the user to sign in. It takes the place of the profile when the user has no account. */
+@Composable
+private fun LoginCard(onLogin: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .padding(start = 16.dp, end = 16.dp, bottom = 24.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(MagicColors.Surface)
+            .padding(start = 18.dp, end = 18.dp, top = 20.dp, bottom = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(52.dp).clip(CircleShape).background(MagicColors.Accent),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Rounded.RecordVoiceOver, contentDescription = null, tint = MagicColors.OnAccent, modifier = Modifier.size(28.dp))
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = stringResource(Res.string.my_login_title),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 23.sp,
+                    letterSpacing = (-0.02).em,
+                )
+                Text(text = stringResource(Res.string.my_login_body), fontSize = 13.sp, color = MagicColors.OnSurface55)
+            }
+        }
         MagicButton(
-            text = stringResource(Res.string.my_logout),
-            onClick = {},
-            modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
-            style = MagicButtonStyle.DANGER,
+            text = stringResource(Res.string.my_login),
+            onClick = onLogin,
+            modifier = Modifier.fillMaxWidth(),
+            style = MagicButtonStyle.PRIMARY_SMALL,
+            height = 48.dp,
         )
     }
 }
 
 @Composable
-private fun ProfileRow(exportedCount: Int) {
+private fun ProfileRow(name: String, exportedCount: Int) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -178,7 +253,7 @@ private fun ProfileRow(exportedCount: Int) {
     ) {
         StripeBox(hue = 300f, lightness = 0.55f, shape = CircleShape, modifier = Modifier.size(60.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = stringResource(Res.string.my_profile_name), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(text = name, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 text = stringResource(Res.string.my_profile_summary, exportedCount),
                 modifier = Modifier.padding(top = 2.dp),
@@ -237,6 +312,14 @@ private fun SettingRowItem(row: SettingRow, settings: EditorSettings, onToggleSe
         }
     }
 }
+
+/** Name of the provider in the "계정 관리" row. */
+private val LoginProvider.label
+    get() = when (this) {
+        LoginProvider.KAKAO -> Res.string.my_provider_kakao
+        LoginProvider.GOOGLE -> Res.string.my_provider_google
+        LoginProvider.APPLE -> Res.string.my_provider_apple
+    }
 
 private fun EditorSettings.isOn(key: SettingKey): Boolean = when (key) {
     SettingKey.TEMPLATE_NEWS -> templateNews

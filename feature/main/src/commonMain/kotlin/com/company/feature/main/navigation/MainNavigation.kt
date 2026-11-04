@@ -19,6 +19,7 @@ object MainRoute
  * @param onOpenEditor Opens the editor with the current project.
  * @param onOpenExport Opens the export screen of the current project, without the editor (S13).
  * @param onOpenMyVoice Opens the screen of the user's own voice.
+ * @param onOpenAccount Opens the account management screen (S15).
  */
 fun NavGraphBuilder.mainScreen(
     onOpenGallery: (EditorTemplate?) -> Unit,
@@ -26,6 +27,7 @@ fun NavGraphBuilder.mainScreen(
     onOpenEditor: () -> Unit,
     onOpenExport: () -> Unit,
     onOpenMyVoice: () -> Unit,
+    onOpenAccount: () -> Unit,
 ) {
     composable<MainRoute> { entry ->
         MainRoute(
@@ -34,6 +36,7 @@ fun NavGraphBuilder.mainScreen(
             onOpenEditor = entry.onlyWhenResumed(onOpenEditor),
             onOpenExport = entry.onlyWhenResumed(onOpenExport),
             onOpenMyVoice = entry.onlyWhenResumed(onOpenMyVoice),
+            onOpenAccount = entry.onlyWhenResumed(onOpenAccount),
         )
     }
 }

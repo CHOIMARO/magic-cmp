@@ -247,6 +247,7 @@ class ExportViewModel(
             videoArea = project.layout.spec.cells.first().toFrameArea(),
             overlayTracks = overlayTracks,
             transitions = project.transitionWindows(),
+            dubbings = project.dubbings,
         )
         reduce { copy(overlayRequest = null, progress = OVERLAY_PERCENT) }
         exportJob?.cancel()

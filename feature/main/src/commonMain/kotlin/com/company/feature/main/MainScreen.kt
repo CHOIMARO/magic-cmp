@@ -22,6 +22,9 @@ import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicPreview
 import com.company.core.designsystem.theme.PHONE_PREVIEW_HEIGHT
 import com.company.core.designsystem.theme.PHONE_PREVIEW_WIDTH
+import com.company.domain.model.account.LoginProvider
+import com.company.domain.model.account.Member
+import com.company.domain.model.account.SessionState
 import com.company.domain.model.editor.VideoSummary
 import com.company.feature.main.component.MainBottomBar
 import com.company.feature.main.sheet.AppInfoSheetContent
@@ -29,6 +32,10 @@ import com.company.feature.main.sheet.TemplateSheetContent
 import com.company.feature.main.component.storageSizeLabel
 import com.company.feature.main.sheet.WorkMenuSheetContent
 import com.company.feature.main.resources.Res
+import com.company.feature.main.resources.my_logout_cancel
+import com.company.feature.main.resources.my_logout_confirm
+import com.company.feature.main.resources.my_logout_message
+import com.company.feature.main.resources.my_logout_title
 import com.company.feature.main.resources.work_delete_cancel
 import com.company.feature.main.resources.work_delete_confirm
 import com.company.feature.main.resources.work_delete_message
@@ -81,9 +88,13 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
                 exportedCount = state.works.count { it.exported },
                 storageBytes = state.works.sumOf { it.storageBytes },
                 myVoice = state.myVoice,
+                session = state.session,
                 onToggleSetting = { onIntent(MainIntent.ToggleSetting(it)) },
                 onOpenAppInfo = { onIntent(MainIntent.OpenAppInfo) },
                 onOpenMyVoice = { onIntent(MainIntent.OpenMyVoice) },
+                onLogin = { onIntent(MainIntent.OpenLogin) },
+                onOpenAccount = { onIntent(MainIntent.OpenAccount) },
+                onLogout = { onIntent(MainIntent.RequestLogout) },
             )
         }
         MainBottomBar(
@@ -139,6 +150,17 @@ internal fun MainScreen(state: MainState, onIntent: (MainIntent) -> Unit) {
                 danger = true,
             )
         }
+        if (state.logoutConfirm) {
+            MagicDialog(
+                title = stringResource(Res.string.my_logout_title),
+                message = stringResource(Res.string.my_logout_message),
+                confirmLabel = stringResource(Res.string.my_logout_confirm),
+                onConfirm = { onIntent(MainIntent.ConfirmLogout) },
+                cancelLabel = stringResource(Res.string.my_logout_cancel),
+                onCancel = { onIntent(MainIntent.DismissLogout) },
+                onDismissRequest = { onIntent(MainIntent.DismissLogout) },
+            )
+        }
     }
 }
 
@@ -187,6 +209,23 @@ private fun MainTemplatesPreview() = MainScreenPreview(MainTab.TEMPLATES)
 @Composable
 private fun MainLibraryPreview() = MainScreenPreview(MainTab.LIBRARY)
 
-@Preview(name = "마이", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Preview(name = "마이 · 비로그인", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
 @Composable
 private fun MainMyPreview() = MainScreenPreview(MainTab.MY)
+
+@Preview(name = "마이 · 로그인", widthDp = PHONE_PREVIEW_WIDTH, heightDp = PHONE_PREVIEW_HEIGHT)
+@Composable
+private fun MainMySignedInPreview() {
+    MagicPreview {
+        MainScreen(
+            state = MainState(
+                tab = MainTab.MY,
+                works = PreviewWorks,
+                session = SessionState.SignedIn(
+                    Member(id = 1, nickname = "김민지", email = "minji.daily@gmail.com", profileImageUrl = null, providers = listOf(LoginProvider.GOOGLE)),
+                ),
+            ),
+            onIntent = {},
+        )
+    }
+}

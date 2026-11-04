@@ -7,7 +7,6 @@ import com.company.domain.model.editor.MAX_DUBBING_CHARACTERS
 import com.company.domain.model.editor.MY_VOICE_ID
 import com.company.domain.model.editor.MusicRange
 import com.company.domain.model.editor.MusicSettings
-import com.company.domain.model.editor.MyVoiceStatus
 import com.company.domain.model.editor.addDubbing
 import com.company.domain.model.editor.addSoundEffect
 import com.company.domain.model.editor.defaultMusicRange
@@ -41,6 +40,7 @@ private const val RECENT_EFFECT_COUNT = 8
  */
 internal class AudioActions(private val host: EditorHost, private val dubbingRepository: DubbingRepository) {
     private var dubbingJob: Job? = null
+    private var previewJob: Job? = null
 
     /** Time of the last volume change. A quick series of changes is one undo step. */
     private var lastVolumeChange: TimeMark? = null
@@ -129,9 +129,14 @@ internal class AudioActions(private val host: EditorHost, private val dubbingRep
     fun openDubbing(captionId: String?, editId: String?) {
         host.pause()
         val state = host.state
+        // 서버 목소리를 아직 받지 못했으면 다시 받는다. 받으면 초안이 첫 목소리를 고른다.
+        if (state.voices.isEmpty()) host.scope.launch { dubbingRepository.loadVoices() }
+        val defaultVoice = state.voices.firstOrNull()?.id.orEmpty()
         val draft = editId?.let { id ->
             state.project.dubbings.find { it.id == id }?.let {
-                DubbingDraft(text = it.text, voiceId = it.voiceId, speed = it.speed, captionId = it.captionId, editId = it.id)
+                // 예전 버전의 목소리(서버에 없는 ID)로 만든 더빙은 서버의 첫 목소리로 다시 만든다.
+                val voiceId = it.voiceId.takeIf { voice -> voice == MY_VOICE_ID || state.voices.any { v -> v.id == voice } } ?: defaultVoice
+                DubbingDraft(text = it.text, voiceId = voiceId, speed = it.speed, captionId = it.captionId, editId = it.id)
             }
         } ?: run {
             val captions = state.project.placedCaptions
@@ -139,7 +144,8 @@ internal class AudioActions(private val host: EditorHost, private val dubbingRep
                 ?: captions.find { state.time >= it.start && state.time < it.end }
             DubbingDraft(
                 text = caption?.text.orEmpty().take(MAX_DUBBING_CHARACTERS),
-                voiceId = if (state.myVoice == MyVoiceStatus.Ready) MY_VOICE_ID else state.voices.first().id,
+                // 내 목소리는 서버에서 아직 쓸 수 없으므로(Typecast 유료 플랜 전) 기본으로 고르지 않는다.
+                voiceId = defaultVoice,
                 speed = DubbingSpeed.NORMAL,
                 captionId = caption?.id,
                 editId = null,
@@ -154,15 +160,60 @@ internal class AudioActions(private val host: EditorHost, private val dubbingRep
      * @param text New text.
      */
     fun changeDubbingText(text: String) {
-        host.reduce { copy(dubbingDraft = dubbingDraft?.copy(text = text.take(MAX_DUBBING_CHARACTERS))) }
+        changeDubbingDraft { copy(text = text.take(MAX_DUBBING_CHARACTERS)) }
+    }
+
+    /**
+     * Changes the text, the voice, or the speed of the dubbing. The change stops the preview.
+     *
+     * @param change Change of the draft.
+     */
+    fun changeDubbingDraft(change: DubbingDraft.() -> DubbingDraft) {
+        previewJob?.cancel()
+        host.reduce { copy(dubbingDraft = dubbingDraft?.change()?.copy(previewing = false, previewUrl = null)) }
+    }
+
+    /**
+     * Plays the preview of the dubbing. The server makes the audio first. A later insert of the same content uses
+     * the same audio, so the server does not make it two times.
+     */
+    fun startDubbingPreview() {
+        val draft = host.state.dubbingDraft ?: return
+        val content = draft.content() ?: return
+        if (draft.busy || draft.previewing) return
+        host.reduce { copy(dubbingDraft = draft.copy(previewing = true, previewUrl = null)) }
+        previewJob?.cancel()
+        previewJob = host.scope.launch {
+            try {
+                val url = dubbingRepository.preview(content)
+                host.reduce { copy(dubbingDraft = dubbingDraft?.takeIf { it.previewing }?.copy(previewUrl = url) ?: dubbingDraft) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                failDubbingPreview()
+            }
+        }
+    }
+
+    /** Stops the preview of the dubbing. */
+    fun stopDubbingPreview() {
+        previewJob?.cancel()
+        host.reduce { copy(dubbingDraft = dubbingDraft?.copy(previewing = false, previewUrl = null)) }
+    }
+
+    /** Stops the preview after a failure and tells the user. */
+    fun failDubbingPreview() {
+        stopDubbingPreview()
+        host.toast(uiText(Res.string.toast_dubbing_failed))
     }
 
     /** Makes the audio, then adds the dubbing or replaces the old dubbing, and closes the sheet. */
     fun insertDubbing() {
         val draft = host.state.dubbingDraft ?: return
-        if (draft.text.isBlank() || draft.busy) return
-        val content = DubbingContent(text = draft.text.trim(), voiceId = draft.voiceId, speed = draft.speed)
-        host.reduce { copy(dubbingDraft = draft.copy(busy = true)) }
+        val content = draft.content() ?: return
+        if (draft.busy) return
+        previewJob?.cancel()
+        host.reduce { copy(dubbingDraft = draft.copy(busy = true, previewing = false, previewUrl = null)) }
         dubbingJob = host.scope.launch {
             try {
                 val audio = dubbingRepository.synthesize(content)
@@ -201,10 +252,18 @@ internal class AudioActions(private val host: EditorHost, private val dubbingRep
         host.toast(uiText(Res.string.toast_dubbing_fitted))
     }
 
-    /** Stops the production of a dubbing. Closing the sheet calls it. */
+    /** Stops the production of a dubbing and its preview. Closing the sheet calls it. */
     fun stop() {
         dubbingJob?.cancel()
         dubbingJob = null
+        previewJob?.cancel()
+        previewJob = null
+    }
+
+    /** Content to send to the server, or null when the text is empty or no voice is selected. */
+    private fun DubbingDraft.content(): DubbingContent? {
+        if (text.isBlank() || voiceId.isEmpty()) return null
+        return DubbingContent(text = text.trim(), voiceId = voiceId, speed = speed)
     }
 
     // =====================================================================

@@ -26,6 +26,7 @@ import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.TransitionWindow
 import com.company.core.media.PREVIEW_FRAME_HEIGHT
 import com.company.core.media.PREVIEW_FRAME_WIDTH
+import com.company.core.media.TimelineAudio
 import com.company.core.media.buildMediaComposition
 import kotlin.math.roundToLong
 
@@ -73,7 +74,7 @@ private class AndroidVideoPreviewPlayer(context: Context) : VideoPreviewPlayer {
     override val ended: Boolean
         get() = player.playbackState == Player.STATE_ENDED
 
-    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double, time: Double) {
+    override fun setClips(clips: List<Clip>, transitions: List<TransitionWindow>, duration: Double, time: Double, audio: List<TimelineAudio>) {
         if (clips.isEmpty()) return
         val composition = buildMediaComposition(
             clips = clips,
@@ -81,6 +82,7 @@ private class AndroidVideoPreviewPlayer(context: Context) : VideoPreviewPlayer {
             frameWidth = PREVIEW_FRAME_WIDTH,
             frameHeight = PREVIEW_FRAME_HEIGHT,
             transitions = transitions,
+            audio = audio,
         )
         player.setComposition(composition, time.toMillis())
         hasContent = true

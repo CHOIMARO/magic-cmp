@@ -2,6 +2,7 @@ package com.company.feature.editor.editor
 
 import androidx.lifecycle.viewModelScope
 import com.company.core.base.BaseViewModel
+import com.company.domain.model.account.SessionState
 import com.company.domain.model.editor.EditorProject
 import com.company.domain.model.editor.LayoutType
 import com.company.domain.model.editor.TextStyleType
@@ -22,6 +23,7 @@ import com.company.domain.model.editor.setClipSpeed
 import com.company.domain.model.editor.splitAt
 import com.company.domain.model.editor.transformText
 import com.company.domain.model.editor.workNameOf
+import com.company.domain.repository.AuthRepository
 import com.company.domain.repository.DubbingRepository
 import com.company.domain.repository.EditorProjectRepository
 import com.company.domain.repository.EditorSettingsRepository
@@ -44,6 +46,8 @@ import com.company.feature.editor.resources.toast_move_line_into_clip
 import com.company.feature.editor.resources.toast_split_at_line
 import com.company.feature.editor.resources.toast_undone
 import com.company.feature.editor.resources.toast_work_save_failed
+import com.company.ui.account.LoginGate
+import com.company.ui.account.LoginReason
 import com.company.ui.text.StringResolver
 import com.company.ui.text.UiText
 import com.company.ui.text.uiText
@@ -116,17 +120,19 @@ class EditorViewModel(
     mediaLibraryRepository: MediaLibraryRepository,
     generateCaptions: GenerateCaptionsUseCase,
     fontRepository: FontRepository,
-    dubbingRepository: DubbingRepository,
+    private val dubbingRepository: DubbingRepository,
     private val myVoiceRepository: MyVoiceRepository,
     private val saveWork: SaveWorkUseCase,
     private val leaveEditor: LeaveEditorUseCase,
     private val stringResolver: StringResolver,
+    authRepository: AuthRepository,
+    private val loginGate: LoginGate,
 ) : BaseViewModel<EditorState, EditorIntent, EditorSideEffect>(
     initialState = EditorState(
         project = projectRepository.project.value,
         canUndo = projectRepository.canUndo.value,
         musicTracks = mediaLibraryRepository.getMusicTracks(),
-        voices = dubbingRepository.getVoices(),
+        voices = dubbingRepository.voices.value,
         soundEffects = mediaLibraryRepository.getSoundEffects(),
         myVoice = myVoiceRepository.status.value,
     )
@@ -199,20 +205,30 @@ class EditorViewModel(
         // 편집 내용이 바뀌면 잠시 뒤 자동으로 저장한다(F15). 연달아 바뀌면 마지막 변경 뒤에 한 번 저장한다.
         viewModelScope.launch { projectRepository.project.drop(1).collect { scheduleSave() } }
         viewModelScope.launch { projectRepository.canUndo.collect { reduce { copy(canUndo = it) } } }
+        viewModelScope.launch { authRepository.session.collect { reduce { copy(signedIn = it is SessionState.SignedIn) } } }
+        // 더빙 목소리는 서버에서 받는다(공개 API). 받기 전에 연 초안은 받은 뒤 첫 목소리를 고른다.
+        viewModelScope.launch {
+            dubbingRepository.voices.collect { voices ->
+                reduce {
+                    val draft = dubbingDraft?.let { draft ->
+                        if (draft.voiceId == MY_VOICE_ID || voices.any { it.id == draft.voiceId }) draft
+                        else draft.copy(voiceId = voices.firstOrNull()?.id.orEmpty())
+                    }
+                    copy(voices = voices, dubbingDraft = draft)
+                }
+            }
+        }
+        viewModelScope.launch { dubbingRepository.loadVoices() }
         viewModelScope.launch {
             settingsRepository.settings.collect { reduce { copy(watermark = it.watermark, favoriteTextStyles = it.favoriteTextStyles) } }
         }
         viewModelScope.launch {
             myVoiceRepository.status.collect { status ->
                 reduce {
+                    // 내 목소리는 서버에서 아직 쓸 수 없으므로(Typecast 유료 플랜 전) 다 만들어져도 자동으로 고르지 않는다.
+                    // 내 목소리를 지우면 그 목소리를 고른 초안은 기본 목소리로 바꾼다.
                     val draft = dubbingDraft?.let {
-                        when {
-                            // 더빙 시트에서 내 목소리를 만들었으면, 다 된 목소리를 바로 고른다.
-                            status == MyVoiceStatus.Ready && myVoice != MyVoiceStatus.Ready -> it.copy(voiceId = MY_VOICE_ID)
-                            // 내 목소리를 지우면 그 목소리를 고른 초안은 기본 목소리로 바꾼다.
-                            status != MyVoiceStatus.Ready && it.voiceId == MY_VOICE_ID -> it.copy(voiceId = voices.first().id)
-                            else -> it
-                        }
+                        if (status != MyVoiceStatus.Ready && it.voiceId == MY_VOICE_ID) it.copy(voiceId = voices.firstOrNull()?.id.orEmpty()) else it
                     }
                     copy(myVoice = status, dubbingDraft = draft)
                 }
@@ -384,13 +400,25 @@ class EditorViewModel(
             EditorIntent.ToggleMusicFade -> reduce { copy(musicDraft = musicDraft?.copy(fade = !musicDraft.fade)) }
             EditorIntent.ApplyMusic -> audio.applyMusic()
 
-            is EditorIntent.OpenDubbing -> audio.openDubbing(intent.captionId, intent.editId)
+            // 더빙을 다시 만들면 서버를 부르므로 시트를 열기 전에 로그인을 확인한다(9.17).
+            is EditorIntent.OpenDubbing -> if (intent.editId != null) {
+                requireSignIn(LoginReason.DUBBING) { audio.openDubbing(intent.captionId, intent.editId) }
+            } else {
+                audio.openDubbing(intent.captionId, intent.editId)
+            }
             is EditorIntent.ChangeDubbingText -> audio.changeDubbingText(intent.text)
-            is EditorIntent.PickDubbingVoice -> reduce { copy(dubbingDraft = dubbingDraft?.copy(voiceId = intent.voiceId)) }
-            is EditorIntent.PickDubbingSpeed -> reduce { copy(dubbingDraft = dubbingDraft?.copy(speed = intent.speed)) }
-            EditorIntent.InsertDubbing -> audio.insertDubbing()
+            is EditorIntent.PickDubbingVoice -> audio.changeDubbingDraft { copy(voiceId = intent.voiceId) }
+            is EditorIntent.PickDubbingSpeed -> audio.changeDubbingDraft { copy(speed = intent.speed) }
+            EditorIntent.InsertDubbing -> requireSignIn(LoginReason.DUBBING) { audio.insertDubbing() }
+            EditorIntent.ToggleDubbingPreview -> if (currentState.dubbingDraft?.previewing == true) {
+                audio.stopDubbingPreview()
+            } else {
+                requireSignIn(LoginReason.DUBBING) { audio.startDubbingPreview() }
+            }
+            EditorIntent.DubbingPreviewEnded -> audio.stopDubbingPreview()
+            EditorIntent.DubbingPreviewFailed -> audio.failDubbingPreview()
             EditorIntent.FitDubbing -> audio.fitDubbing()
-            EditorIntent.OpenMyVoice -> {
+            EditorIntent.OpenMyVoice -> requireSignIn(LoginReason.MY_VOICE) {
                 pause()
                 postSideEffect { EditorSideEffect.OpenMyVoice }
             }
@@ -829,6 +857,14 @@ class EditorViewModel(
 
     private fun toast(message: UiText) {
         postSideEffect { EditorSideEffect.ShowToast(message) }
+    }
+
+    /**
+     * Runs an action that calls the server. Without an account, the login sheet opens first, and the action runs
+     * after the sign-in. The sheet below keeps its input (D67).
+     */
+    private fun requireSignIn(reason: LoginReason, action: () -> Unit) {
+        viewModelScope.launch { if (loginGate.ensureSignedIn(reason)) action() }
     }
 
     // =====================================================================

@@ -24,6 +24,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 카카오계정 로그인(웹)의 결과를 받는다(F17). 키는 local.properties의 KAKAO_NATIVE_APP_KEY다. -->
+        <activity
+            android:name="com.kakao.sdk.auth.AuthCodeHandlerActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="oauth"
+                    android:scheme="kakao${KAKAO_NATIVE_APP_KEY}" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

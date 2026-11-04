@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -43,6 +42,7 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import com.company.core.designsystem.component.MagicButton
 import com.company.core.designsystem.component.MagicButtonLoading
 import com.company.core.designsystem.component.MagicChip
+import com.company.core.designsystem.component.MagicSpinner
 import com.company.core.designsystem.component.SegmentOption
 import com.company.core.designsystem.component.SegmentedControl
 import com.company.core.designsystem.component.bleedHorizontal
@@ -153,7 +154,9 @@ internal fun DubbingSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
         modifier = Modifier.fillMaxWidth().heightIn(max = 176.dp).bleedHorizontal(8.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        MyVoiceRow(status = state.myVoice, selected = draft.voiceId == MY_VOICE_ID, playing = samplePlaying == MY_VOICE_ID, onIntent = onIntent) {
+        // 로그인 전에는 내 목소리를 고를 수 없다. 만들기 행을 누르면 로그인부터 한다.
+        val myVoice = if (state.signedIn) state.myVoice else MyVoiceStatus.None
+        MyVoiceRow(status = myVoice, selected = draft.voiceId == MY_VOICE_ID, playing = samplePlaying == MY_VOICE_ID, onIntent = onIntent) {
             samplePlaying = if (samplePlaying == MY_VOICE_ID) null else MY_VOICE_ID
         }
         state.voices.forEach { voice ->
@@ -175,12 +178,22 @@ internal fun DubbingSheet(state: EditorState, onIntent: (EditorIntent) -> Unit) 
         containerColor = MagicColors.Background,
         itemHeight = 40.dp,
     )
-    val canInsert = draft.text.isNotBlank() && !draft.busy
+    val canInsert = draft.text.isNotBlank() && draft.voiceId.isNotEmpty() && !draft.busy
+    // 서버가 준 주소는 서명이 있는 임시 주소다. 받자마자 바로 재생한다(app-api-guide 3-5).
+    draft.previewUrl?.let { url ->
+        StreamAudioPlayer(
+            url = url,
+            onEnded = { onIntent(EditorIntent.DubbingPreviewEnded) },
+            onError = { onIntent(EditorIntent.DubbingPreviewFailed) },
+        )
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         DubbingPreviewButton(
             seconds = estimatedDubbingSeconds(draft.text, draft.speed),
             enabled = canInsert,
-            key = draft.text to draft.speed,
+            previewing = draft.previewing,
+            playing = draft.previewUrl != null,
+            onToggle = { onIntent(EditorIntent.ToggleDubbingPreview) },
         )
         MagicButton(
             text = stringResource(if (draft.editId != null) Res.string.dubbing_replace else Res.string.dubbing_insert),
@@ -292,41 +305,57 @@ private fun VoiceAvatar(color: Color, content: @Composable () -> Unit) {
     Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(color), contentAlignment = Alignment.Center) { content() }
 }
 
+/** Fill of the preview button while the preview plays. */
+private val PreviewFillColor = MagicColors.OnSurface.copy(alpha = 0.12f)
+
 /**
- * stringResource(Res.string.listen_preview) button of the dubbing sheet. It fills from the left while the preview plays.
+ * "미리 듣기" button of the dubbing sheet. It fills from the left while the preview plays. The fill does not change
+ * the width of the button.
+ *
+ * The server makes the audio first, so the button shows a spinner until the audio plays. The fill uses the estimated
+ * length, and the player ends the preview.
  *
  * @param seconds Estimated length of the dubbing.
  * @param enabled Set to false when the text is empty.
- * @param key Text and speed. A change stops the preview.
+ * @param previewing True while the server makes the preview or the preview plays.
+ * @param playing True while the preview plays.
+ * @param onToggle Plays or stops the preview.
  */
 @Composable
-private fun DubbingPreviewButton(seconds: Double, enabled: Boolean, key: Any) {
-    var playing by remember(key) { mutableStateOf(false) }
-    var progress by remember(key) { mutableFloatStateOf(0f) }
-    LaunchedEffect(playing, key) {
+private fun DubbingPreviewButton(seconds: Double, enabled: Boolean, previewing: Boolean, playing: Boolean, onToggle: () -> Unit) {
+    var progress by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(playing) {
         progress = 0f
         if (!playing) return@LaunchedEffect
         val start = withFrameMillis { it }
         while (progress < 1f) {
             withFrameMillis { progress = ((it - start) / (seconds * 1000)).toFloat().coerceAtMost(1f) }
         }
-        playing = false
     }
     Box(
         modifier = Modifier
             .height(56.dp)
-            .pressClickable(enabled = enabled) { playing = !playing }
+            .pressClickable(enabled = enabled, onClick = onToggle)
             .clip(CircleShape)
-            .background(MagicColors.SurfaceHighest),
+            .background(MagicColors.SurfaceHighest)
+            // 진행 표시는 그리기만 한다. 레이아웃에 넣으면 버튼 폭이 진행만큼 늘어난다.
+            .drawBehind { drawRect(PreviewFillColor, size = size.copy(width = size.width * progress)) },
+        contentAlignment = Alignment.Center,
     ) {
-        Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(progress).background(MagicColors.OnSurface.copy(alpha = 0.12f)))
         Row(
-            modifier = Modifier.align(Alignment.Center).padding(horizontal = 18.dp),
+            modifier = Modifier.padding(horizontal = 18.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val content = if (enabled) MagicColors.OnSurface else MagicColors.OnSurface.copy(alpha = 0.35f)
-            Icon(if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow, contentDescription = null, tint = content, modifier = Modifier.size(22.dp))
+            // 스피너(20dp)와 아이콘(22dp)이 바뀌어도 폭이 그대로이도록 같은 칸에 둔다.
+            Box(modifier = Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+                if (previewing && !playing) {
+                    MagicSpinner(color = content, trackColor = content.copy(alpha = 0.18f), size = 20.dp)
+                } else {
+                    Icon(if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow, contentDescription = null, tint = content, modifier = Modifier.size(22.dp))
+                }
+            }
             Text(text = stringResource(Res.string.listen_preview), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = content)
         }
     }
