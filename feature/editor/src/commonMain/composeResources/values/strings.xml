@@ -58,7 +58,7 @@
     <string name="text_sheet_tab_decoration">꾸미기</string>
     <string name="text_sheet_hint_caption">자막 문구를 입력하세요</string>
     <string name="text_sheet_hint_text">글자를 입력하세요</string>
-    <string name="decoration_type_first">글자를 먼저 입력하세요</string>
+    <string name="decoration_before_typing">입력할 글자에 적용해요</string>
     <string name="decoration_selection">‘%1$s’에만 적용해요</string>
     <string name="decoration_all">글자 전체에 적용해요 · 입력창에서 글자를 고르면 그 부분만 꾸며요</string>
     <string name="decoration_reset">꾸미기 초기화</string>

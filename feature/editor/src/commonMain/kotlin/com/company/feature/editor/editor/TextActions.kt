@@ -22,7 +22,6 @@ import com.company.domain.model.editor.setTextAnimationLength
 import com.company.domain.model.editor.trimWith
 import com.company.domain.model.editor.updateCaption
 import com.company.domain.model.editor.updateText
-import com.company.domain.model.editor.valuesIn
 import com.company.domain.model.editor.withBackground
 import com.company.domain.model.editor.withBackgroundBorder
 import com.company.domain.model.editor.withBackgroundShape
@@ -99,19 +98,18 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
     }
 
     /**
-     * Changes the input. The decorations move with the text.
+     * Changes the input. The decorations move with the text (see [withText]).
      *
      * @param text New input.
      * @param selectionStart Start of the selected characters.
      * @param selectionEnd End of the selected characters.
+     * @param composing True while the keyboard composes the changed characters.
      */
-    fun changeText(text: String, selectionStart: Int, selectionEnd: Int) {
+    fun changeText(text: String, selectionStart: Int, selectionEnd: Int, composing: Boolean) {
         host.reduce {
             val draft = textDraft ?: return@reduce this
             copy(
-                textDraft = draft.copy(
-                    text = text,
-                    decorations = draft.decorations.afterTextChange(draft.text, text),
+                textDraft = draft.withText(text, composing).copy(
                     selectionStart = minOf(selectionStart, selectionEnd).coerceIn(0, text.length),
                     selectionEnd = maxOf(selectionStart, selectionEnd).coerceIn(0, text.length),
                 ),
@@ -153,7 +151,9 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
      * @param style New template, or null for no template.
      */
     fun changeStyle(style: TextStyleType?) {
-        host.reduce { copy(textDraft = textDraft?.let { it.withContent(it.content.withTemplate(style)) }) }
+        host.reduce {
+            copy(textDraft = textDraft?.let { it.withContent(it.content.withTemplate(style)).copy(pendingDecoration = it.pendingDecoration.takeIf { style == null }) })
+        }
         host.state.textDraft?.content?.drawnFont?.let { downloadFonts(setOf(it), quiet = false) }
     }
 
@@ -207,18 +207,13 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
     }
 
     /**
-     * Changes one decoration of the selected characters, or of all characters. A text with a template loses the
-     * template first (9.3).
+     * Changes one decoration of the selected characters, or of all characters, or of the characters to type (see
+     * [decorated]).
      *
      * @param change New value of one property.
      */
     fun decorate(change: DecorationChange) {
-        host.reduce {
-            val draft = textDraft ?: return@reduce this
-            if (draft.text.isEmpty()) return@reduce this
-            val range = draft.decorationRange
-            copy(textDraft = draft.withContent(draft.content.decorate(range.first, range.last + 1) { it.with(change) }))
-        }
+        host.reduce { copy(textDraft = textDraft?.decorated(change)) }
     }
 
     // =====================================================================
@@ -232,11 +227,7 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
      */
     fun openColorPicker(target: ColorTarget) {
         val draft = host.state.textDraft ?: return
-        if (draft.text.isEmpty()) return
-        val range = draft.decorationRange
-        val values = draft.decorations.valuesIn(draft.text.length, range.first, range.last + 1) {
-            if (target == ColorTarget.TEXT) it.color else it.background
-        }
+        val values = draft.decorationValues { if (target == ColorTarget.TEXT) it.color else it.background }
         val start = values.singleOrNull() ?: if (target == ColorTarget.TEXT) WHITE else DecorationPalette.first()
         host.reduce { copy(colorPicker = ColorPicker(target, start)) }
     }
@@ -278,9 +269,13 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
             host.reduce { copy(sheet = null, textDraft = null, colorPicker = null) }
             return
         }
-        // 빈 칸으로 저장하면 '글자'로 넣고, 앞뒤 빈칸을 지운 만큼 꾸미기도 당긴다.
+        // 빈 칸으로 저장하면 '글자'로 넣고 미리 건 꾸미기를 입힌다 (D76). 아니면 앞뒤 빈칸을 지운 만큼 꾸미기도 당긴다.
         if (text.isEmpty()) {
-            host.scope.launch { commitText(draft, host.strings.resolve(uiText(Res.string.empty_text)), emptyList()) }
+            val decoration = draft.blankDecoration
+            host.scope.launch {
+                val placeholder = host.strings.resolve(uiText(Res.string.empty_text))
+                commitText(draft, placeholder, decoration.fullRange(placeholder.length))
+            }
         } else {
             commitText(draft, text, decorations)
         }
@@ -397,6 +392,37 @@ internal class TextActions(private val host: EditorHost, private val fontReposit
 
 /** White as 0xRRGGBB. The color picker starts with it for a text without a color decoration. */
 private const val WHITE = 0xFFFFFF
+
+/**
+ * Copy with a new input. The decorations move with the text (D76).
+ *
+ * The first characters in an empty input get [TextDraft.pendingDecoration]. When the user removes all characters, the
+ * decoration of the first character becomes the pending decoration.
+ *
+ * @param text New input.
+ * @param composing True while the keyboard composes the changed characters.
+ */
+internal fun TextDraft.withText(text: String, composing: Boolean): TextDraft = when {
+    text.isEmpty() -> copy(text = text, decorations = emptyList(), pendingDecoration = if (this.text.isEmpty()) pendingDecoration else blankDecoration)
+    this.text.isEmpty() -> copy(text = text, decorations = pendingDecoration.fullRange(text.length), pendingDecoration = null)
+    else -> copy(text = text, decorations = decorations.afterTextChange(this.text, text, composing), pendingDecoration = null)
+}
+
+/**
+ * Copy with one decoration change of the selected characters, or of all characters. A text with a template loses the
+ * template first (9.3). An empty input changes [TextDraft.pendingDecoration] with the same rules (D76).
+ *
+ * @param change New value of one property.
+ */
+internal fun TextDraft.decorated(change: DecorationChange): TextDraft {
+    if (text.isNotEmpty()) {
+        val range = decorationRange
+        return withContent(content.decorate(range.first, range.last + 1) { it.with(change) })
+    }
+    // 빈 입력은 한 칸짜리 문구를 꼾며 보고 그 칸의 꼾미기를 미리 건 꼾미기로 쓴다. 템플릿 규칙(9.3)이 글자를 꼾일 때와 같아진다.
+    val probe = content.copy(text = " ", decorations = pendingDecoration.fullRange(1)).decorate(0, 1) { it.with(change) }
+    return withContent(probe.copy(decorations = emptyList())).copy(pendingDecoration = probe.decorations.firstOrNull()?.decoration)
+}
 
 /** Applies one decoration change. */
 private fun Decoration.with(change: DecorationChange): Decoration = when (change) {

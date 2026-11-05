@@ -39,6 +39,7 @@ import com.company.core.designsystem.theme.MagicTheme
 import com.company.domain.model.editor.CaptionSegment
 import com.company.domain.model.editor.CaptionStyleType
 import com.company.domain.model.editor.Clip
+import com.company.domain.model.editor.Decoration
 import com.company.domain.model.editor.DecorationRange
 import com.company.domain.model.editor.EditorProject
 import com.company.domain.model.editor.TextOverlay
@@ -150,8 +151,14 @@ internal fun CaptionSegment.frameAt(time: Double, style: CaptionStyleType): Text
  * @property id ID of the caption.
  * @property text Text in the text field.
  * @property decorations Decorations of the text.
+ * @property blankDecoration Decoration of "자막" that shows in place of a blank text, or null (D76).
  */
-internal data class CaptionPreview(val id: String, val text: String, val decorations: List<DecorationRange>)
+internal data class CaptionPreview(
+    val id: String,
+    val text: String,
+    val decorations: List<DecorationRange>,
+    val blankDecoration: Decoration? = null,
+)
 
 /**
  * Drag of the caption on the editor stage. A drag up or down moves all captions together. A tap selects the caption.
@@ -198,8 +205,12 @@ internal fun StageCaption(
     val placed = preview?.let { p -> captions.find { it.id == p.id } } ?: captions.visibleAt(time) ?: return
     val captionPlaceholder = stringResource(Res.string.stage_caption_placeholder)
     val segment = if (preview != null && preview.id == placed.id) {
-        // 비운 입력은 '자막'으로 보여 준다.
-        placed.copy(text = preview.text.ifBlank { captionPlaceholder }, decorations = if (preview.text.isBlank()) emptyList() else preview.decorations)
+        // 비운 입력은 미리 건 꾸미기를 입힌 '자막'으로 보여 준다 (D76).
+        if (preview.text.isBlank()) {
+            placed.copy(text = captionPlaceholder, decorations = preview.blankDecoration.fullRange(captionPlaceholder.length))
+        } else {
+            placed.copy(text = preview.text, decorations = preview.decorations)
+        }
     } else {
         placed
     }

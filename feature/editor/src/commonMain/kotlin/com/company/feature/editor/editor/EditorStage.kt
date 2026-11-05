@@ -263,7 +263,7 @@ internal fun EditorStage(
                     )
                 }
             }
-            val captionPreview = draft?.captionId?.let { CaptionPreview(it, draft.text, draft.decorations) }
+            val captionPreview = draft?.captionId?.let { CaptionPreview(it, draft.text, draft.decorations, draft.blankDecoration) }
             // 멈춘 편집 화면에서는 자막을 위아래로 끌어 모든 자막을 함께 옮기고, 누르면 그 자막을 고른다.
             val captionMove = if (fullScreen || state.playing || draft != null) {
                 null
@@ -711,8 +711,12 @@ private fun EditorProject.liveTexts(draft: TextDraft?, time: Double, placeholder
     } else {
         texts + show(TextOverlay(id = DRAFT_TEXT_ID, text = "", start = time, length = 3.0, style = draft.style, x = 50.0, y = 40.0))
     }.map { overlay ->
-        // 비운 입력은 '글자'로 보여 준다.
-        if (overlay.id == (draft.id ?: DRAFT_TEXT_ID) && overlay.text.isBlank()) overlay.copy(text = placeholder, decorations = emptyList()) else overlay
+        // 비운 입력은 미리 건 꾸미기를 입힌 '글자'로 보여 준다 (D76).
+        if (overlay.id == (draft.id ?: DRAFT_TEXT_ID) && overlay.text.isBlank()) {
+            overlay.copy(text = placeholder, decorations = draft.blankDecoration.fullRange(placeholder.length))
+        } else {
+            overlay
+        }
     }
 }
 

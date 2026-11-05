@@ -100,6 +100,15 @@ class EditorV7EditsTest {
     }
 
     @Test
+    fun afterTextChange_composingTheFirstLetter_keepsItsDecoration() {
+        val red = Decoration(color = 0xFF0000)
+        val ranges = listOf(DecorationRange(0, 1, red))
+        assertEquals(listOf(DecorationRange(0, 1, red)), ranges.afterTextChange("ㅇ", "아", composing = true))
+        assertEquals(listOf(DecorationRange(0, 2, red)), ranges.afterTextChange("안", "아나", composing = true))
+        assertTrue(ranges.afterTextChange("ㅇ", "아").isEmpty())
+    }
+
+    @Test
     fun trimWith_movesTheDecorationsWithTheText() {
         val red = Decoration(color = 0xFF0000)
         val (text, ranges) = listOf(DecorationRange(2, 4, red)).trimWith("  ab  ")

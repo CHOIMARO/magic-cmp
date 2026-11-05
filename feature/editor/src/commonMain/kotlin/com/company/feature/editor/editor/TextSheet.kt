@@ -101,14 +101,12 @@ import com.company.core.designsystem.theme.MagicColors
 import com.company.core.designsystem.theme.MagicTheme
 import com.company.core.designsystem.theme.oklch
 import com.company.domain.model.editor.BackgroundShape
-import com.company.domain.model.editor.Decoration
 import com.company.domain.model.editor.EditorTemplate
 import com.company.domain.model.editor.SIZE_STEP_COUNT
 import com.company.domain.model.editor.TextFontType
 import com.company.domain.model.editor.TextStyleType
 import com.company.domain.model.editor.ThumbnailTemplate
 import com.company.domain.model.editor.drawnFont
-import com.company.domain.model.editor.valuesIn
 import com.company.feature.editor.resources.*
 import com.company.ui.editor.TemplatePreview
 import com.company.ui.editor.TextFrame
@@ -342,7 +340,8 @@ private fun TextDraftField(draft: TextDraft, onIntent: (EditorIntent) -> Unit, m
         value = field,
         onValueChange = { value ->
             field = value
-            onIntent(EditorIntent.ChangeDraftText(value.text, value.selection.min, value.selection.max))
+            // 한글을 조합하는 동안 맨 앞 글자가 바뀌어도(ㅇ → 아) 꾸미기가 남도록 조합 중인지를 함께 보낸다 (D76).
+            onIntent(EditorIntent.ChangeDraftText(value.text, value.selection.min, value.selection.max, composing = value.composition != null))
         },
         modifier = modifier
             .height(44.dp)
@@ -802,11 +801,10 @@ private suspend fun PointerInputScope.awaitLongPresses(guard: LongPressGuard, on
  */
 @Composable
 private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: (EditorIntent) -> Unit) {
-    val length = draft.text.length
     val backgrounds = draft.decorationValues { it.background }
     val colors = draft.decorationValues { it.color }
     // 배경이 있는 글자는 글자색을 자동으로 정하므로 색상을 고를 수 없다 (D05).
-    val colorOff = length > 0 && backgrounds.any { it != null }
+    val colorOff = backgrounds.any { it != null }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 6.dp)) {
         Row(
@@ -816,7 +814,7 @@ private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: 
         ) {
             Text(
                 text = when {
-                    length == 0 -> stringResource(Res.string.decoration_type_first)
+                    draft.text.isEmpty() -> stringResource(Res.string.decoration_before_typing)
                     draft.hasSelection -> stringResource(Res.string.decoration_selection, draft.text.substring(draft.selectionStart, draft.selectionEnd))
                     else -> stringResource(Res.string.decoration_all)
                 },
@@ -825,7 +823,7 @@ private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: 
                 lineHeight = 18.sp,
                 color = MagicColors.OnSurface60,
             )
-            if (draft.decorations.isNotEmpty()) {
+            if (draft.hasDecorations) {
                 SmallPillButton(label = stringResource(Res.string.decoration_reset), onClick = { onIntent(EditorIntent.ResetDraftDecorations) })
             }
         }
@@ -850,7 +848,6 @@ private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: 
                     colors = colors,
                     recentColors = recentColors,
                     enabled = !colorOff,
-                    customEnabled = !colorOff && length > 0,
                     onCustom = { onIntent(EditorIntent.OpenColorPicker(ColorTarget.TEXT)) },
                     onIntent = onIntent,
                 )
@@ -862,7 +859,7 @@ private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(text = stringResource(Res.string.decoration_background), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MagicColors.OnSurface70)
             SwatchRow {
-                BackgroundSwatches(backgrounds = backgrounds, recentColors = recentColors, hasText = length > 0, onIntent = onIntent)
+                BackgroundSwatches(backgrounds = backgrounds, recentColors = recentColors, onIntent = onIntent)
             }
             Row(modifier = Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 BoxToggles(draft = draft, onIntent = onIntent, modifier = Modifier.weight(1f))
@@ -882,11 +879,10 @@ private fun DecorationPage(draft: TextDraft, recentColors: List<Int>, onIntent: 
  */
 @Composable
 private fun DecorationStrip(draft: TextDraft, recentColors: List<Int>, onIntent: (EditorIntent) -> Unit) {
-    val length = draft.text.length
     val backgrounds = draft.decorationValues { it.background }
     val colors = draft.decorationValues { it.color }
     // 배경이 있는 글자는 글자색을 자동으로 정하므로 색상을 고를 수 없다 (D05).
-    val colorOff = length > 0 && backgrounds.any { it != null }
+    val colorOff = backgrounds.any { it != null }
 
     Column {
         SwatchRow {
@@ -907,23 +903,18 @@ private fun DecorationStrip(draft: TextDraft, recentColors: List<Int>, onIntent:
                     colors = colors,
                     recentColors = recentColors,
                     enabled = !colorOff,
-                    customEnabled = !colorOff && length > 0,
                     onCustom = { onIntent(EditorIntent.OpenColorPicker(ColorTarget.TEXT)) },
                     onIntent = onIntent,
                 )
             }
             StripDivider()
             StripLabel(text = stringResource(Res.string.decoration_background))
-            BackgroundSwatches(backgrounds = backgrounds, recentColors = recentColors, hasText = length > 0, onIntent = onIntent)
+            BackgroundSwatches(backgrounds = backgrounds, recentColors = recentColors, onIntent = onIntent)
             StripDivider()
             BoxToggles(draft = draft, onIntent = onIntent, compact = true)
         }
     }
 }
-
-/** Decoration values of the characters that the decorations change. */
-private fun <T> TextDraft.decorationValues(read: (Decoration) -> T): Set<T> =
-    decorations.valuesIn(text.length, decorationRange.first, decorationRange.last + 1, read)
 
 /**
  * Five size step circles. The selected step is filled with the accent color.
@@ -1026,7 +1017,6 @@ private fun BoxToggles(draft: TextDraft, onIntent: (EditorIntent) -> Unit, modif
  * @param colors Text colors in the range.
  * @param recentColors Colors from the color picker, newest first.
  * @param enabled Set to false when the text color is automatic.
- * @param customEnabled Set to false to turn off the color picker button.
  * @param onCustom Opens the color picker.
  * @param onIntent Called with each user action.
  */
@@ -1035,11 +1025,10 @@ private fun TextColorSwatches(
     colors: Set<Int?>,
     recentColors: List<Int>,
     enabled: Boolean,
-    customEnabled: Boolean,
     onCustom: () -> Unit,
     onIntent: (EditorIntent) -> Unit,
 ) {
-    CustomColorButton(enabled = customEnabled, onClick = onCustom)
+    CustomColorButton(enabled = enabled, onClick = onCustom)
     (recentColors.filter { it !in DecorationPalette } + DecorationPalette).forEach { rgb ->
         ColorSwatch(
             color = rgbColor(rgb),
@@ -1056,13 +1045,12 @@ private fun TextColorSwatches(
  *
  * @param backgrounds Backgrounds in the range.
  * @param recentColors Colors from the color picker, newest first.
- * @param hasText True when the draft has text.
  * @param onIntent Called with each user action.
  */
 @Composable
-private fun BackgroundSwatches(backgrounds: Set<Int?>, recentColors: List<Int>, hasText: Boolean, onIntent: (EditorIntent) -> Unit) {
+private fun BackgroundSwatches(backgrounds: Set<Int?>, recentColors: List<Int>, onIntent: (EditorIntent) -> Unit) {
     CustomColorButton(
-        enabled = hasText,
+        enabled = true,
         onClick = { onIntent(EditorIntent.OpenColorPicker(ColorTarget.BACKGROUND)) },
         shape = RoundedCornerShape(10.dp),
         innerShape = RoundedCornerShape(7.dp),
@@ -1070,7 +1058,7 @@ private fun BackgroundSwatches(backgrounds: Set<Int?>, recentColors: List<Int>, 
     )
     ColorSwatch(
         color = MagicColors.SurfaceHigh,
-        selected = backgrounds.singleOrNull() == null && hasText,
+        selected = backgrounds.singleOrNull() == null,
         shape = RoundedCornerShape(10.dp),
         icon = Icons.Rounded.Block,
         onClick = { onIntent(EditorIntent.DecorateDraft(DecorationChange.Background(null))) },

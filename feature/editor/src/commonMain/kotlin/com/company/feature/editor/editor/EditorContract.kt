@@ -8,6 +8,7 @@ import com.company.domain.model.editor.CaptionSegment
 import com.company.domain.model.editor.CaptionStyleType
 import com.company.domain.model.editor.Clip
 import com.company.domain.model.editor.DEFAULT_SIZE_STEP
+import com.company.domain.model.editor.Decoration
 import com.company.domain.model.editor.DecorationRange
 import com.company.domain.model.editor.Dubbing
 import com.company.domain.model.editor.DubbingSpeed
@@ -34,6 +35,7 @@ import com.company.domain.model.editor.ThumbnailTemplate
 import com.company.domain.model.editor.TransitionSlot
 import com.company.domain.model.editor.TransitionType
 import com.company.domain.model.editor.placedCaptions
+import com.company.domain.model.editor.valuesIn
 import com.company.ui.text.UiText
 
 // =====================================================================
@@ -144,6 +146,8 @@ enum class TextSheetTab {
  * @property fontFromTemplate True when [font] is the font of a template that a decoration removed (D61).
  * @property sizeStep Size step from 1 to 5.
  * @property decorations Decorations of character ranges in [text].
+ * @property pendingDecoration Decoration for the characters to type, or null (D76). Only an empty input has it. The
+ *   first characters that the user types get it.
  * @property selectionStart Start of the selected characters in the text field.
  * @property selectionEnd End of the selected characters. It is equal to [selectionStart] when nothing is selected.
  * @property captionId ID of the caption to change, or null. A caption draft has only the decoration tab.
@@ -157,6 +161,7 @@ data class TextDraft(
     val fontFromTemplate: Boolean = false,
     val sizeStep: Int = DEFAULT_SIZE_STEP,
     val decorations: List<DecorationRange> = emptyList(),
+    val pendingDecoration: Decoration? = null,
     val selectionStart: Int = text.length,
     val selectionEnd: Int = text.length,
     val captionId: String? = null,
@@ -190,7 +195,41 @@ data class TextDraft(
     /** Range that a decoration changes: the selected characters, or all characters. */
     val decorationRange: IntRange
         get() = if (hasSelection) selectionStart until selectionEnd else text.indices
+
+    /** True when the draft has a decoration on some characters, or for the characters to type. */
+    val hasDecorations: Boolean
+        get() = decorations.isNotEmpty() || pendingDecoration != null
+
+    /**
+     * Decoration of the text that shows in place of a blank input ("글자" or "자막"), or null (D76). An empty input
+     * uses [pendingDecoration]. An input with only spaces uses the decoration of the first space.
+     */
+    val blankDecoration: Decoration?
+        get() = if (text.isEmpty()) pendingDecoration else decorations.firstOrNull { it.start == 0 }?.decoration
+
+    /**
+     * Collects the values of one decoration property in [decorationRange]. An empty input gives the value of
+     * [pendingDecoration] (D76).
+     *
+     * @param read Reads the property. A character without a decoration gives the value of an empty decoration.
+     * @return The different values. Two or more values mean that the range is mixed.
+     */
+    fun <T> decorationValues(read: (Decoration) -> T): Set<T> =
+        if (text.isEmpty()) {
+            setOf(read(pendingDecoration ?: Decoration()))
+        } else {
+            decorations.valuesIn(text.length, decorationRange.first, decorationRange.last + 1, read)
+        }
 }
+
+/**
+ * Ranges that give this decoration to all characters of a text.
+ *
+ * @param length Number of characters in the text.
+ * @return One range, or no range when the decoration is null.
+ */
+internal fun Decoration?.fullRange(length: Int): List<DecorationRange> =
+    if (this == null || length == 0) emptyList() else listOf(DecorationRange(0, length, this))
 
 /** Change of one decoration property. */
 sealed interface DecorationChange {
@@ -632,8 +671,11 @@ sealed class EditorIntent : Intent() {
 
     // ----- Text sheet -----
 
-    /** ChangeDraftText(text, selectionStart, selectionEnd) : Changes the input and the selected characters. Decorations move with the text. */
-    data class ChangeDraftText(val text: String, val selectionStart: Int, val selectionEnd: Int) : EditorIntent()
+    /**
+     * ChangeDraftText(text, selectionStart, selectionEnd, composing) : Changes the input and the selected characters.
+     * Decorations move with the text. [composing] is true while the keyboard composes the changed characters.
+     */
+    data class ChangeDraftText(val text: String, val selectionStart: Int, val selectionEnd: Int, val composing: Boolean = false) : EditorIntent()
 
     /** SelectTextTab(tab) : Opens a tab of the text sheet. */
     data class SelectTextTab(val tab: TextSheetTab) : EditorIntent()
@@ -674,7 +716,7 @@ sealed class EditorIntent : Intent() {
     /** CloseColorPicker : Closes the color picker. A changed color goes first in the recent colors. */
     data object CloseColorPicker : EditorIntent()
 
-    /** ResetDraftDecorations : Removes all decorations of the draft. */
+    /** ResetDraftDecorations : Removes all decorations of the draft, and the decoration for the characters to type. */
     data object ResetDraftDecorations : EditorIntent()
 
     /** SaveText : Adds or changes the overlay or the caption from the text sheet. */

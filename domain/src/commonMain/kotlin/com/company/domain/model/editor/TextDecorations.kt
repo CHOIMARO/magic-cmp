@@ -58,11 +58,15 @@ fun List<DecorationRange>.decorate(length: Int, start: Int, end: Int, change: (D
  * Characters before and after the changed part keep their decorations. New characters get the decoration of the
  * character before them. The decorations of removed characters go away.
  *
+ * While the keyboard composes a letter at the start (ㅇ → 아), the new characters keep the decoration of the first
+ * removed character (D76).
+ *
  * @param oldText Text before the change.
  * @param newText Text after the change.
+ * @param composing True when the keyboard composes the changed characters.
  * @return The ranges for [newText].
  */
-fun List<DecorationRange>.afterTextChange(oldText: String, newText: String): List<DecorationRange> {
+fun List<DecorationRange>.afterTextChange(oldText: String, newText: String, composing: Boolean = false): List<DecorationRange> {
     if (oldText == newText) return this
     if (isEmpty()) return emptyList()
     val old = perCharacter(oldText.length)
@@ -72,7 +76,12 @@ fun List<DecorationRange>.afterTextChange(oldText: String, newText: String): Lis
     var suffix = 0
     while (suffix < shorter - prefix && oldText[oldText.length - 1 - suffix] == newText[newText.length - 1 - suffix]) suffix++
     val inserted = newText.length - suffix - prefix
-    val fill = if (prefix > 0) old[prefix - 1] else null
+    val removed = oldText.length - suffix - prefix
+    val fill = when {
+        prefix > 0 -> old[prefix - 1]
+        composing && removed > 0 -> old[0]
+        else -> null
+    }
     val characters = old.take(prefix) + List(inserted.coerceAtLeast(0)) { fill } + old.drop(oldText.length - suffix)
     return characters.take(newText.length).toDecorationRanges()
 }

@@ -338,7 +338,7 @@ class EditorViewModel(
                 projectRepository.update { it.transformText(intent.textId, intent.scale, intent.rotation) }
 
             is EditorIntent.OpenTextEditor -> texts.openTextEditor(intent.textId)
-            is EditorIntent.ChangeDraftText -> texts.changeText(intent.text, intent.selectionStart, intent.selectionEnd)
+            is EditorIntent.ChangeDraftText -> texts.changeText(intent.text, intent.selectionStart, intent.selectionEnd, intent.composing)
             is EditorIntent.SelectTextTab -> texts.selectTab(intent.tab)
             is EditorIntent.ChangeDraftStyle -> texts.changeStyle(intent.style)
             is EditorIntent.AddThumbnail -> texts.addThumbnail(intent.template)
@@ -350,7 +350,7 @@ class EditorViewModel(
             is EditorIntent.OpenColorPicker -> texts.openColorPicker(intent.target)
             is EditorIntent.ChangePickerColor -> texts.changePickerColor(intent.rgb)
             EditorIntent.CloseColorPicker -> texts.closeColorPicker()
-            EditorIntent.ResetDraftDecorations -> reduce { copy(textDraft = textDraft?.copy(decorations = emptyList())) }
+            EditorIntent.ResetDraftDecorations -> reduce { copy(textDraft = textDraft?.copy(decorations = emptyList(), pendingDecoration = null)) }
             EditorIntent.SaveText -> texts.save()
             EditorIntent.DeleteText -> texts.delete()
 
