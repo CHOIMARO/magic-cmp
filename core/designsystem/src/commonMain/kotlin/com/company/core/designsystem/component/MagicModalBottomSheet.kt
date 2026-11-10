@@ -67,6 +67,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.milliseconds
 
 /** Smallest free space above the sheet. The sheet is never taller than the screen minus this space. */
 private val SheetTopClearance = 56.dp
@@ -501,15 +502,15 @@ private class SheetExitController(
         hideKeyboard()
         // 키보드가 실제로 내려가기 시작한 뒤에 hide를 시작한다. 먼저 시작하면 키보드가 아직 움직이지 않는
         // 첫 프레임들에 앵커가 고정되어 있어서, 시트만 한 박자 먼저 내려간다.
-        withTimeoutOrNull(ImeStartTimeoutMs) {
+        withTimeoutOrNull(ImeStartTimeoutMs.milliseconds) {
             snapshotFlow { insets.getBottom(density) }.first { bottom -> bottom < startPx }
         }
         val hideJob = scope.launch { runCatching { sheetState.hide() } }
-        withTimeoutOrNull(ImeExitTimeoutMs) {
+        withTimeoutOrNull(ImeExitTimeoutMs.milliseconds) {
             snapshotFlow { insets.getBottom(density) }.first { bottom -> bottom <= 0 }
         }
         // scrim이 다 걷힌 뒤에 윈도우를 해체해서, 마지막 프레임에 딤이 튀지 않게 한다.
-        withTimeoutOrNull(ScrimFadeTimeoutMs) { hideJob.join() }
+        withTimeoutOrNull(ScrimFadeTimeoutMs.milliseconds) { hideJob.join() }
     }
 }
 
